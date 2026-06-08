@@ -7,11 +7,11 @@ plugins {
 }
 
 android {
-    namespace = "com.tucafeteria.ventas"
+    namespace = "com.tuapp.ventas"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.tucafeteria.ventas"
+        applicationId = "com.tuapp.ventas"
         minSdk = 24
         targetSdk = 34
         versionCode = 1
@@ -95,6 +95,7 @@ dependencies {
 
     // Fragment
     implementation(libs.androidx.fragment.ktx)
+    implementation(libs.androidx.activity.ktx)
 
     // Test
     testImplementation(libs.junit)
