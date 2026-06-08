@@ -1,0 +1,5 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent">
+<androidx.camera.view.PreviewView android:id="@+id/previewView" android:layout_width="match_parent" android:layout_height="match_parent" />
+<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:background="#99000000" android:padding="16dp" android:text="Apunta al código de barras o QR" android:textColor="@android:color/white" android:textStyle="bold" />
+<com.google.android.material.button.MaterialButton android:id="@+id/btnCancelar" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_gravity="bottom" android:text="Cancelar" />
+</FrameLayout>

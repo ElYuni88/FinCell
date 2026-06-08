@@ -1,4 +1,4 @@
-package com.example.finsell
+package com.tuapp.ventas
 
 import org.junit.Test
 
