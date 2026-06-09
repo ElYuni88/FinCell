@@ -1,31 +1,270 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true">
-<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
-    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Ventas Seguras" android:textStyle="bold" android:textSize="26sp" />
-    <com.google.android.material.chip.ChipGroup android:layout_width="match_parent" android:layout_height="wrap_content" app:singleSelection="true">
-        <com.google.android.material.chip.Chip android:id="@+id/chipSimple" style="@style/Widget.Material3.Chip.Filter" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="MODO SIMPLE" />
-        <com.google.android.material.chip.Chip android:id="@+id/chipCuenta" style="@style/Widget.Material3.Chip.Filter" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="MODO CUENTA" />
-    </com.google.android.material.chip.ChipGroup>
-    <com.google.android.material.button.MaterialButton android:id="@+id/btnEntradaManual" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Probar con código demo" />
-    <LinearLayout android:id="@+id/panelSimple" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:background="@drawable/modo_simple_bg" android:padding="16dp">
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="● MODO VENTA DIRECTA" android:textStyle="bold" android:textColor="@color/simple" />
-        <com.google.android.material.button.MaterialButton android:id="@+id/btnEscanearSimple" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="ESCANEAR PRODUCTO" />
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Última venta" android:textStyle="bold" />
-        <TextView android:id="@+id/txtUltimaVenta" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Sin ventas todavía" />
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Total de ventas del día" android:textStyle="bold" />
-        <TextView android:id="@+id/txtTotalDia" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="$0.00" android:textSize="24sp" />
-        <TextView android:id="@+id/txtCantidadDia" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="0 productos" />
-        <androidx.recyclerview.widget.RecyclerView android:id="@+id/recyclerVentas" android:layout_width="match_parent" android:layout_height="180dp" />
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/pos_gray_bg"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:animateLayoutChanges="true"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Ventas Cafetería"
+                android:textAppearance="@style/TextAppearance.FinSell.Title"
+                android:textSize="24sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSettings"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:text="⚙️"
+                app:backgroundTint="@color/card_background"
+                app:cornerRadius="24dp" />
+        </LinearLayout>
+
+        <com.google.android.material.chip.ChipGroup
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            app:selectionRequired="true"
+            app:singleSelection="true">
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipSimple"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:gravity="center"
+                android:text="MODO SIMPLE"
+                android:textColor="@color/text_primary"
+                android:textStyle="bold"
+                app:chipBackgroundColor="@color/card_background"
+                app:chipStrokeColor="@color/pos_green"
+                app:chipStrokeWidth="1dp" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipCuenta"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:gravity="center"
+                android:text="MODO CUENTA"
+                android:textColor="@color/text_primary"
+                android:textStyle="bold"
+                app:chipBackgroundColor="@color/card_background"
+                app:chipStrokeColor="@color/pos_blue"
+                app:chipStrokeWidth="1dp" />
+        </com.google.android.material.chip.ChipGroup>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnEntradaManual"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Usar código demo"
+            android:textColor="@color/text_secondary" />
+
+        <LinearLayout
+            android:id="@+id/panelSimple"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:animateLayoutChanges="true"
+            android:background="@drawable/modo_simple_bg"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="● MODO VENTA DIRECTA"
+                android:textColor="@color/pos_green"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnEscanearSimple"
+                android:stateListAnimator="@animator/press_scale"
+                android:layout_width="match_parent"
+                android:layout_height="72dp"
+                android:layout_marginTop="16dp"
+                android:elevation="8dp"
+                android:text="📷  ESCANEAR PRODUCTO"
+                android:textColor="@color/white"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                app:backgroundTint="@color/pos_green"
+                app:cornerRadius="24dp" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                app:cardBackgroundColor="@color/card_background"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="4dp"
+                app:strokeWidth="0dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="18dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Resumen del día"
+                        android:textAppearance="@style/TextAppearance.FinSell.Title" />
+
+                    <TextView
+                        android:id="@+id/txtTotalDia"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="$0.00"
+                        android:textAppearance="@style/TextAppearance.FinSell.Total" />
+
+                    <TextView
+                        android:id="@+id/txtCantidadDia"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="0 productos"
+                        android:textAppearance="@style/TextAppearance.FinSell.Secondary" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                app:cardBackgroundColor="@color/card_background"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="4dp"
+                app:strokeWidth="0dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="18dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Última venta"
+                        android:textAppearance="@style/TextAppearance.FinSell.Title" />
+
+                    <TextView
+                        android:id="@+id/txtUltimaVenta"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="Sin ventas todavía"
+                        android:textAppearance="@style/TextAppearance.FinSell.Body" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerVentas"
+                android:layout_width="match_parent"
+                android:layout_height="120dp"
+                android:layout_marginTop="10dp"
+                android:clipToPadding="false"
+                android:paddingBottom="8dp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/panelCuenta"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:animateLayoutChanges="true"
+            android:background="@drawable/modo_cuenta_bg"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="● MODO CUENTAS POR CLIENTE"
+                android:textColor="@color/pos_blue"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnNuevaCuenta"
+                android:layout_width="match_parent"
+                android:layout_height="60dp"
+                android:layout_marginTop="16dp"
+                android:text="➕ CREAR NUEVA CUENTA"
+                android:textColor="@color/pos_blue_dark"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                app:backgroundTint="@color/create_account_background"
+                app:cornerRadius="24dp" />
+
+            <TextView
+                android:id="@+id/txtCuentaSeleccionada"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="Ninguna cuenta seleccionada"
+                android:textAppearance="@style/TextAppearance.FinSell.Secondary"
+                android:textStyle="bold" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnEscanearCuenta"
+                android:stateListAnimator="@animator/press_scale"
+                android:layout_width="match_parent"
+                android:layout_height="60dp"
+                android:layout_marginTop="12dp"
+                android:text="📷  ESCANEAR (agregar a cuenta)"
+                android:textColor="@color/white"
+                android:textStyle="bold"
+                app:backgroundTint="@color/pos_blue"
+                app:cornerRadius="24dp" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerCuentas"
+                android:layout_width="match_parent"
+                android:layout_height="360dp"
+                android:layout_marginTop="12dp"
+                android:clipToPadding="false"
+                android:paddingBottom="8dp"
+                tools:listitem="@layout/item_cuenta" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnVerCuenta"
+                style="@style/Widget.FinSell.Button.Outlined"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginTop="8dp"
+                android:text="VER CUENTA SELECCIONADA"
+                android:textColor="@color/pos_blue" />
+        </LinearLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnEstadisticas"
+            style="@style/Widget.FinSell.Button.Outlined"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="16dp"
+            android:text="📊 Estadísticas"
+            android:textColor="@color/text_secondary" />
     </LinearLayout>
-    <LinearLayout android:id="@+id/panelCuenta" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:background="@drawable/modo_cuenta_bg" android:padding="16dp">
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="● MODO CUENTAS POR CLIENTE" android:textStyle="bold" android:textColor="@color/cuenta" />
-        <com.google.android.material.button.MaterialButton android:id="@+id/btnNuevaCuenta" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="➕ CREAR NUEVA CUENTA" android:textColor="@color/cuenta" android:textStyle="bold" app:backgroundTint="@color/create_account_background" />
-        <TextView android:id="@+id/txtCuentaSeleccionada" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Ninguna cuenta seleccionada" android:textStyle="bold" android:textColor="@color/text_primary" />
-        <com.google.android.material.button.MaterialButton android:id="@+id/btnEscanearCuenta" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="ESCANEAR (agregar a cuenta)" />
-        <androidx.recyclerview.widget.RecyclerView android:id="@+id/recyclerCuentas" android:layout_width="match_parent" android:layout_height="320dp" />
-        <com.google.android.material.button.MaterialButton android:id="@+id/btnVerCuenta" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="VER CUENTA SELECCIONADA" />
-    </LinearLayout>
-    <com.google.android.material.button.MaterialButton android:id="@+id/btnEstadisticas" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="📊 Estadísticas" />
-    <com.google.android.material.button.MaterialButton android:id="@+id/btnSettings" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Configuración" />
-</LinearLayout>
 </ScrollView>

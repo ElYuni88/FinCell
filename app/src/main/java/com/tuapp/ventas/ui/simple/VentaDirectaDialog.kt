@@ -1,11 +1,15 @@
 package com.tuapp.ventas.ui.simple
 
 import android.app.Dialog
+import android.content.res.ColorStateList
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.animation.AnimationUtils
 import androidx.appcompat.app.AlertDialog
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.DialogFragment
 import com.tuapp.ventas.R
 import com.tuapp.ventas.data.model.ModoOperacion
@@ -35,9 +39,20 @@ class VentaDirectaDialog : DialogFragment() {
         val builder = AlertDialog.Builder(requireContext()).setView(binding.root)
         if (modo == ModoOperacion.CUENTA) builder.setNeutralButton("Ver cuenta") { _, _ -> onVerCuenta?.invoke() }
         return builder
-            .setNegativeButton("Cancelar", null)
-            .setPositiveButton(if (modo == ModoOperacion.SIMPLE) "Registrar venta" else "Agregar") { _, _ -> confirmar() }
+            .setNegativeButton("CANCELAR", null)
+            .setPositiveButton(if (modo == ModoOperacion.SIMPLE) "REGISTRAR VENTA" else "AGREGAR") { _, _ -> confirmar() }
             .create()
+            .also { dialog ->
+                dialog.setOnShowListener {
+                    dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+                    val positivo = dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                    val negativo = dialog.getButton(AlertDialog.BUTTON_NEGATIVE)
+                    positivo.setTextColor(ContextCompat.getColor(requireContext(), R.color.white))
+                    positivo.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(requireContext(), R.color.pos_green))
+                    negativo.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_secondary))
+                    negativo.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(requireContext(), R.color.pos_gray_button))
+                }
+            }
     }
 
     private fun configurarVista() = with(binding) {

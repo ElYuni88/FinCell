@@ -37,6 +37,7 @@ class CuentasActivasAdapter(
             val texto = if (abierta) R.color.cuenta_abierta_text else R.color.cuenta_cerrada_text
 
             cardCuenta.setCardBackgroundColor(ContextCompat.getColor(context, fondo))
+            viewEstadoStripe.setBackgroundColor(ContextCompat.getColor(context, if (abierta) R.color.pos_red else R.color.pos_green))
             txtEstadoIcono.text = if (abierta) "🔴" else "🟢"
             txtNombreCliente.text = cuenta.nombreCliente
             txtNombreCliente.setTextColor(ContextCompat.getColor(context, texto))

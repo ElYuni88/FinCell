@@ -1,16 +1,17 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <style name="Base.Theme.FinSell" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="colorPrimary">@color/primary</item>
+        <item name="colorPrimary">@color/pos_green</item>
         <item name="colorPrimaryDark">@color/primary_dark</item>
-        <item name="colorSecondary">@color/accent</item>
-        <item name="colorAccent">@color/accent</item>
+        <item name="colorSecondary">@color/pos_blue</item>
+        <item name="colorAccent">@color/pos_blue</item>
         <item name="android:fontFamily">sans</item>
+        <item name="android:windowBackground">@color/pos_gray_bg</item>
+        <item name="android:navigationBarColor">@color/pos_gray_bg</item>
+        <item name="android:statusBarColor">@color/pos_gray_bg</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
         <item name="materialButtonStyle">@style/Widget.FinSell.Button</item>
+        <item name="materialCardViewStyle">@style/Widget.Material3.CardView.Elevated</item>
     </style>
-    <style name="Theme.FinSell" parent="Base.Theme.FinSell" />
 
-    <style name="Widget.FinSell.Button" parent="Widget.Material3.Button">
-        <item name="cornerRadius">24dp</item>
-        <item name="android:textSize">16sp</item>
-    </style>
+    <style name="Theme.FinSell" parent="Base.Theme.FinSell" />
 </resources>
