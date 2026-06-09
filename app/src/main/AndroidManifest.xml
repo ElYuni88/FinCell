@@ -9,6 +9,7 @@
         <activity android:name=".ui.settings.SettingsActivity" />
         <activity android:name=".ui.estadisticas.EstadisticasActivity" />
         <activity android:name=".ui.scanner.BarcodeScannerActivity" android:screenOrientation="portrait" />
+        <activity android:name=".ui.cuenta.AccountDetailActivity" />
         <activity android:name=".ui.cuenta.ActiveAccountActivity" />
         <activity android:name=".ui.main.MainActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity>
     </application>

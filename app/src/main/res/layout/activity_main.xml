@@ -19,10 +19,10 @@
     </LinearLayout>
     <LinearLayout android:id="@+id/panelCuenta" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:background="@drawable/modo_cuenta_bg" android:padding="16dp">
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="● MODO CUENTAS POR CLIENTE" android:textStyle="bold" android:textColor="@color/cuenta" />
-        <TextView android:id="@+id/txtCuentaSeleccionada" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Ninguna cuenta seleccionada" android:textStyle="bold" />
+        <com.google.android.material.button.MaterialButton android:id="@+id/btnNuevaCuenta" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="➕ CREAR NUEVA CUENTA" android:textColor="@color/cuenta" android:textStyle="bold" app:backgroundTint="@color/create_account_background" />
+        <TextView android:id="@+id/txtCuentaSeleccionada" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Ninguna cuenta seleccionada" android:textStyle="bold" android:textColor="@color/text_primary" />
         <com.google.android.material.button.MaterialButton android:id="@+id/btnEscanearCuenta" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="ESCANEAR (agregar a cuenta)" />
-        <com.google.android.material.button.MaterialButton android:id="@+id/btnNuevaCuenta" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="NUEVA CUENTA" />
-        <androidx.recyclerview.widget.RecyclerView android:id="@+id/recyclerCuentas" android:layout_width="match_parent" android:layout_height="220dp" />
+        <androidx.recyclerview.widget.RecyclerView android:id="@+id/recyclerCuentas" android:layout_width="match_parent" android:layout_height="320dp" />
         <com.google.android.material.button.MaterialButton android:id="@+id/btnVerCuenta" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="VER CUENTA SELECCIONADA" />
     </LinearLayout>
     <com.google.android.material.button.MaterialButton android:id="@+id/btnEstadisticas" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="📊 Estadísticas" />
