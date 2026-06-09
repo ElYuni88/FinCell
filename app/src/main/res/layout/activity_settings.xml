@@ -1,0 +1,10 @@
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent"><LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
+<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Configuración" android:textSize="24sp" android:textStyle="bold" />
+<RadioGroup android:layout_width="match_parent" android:layout_height="wrap_content"><RadioButton android:id="@+id/radioSimple" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Iniciar en modo simple"/><RadioButton android:id="@+id/radioCuenta" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Iniciar en modo cuenta"/><RadioButton android:id="@+id/radioRecordar" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Recordar último modo"/></RadioGroup>
+<Switch android:id="@+id/switchSonido" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Sonido al escanear" />
+<Switch android:id="@+id/switchVibrar" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Vibrar al escanear" />
+<Switch android:id="@+id/switchConfirmar" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Confirmar antes de agregar a cuenta" />
+<Switch android:id="@+id/switchBackup" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Exportar respaldo automático" />
+<com.google.android.material.button.MaterialButton android:id="@+id/btnGuardar" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Guardar" />
+<com.google.android.material.button.MaterialButton android:id="@+id/btnVolver" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Volver" />
+</LinearLayout></ScrollView>

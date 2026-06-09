@@ -1,7 +1,17 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
     <style name="Base.Theme.FinSell" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your dark theme here. -->
-        <!-- <item name="colorPrimary">@color/my_dark_primary</item> -->
+        <item name="colorPrimary">@color/pos_green</item>
+        <item name="colorPrimaryDark">@color/primary_dark</item>
+        <item name="colorSecondary">@color/pos_blue</item>
+        <item name="colorAccent">@color/pos_blue</item>
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowBackground">@color/pos_gray_bg</item>
+        <item name="android:navigationBarColor">@color/pos_gray_bg</item>
+        <item name="android:statusBarColor">@color/pos_gray_bg</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
+        <item name="materialButtonStyle">@style/Widget.FinSell.Button</item>
+        <item name="materialCardViewStyle">@style/Widget.Material3.CardView.Elevated</item>
     </style>
+
+    <style name="Theme.FinSell" parent="Base.Theme.FinSell" />
 </resources>
