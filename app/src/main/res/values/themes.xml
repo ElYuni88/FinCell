@@ -8,7 +8,6 @@
         <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
         <item name="materialButtonStyle">@style/Widget.FinSell.Button</item>
     </style>
-
     <style name="Theme.FinSell" parent="Base.Theme.FinSell" />
 
     <style name="Widget.FinSell.Button" parent="Widget.Material3.Button">
