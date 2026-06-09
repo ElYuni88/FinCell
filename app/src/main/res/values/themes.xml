@@ -12,6 +12,5 @@
         <item name="materialButtonStyle">@style/Widget.FinSell.Button</item>
         <item name="materialCardViewStyle">@style/Widget.Material3.CardView.Elevated</item>
     </style>
-
     <style name="Theme.FinSell" parent="Base.Theme.FinSell" />
 </resources>
