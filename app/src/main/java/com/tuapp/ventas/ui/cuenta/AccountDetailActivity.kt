@@ -136,10 +136,20 @@ class AccountDetailActivity : AppCompatActivity() {
 
     private fun mostrarDialogoProductoNuevo(codigo: String) {
         VentaDirectaDialog().apply {
-            codigoNuevo = codigo
+            this.codigoNuevo = codigo
             modo = ModoOperacion.CUENTA
-            onConfirmar = { _, c, nombre, precio, _ ->
-                if (nombre.isNullOrBlank() || precio == null) toast("Nombre y precio requeridos") else viewModel.crearProductoYAgregar(c ?: codigo, nombre, precio)
+            onConfirmar = { productoExistente, codigoEscaneado, nombre, precio, cantidad ->
+                if (nombre.isNullOrBlank() || precio == null) {
+                    toast("Nombre y precio requeridos")
+                } else {
+                    val cantidadFinal = if (cantidad > 0) cantidad else 1
+                    viewModel.crearProductoYAgregar(
+                        codigo = codigoEscaneado ?: codigo,
+                        nombre = nombre,
+                        precio = precio,
+                        cantidad = cantidadFinal
+                    )
+                }
             }
         }.show(supportFragmentManager, "nuevo_producto_cuenta")
     }

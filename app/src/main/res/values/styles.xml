@@ -1,4 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- ESTILO BASE (el que faltaba) -->
+    <style name="TextAppearance.FinSell" parent="TextAppearance.Material3.BodyLarge">
+        <item name="fontFamily">sans-serif</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:textColor">@color/text_primary</item>
+    </style>
+
+    <!-- ESTILOS DERIVADOS -->
     <style name="TextAppearance.FinSell.Title">
         <item name="android:textSize">18sp</item>
         <item name="android:textStyle">bold</item>
@@ -21,6 +31,7 @@
         <item name="android:textColor">@color/text_primary</item>
     </style>
 
+    <!-- ESTILOS DE BOTONES -->
     <style name="Widget.FinSell.Button" parent="Widget.Material3.Button">
         <item name="cornerRadius">24dp</item>
         <item name="android:textSize">16sp</item>

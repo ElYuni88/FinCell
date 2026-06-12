@@ -31,11 +31,14 @@ class AccountDetailViewModel(private val repo: VentasRepository, private val cue
         }
     }
 
-    fun crearProductoYAgregar(codigo: String, nombre: String, precio: Double) = viewModelScope.launch {
-        val producto = repo.crearProducto(codigo, nombre, precio)
-        runCatching { repo.agregarProductoACuenta(cuentaId, producto, 1) }
-            .onSuccess { mensaje.value = "${producto.nombre} creado y agregado" }
-            .onFailure { mensaje.value = it.message ?: "No se pudo agregar" }
+    fun crearProductoYAgregar(codigo: String, nombre: String, precio: Double, cantidad: Int = 1) = viewModelScope.launch {
+        try {
+            val producto = repo.crearProducto(codigo, nombre, precio)
+            repo.agregarProductoACuenta(cuentaId, producto, cantidad)
+            mensaje.value = "${producto.nombre} creado y agregado (x$cantidad)"
+        } catch (e: Exception) {
+            mensaje.value = e.message ?: "No se pudo agregar"
+        }
     }
 
     fun cambiarCantidad(detalleId: Long, nuevaCantidad: Int) = viewModelScope.launch {
