@@ -60,7 +60,14 @@ class MainActivity : AppCompatActivity() {
     private fun configurarListas() {
         binding.recyclerVentas.layoutManager = LinearLayoutManager(this)
         binding.recyclerVentas.adapter = ventasAdapter
-        cuentasAdapter = CuentasActivasAdapter { cuenta -> prefs.cuentaSeleccionadaId = cuenta.id; viewModel.seleccionarCuenta(cuenta.id); startActivity(Intent(this, AccountDetailActivity::class.java).putExtra(AccountDetailActivity.EXTRA_CUENTA_ID, cuenta.id)) }
+        cuentasAdapter = CuentasActivasAdapter(
+            onClick = { cuenta ->
+                prefs.cuentaSeleccionadaId = cuenta.id
+                viewModel.seleccionarCuenta(cuenta.id)
+                startActivity(Intent(this, AccountDetailActivity::class.java).putExtra(AccountDetailActivity.EXTRA_CUENTA_ID, cuenta.id))
+            },
+            onEliminarCuenta = { cuenta -> confirmarEliminarCuenta(cuenta.id, cuenta.nombreCliente) }
+        )
         binding.recyclerCuentas.layoutManager = LinearLayoutManager(this)
         binding.recyclerCuentas.adapter = cuentasAdapter
     }
@@ -68,9 +75,10 @@ class MainActivity : AppCompatActivity() {
         chipSimple.setOnClickListener { cambiarModo(ModoOperacion.SIMPLE) }
         chipCuenta.setOnClickListener { cambiarModo(ModoOperacion.CUENTA) }
         btnEscanearSimple.setOnClickListener { solicitarCamara() }
-        btnEscanearCuenta.setOnClickListener { solicitarCamara() }
-        btnNuevaCuenta.setOnClickListener { NuevoClienteDialog().apply { onCrear = { n,t -> viewModel.crearCuenta(n,t) } }.show(supportFragmentManager, "nuevo") }
-        btnVerCuenta.setOnClickListener { val id = prefs.cuentaSeleccionadaId; if (id > 0) startActivity(Intent(this@MainActivity, AccountDetailActivity::class.java).putExtra(AccountDetailActivity.EXTRA_CUENTA_ID, id)) else Toast.makeText(this@MainActivity, "Selecciona una cuenta", Toast.LENGTH_SHORT).show() }
+        btnEscanearCuenta.visibility = View.GONE
+        btnVerCuenta.visibility = View.GONE
+        txtCuentaSeleccionada.visibility = View.GONE
+        btnNuevaCuenta.setOnClickListener { NuevoClienteDialog().apply { onCrear = { n, t, m, r -> viewModel.crearCuenta(n, t, m, r) } }.show(supportFragmentManager, "nuevo") }
         btnEstadisticas.setOnClickListener { startActivity(Intent(this@MainActivity, EstadisticasActivity::class.java)) }
         btnSettings.setOnClickListener { startActivity(Intent(this@MainActivity, SettingsActivity::class.java)) }
         btnEntradaManual.setOnClickListener { pedirCodigoManual() }
@@ -80,7 +88,12 @@ class MainActivity : AppCompatActivity() {
         viewModel.totalSimple.observe(this) { binding.txtTotalDia.text = DateUtils.moneda(it) }
         viewModel.cantidadSimple.observe(this) { binding.txtCantidadDia.text = "$it productos" }
         viewModel.cuentasActivas.observe(this) { cuentasAdapter.submitList(it) }
-        viewModel.cuentaActual.observe(this) { binding.txtCuentaSeleccionada.text = it?.let { c -> "Cuenta #${c.cuenta.id} · ${c.cliente.nombre} · ${DateUtils.moneda(c.cuenta.total)}" } ?: "Ninguna cuenta seleccionada" }
+        viewModel.cuentaActual.observe(this) { cuenta ->
+            binding.txtCuentaSeleccionada.text = cuenta?.let { c ->
+                val nombre = c.cliente?.nombre ?: c.cuenta.nombreClienteTemporal ?: "Cliente temporal"
+                "Cuenta #${c.cuenta.id} · $nombre · ${DateUtils.moneda(c.cuenta.total)}"
+            } ?: "Ninguna cuenta seleccionada"
+        }
         viewModel.mensaje.observe(this) { Toast.makeText(this, it, Toast.LENGTH_SHORT).show() }
         viewModel.productoEscaneado.observe(this) { it?.let(::mostrarDialogoProducto) }
         viewModel.codigoNuevoProducto.observe(this) { it?.let { codigo -> mostrarDialogoNuevoProducto(codigo) } }
@@ -94,6 +107,15 @@ class MainActivity : AppCompatActivity() {
     private fun solicitarCamara() { if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) abrirScanner() else cameraPermission.launch(Manifest.permission.CAMERA) }
     private fun abrirScanner() = scanLauncher.launch(Intent(this, BarcodeScannerActivity::class.java))
     private fun pedirCodigoManual() { MaterialAlertDialogBuilder(this).setTitle("Código manual").setMessage("Usa 750100000001 para probar Café Americano.").setPositiveButton("Escanear demo") { _, _ -> viewModel.procesarEscaneo("750100000001", modo) }.setNegativeButton("Cancelar", null).show() }
-    private fun mostrarDialogoProducto(producto: Producto) { VentaDirectaDialog().apply { this.producto = producto; this.modo = this@MainActivity.modo; onConfirmar = { p,_,_,_,cantidad -> if (modo == ModoOperacion.SIMPLE) viewModel.registrarVentaDirecta(p!!, cantidad) else viewModel.agregarACuenta(p!!, cantidad) }; onVerCuenta = { binding.btnVerCuenta.performClick() } }.show(supportFragmentManager, "venta") }
+    private fun mostrarDialogoProducto(producto: Producto) { VentaDirectaDialog().apply { this.producto = producto; this.modo = this@MainActivity.modo; onConfirmar = { p,_,_,_,cantidad -> if (modo == ModoOperacion.SIMPLE) viewModel.registrarVentaDirecta(p!!, cantidad) else viewModel.agregarACuenta(p!!, cantidad) }; onVerCuenta = { val id = prefs.cuentaSeleccionadaId; if (id > 0) startActivity(Intent(this@MainActivity, AccountDetailActivity::class.java).putExtra(AccountDetailActivity.EXTRA_CUENTA_ID, id)) } }.show(supportFragmentManager, "venta") }
+
+    private fun confirmarEliminarCuenta(cuentaId: Long, nombreCliente: String) {
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Eliminar cuenta")
+            .setMessage("¿Eliminar la cuenta vacía de $nombreCliente?")
+            .setNegativeButton("Cancelar", null)
+            .setPositiveButton("Eliminar") { _, _ -> viewModel.eliminarCuentaVacia(cuentaId) }
+            .show()
+    }
     private fun mostrarDialogoNuevoProducto(codigo: String) { VentaDirectaDialog().apply { codigoNuevo = codigo; modo = this@MainActivity.modo; onConfirmar = { _, c, n, precio, cantidad -> if (n.isNullOrBlank() || precio == null) Toast.makeText(this@MainActivity, "Nombre y precio requeridos", Toast.LENGTH_SHORT).show() else viewModel.crearProductoYVender(c!!, n, precio, modo, cantidad) } }.show(supportFragmentManager, "nuevo_producto") }
 }

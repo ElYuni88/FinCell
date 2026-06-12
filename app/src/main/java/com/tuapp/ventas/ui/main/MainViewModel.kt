@@ -31,7 +31,19 @@ class MainViewModel(private val repo: VentasRepository) : ViewModel() {
         val producto = repo.crearProducto(codigo, nombre, precio)
         if (modo == ModoOperacion.SIMPLE) registrarVentaDirecta(producto, cantidad) else agregarACuenta(producto, cantidad)
     }
-    fun crearCuenta(nombre: String, telefono: String?) = viewModelScope.launch { val id = repo.crearCuenta(nombre, telefono); seleccionarCuenta(id); mensaje.value = "Cuenta creada y seleccionada" }
+    fun crearCuenta(nombre: String, telefono: String?, mesa: String?, recordarCuenta: Boolean) = viewModelScope.launch {
+        val id = if (recordarCuenta) repo.crearCuenta(nombre, telefono, mesa, recordarCuenta = true) else repo.crearCuentaTemporal(nombre, mesa)
+        seleccionarCuenta(id)
+        mensaje.value = if (recordarCuenta) "Cuenta creada y cliente guardado" else "Cuenta temporal creada"
+    }
+    fun eliminarCuentaVacia(cuentaId: Long) = viewModelScope.launch {
+        runCatching { repo.eliminarCuentaVacia(cuentaId) }
+            .onSuccess {
+                if (cuentaSeleccionada.value == cuentaId) seleccionarCuenta(-1L)
+                mensaje.value = "Cuenta eliminada"
+            }
+            .onFailure { mensaje.value = it.message ?: "No se pudo eliminar la cuenta" }
+    }
     fun agregarACuenta(producto: Producto, cantidad: Int) = viewModelScope.launch {
         val id = cuentaSeleccionada.value
         if (id <= 0) mensaje.value = "Primero selecciona o crea una cuenta" else runCatching { repo.agregarProductoACuenta(id, producto, cantidad) }.onSuccess { mensaje.value = "${producto.nombre} agregado a la cuenta" }.onFailure { mensaje.value = it.message ?: "No se pudo agregar a la cuenta" }

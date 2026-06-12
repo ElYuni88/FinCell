@@ -1,10 +1,14 @@
 package com.tuapp.ventas.ui.cuenta
 
 import android.Manifest
+import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.view.View
+import android.provider.MediaStore
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -23,6 +27,7 @@ import com.tuapp.ventas.ui.scanner.BarcodeScannerActivity
 import com.tuapp.ventas.ui.simple.VentaDirectaDialog
 import com.tuapp.ventas.utils.DateUtils
 import com.tuapp.ventas.utils.SoundUtils
+import java.io.File
 
 /** Pantalla de cuenta abierta editable o cuenta cerrada en modo solo lectura. */
 class AccountDetailActivity : AppCompatActivity() {
@@ -67,7 +72,7 @@ class AccountDetailActivity : AppCompatActivity() {
         viewModel.cuenta.observe(this) { cuentaConDetalles ->
             cuentaConDetalles ?: return@observe
             val abierta = cuentaConDetalles.cuenta.estado == Cuenta.ESTADO_ABIERTA
-            binding.txtCliente.text = cuentaConDetalles.cliente.nombre
+            binding.txtCliente.text = nombreCliente(cuentaConDetalles)
             binding.txtFechas.text = if (abierta) {
                 "Apertura: ${DateUtils.fechaHora(cuentaConDetalles.cuenta.fechaApertura)}"
             } else {
@@ -110,20 +115,69 @@ class AccountDetailActivity : AppCompatActivity() {
     }
 
     private fun generarTicket() {
-        val cuenta = viewModel.cuenta.value ?: return
-        val detalle = buildString {
-            appendLine("Cliente: ${cuenta.cliente.nombre}")
-            appendLine("Total: ${DateUtils.moneda(cuenta.cuenta.total)}")
-            appendLine()
-            cuenta.detalles.forEach { item ->
-                appendLine("${item.producto.nombre} x${item.detalle.cantidad}  ${DateUtils.moneda(item.detalle.subtotal)}")
-            }
-        }
         MaterialAlertDialogBuilder(this)
-            .setTitle("Ticket de cuenta #${cuenta.cuenta.id}")
-            .setMessage(detalle)
-            .setPositiveButton("Cerrar", null)
+            .setTitle("Exportar Ticket")
+            .setMessage("¿Desea exportar el ticket con la información de la cuenta?")
+            .setPositiveButton("Exportar") { _, _ -> exportarTicketArchivo() }
+            .setNegativeButton("Cancelar", null)
             .show()
+    }
+
+    private fun exportarTicketArchivo() {
+        val cuenta = viewModel.cuenta.value ?: return
+        val venta = viewModel.ventaFinal.value
+        val contenido = buildString {
+            appendLine("=== TICKET DE CUENTA ===")
+            appendLine("Cuenta: #${cuenta.cuenta.id}")
+            appendLine("Cliente: ${nombreCliente(cuenta)}")
+            appendLine("Mesa: ${mesaCuenta(cuenta)}")
+            appendLine("Fecha apertura: ${DateUtils.fechaHora(cuenta.cuenta.fechaApertura)}")
+            appendLine("Fecha cierre: ${DateUtils.fechaHora(cuenta.cuenta.fechaCierre ?: System.currentTimeMillis())}")
+            appendLine("Método de pago: ${venta?.metodoPago ?: "No especificado"}")
+            appendLine()
+            appendLine("Productos:")
+            cuenta.detalles.forEach { item ->
+                appendLine("- ${item.producto.nombre} x${item.detalle.cantidad} = ${DateUtils.moneda(item.detalle.subtotal)}")
+            }
+            appendLine()
+            appendLine("TOTAL: ${DateUtils.moneda(cuenta.cuenta.total)}")
+        }
+
+        val nombreArchivo = "ticket_cuenta_${cuenta.cuenta.id}_${System.currentTimeMillis()}.txt"
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val values = ContentValues().apply {
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, nombreArchivo)
+                    put(MediaStore.MediaColumns.MIME_TYPE, "text/plain")
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                }
+                val uri = contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                    ?: error("No se pudo crear el archivo en Descargas")
+                contentResolver.openOutputStream(uri).use { output ->
+                    output?.write(contenido.toByteArray()) ?: error("No se pudo escribir el ticket")
+                }
+                nombreArchivo
+            } else {
+                val downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                if (!downloads.exists()) downloads.mkdirs()
+                val file = File(downloads, nombreArchivo)
+                file.writeText(contenido)
+                file.name
+            }
+        }.onSuccess { archivo ->
+            Toast.makeText(this, "Ticket guardado en Descargas: $archivo", Toast.LENGTH_LONG).show()
+        }.onFailure { error ->
+            Toast.makeText(this, "No se pudo guardar el ticket: ${error.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun nombreCliente(cuenta: com.tuapp.ventas.data.model.relaciones.CuentaConDetalles): String {
+        val nombre = cuenta.cliente?.nombre ?: cuenta.cuenta.nombreClienteTemporal ?: "Cliente temporal"
+        return if (cuenta.cuenta.esClienteTemporal) "$nombre (No registrado)" else nombre
+    }
+
+    private fun mesaCuenta(cuenta: com.tuapp.ventas.data.model.relaciones.CuentaConDetalles): String {
+        return cuenta.cliente?.mesa ?: cuenta.cuenta.mesaTemporal ?: "No especificada"
     }
 
     private fun mostrarDialogoCerrar() {

@@ -1,12 +1,12 @@
 package com.tuapp.ventas.ui.cuenta
 
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.asLiveData
 import androidx.lifecycle.viewModelScope
-import com.tuapp.ventas.data.model.Producto
 import com.tuapp.ventas.data.model.VentaFinal
 import com.tuapp.ventas.data.repository.VentasRepository
 import kotlinx.coroutines.launch
@@ -21,13 +21,20 @@ class AccountDetailViewModel(private val repo: VentasRepository, private val cue
     init { cargarVentaFinal() }
 
     fun procesarEscaneoDirecto(codigo: String) = viewModelScope.launch {
-        val producto = repo.buscarProducto(codigo)
-        if (producto == null) {
-            codigoProductoNuevo.value = codigo
-        } else {
-            runCatching { repo.agregarProductoACuenta(cuentaId, producto, 1) }
-                .onSuccess { mensaje.value = "${producto.nombre} agregado a la cuenta" }
-                .onFailure { mensaje.value = it.message ?: "No se pudo agregar" }
+        try {
+            Log.d(TAG, "Buscando producto con código: $codigo")
+            val producto = repo.buscarProducto(codigo)
+            if (producto == null) {
+                codigoProductoNuevo.value = codigo
+                return@launch
+            }
+
+            repo.agregarProductoACuenta(cuentaId, producto, 1)
+            Log.d(TAG, "${producto.nombre} agregado a la cuenta $cuentaId")
+            mensaje.value = "${producto.nombre} agregado a la cuenta"
+        } catch (e: Exception) {
+            Log.e(TAG, "Error al procesar escaneo directo", e)
+            mensaje.value = "Error: ${e.message ?: "No se pudo agregar"}"
         }
     }
 
@@ -58,7 +65,9 @@ class AccountDetailViewModel(private val repo: VentasRepository, private val cue
             .onFailure { mensaje.value = it.message ?: "No se pudo cerrar la cuenta" }
     }
 
-    private fun cargarVentaFinal() = viewModelScope.launch { _ventaFinal.value = repo.obtenerVentaFinal(cuentaId) }
+    fun cargarVentaFinal() = viewModelScope.launch { _ventaFinal.value = repo.obtenerVentaFinal(cuentaId) }
+
+    companion object { private const val TAG = "AccountDetailVM" }
 }
 
 class AccountDetailViewModelFactory(private val repo: VentasRepository, private val cuentaId: Long) : ViewModelProvider.Factory {
