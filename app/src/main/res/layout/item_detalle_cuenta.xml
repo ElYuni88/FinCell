@@ -59,38 +59,31 @@
             android:gravity="end|center_vertical"
             android:orientation="horizontal">
 
-            <com.google.android.material.button.MaterialButton
+            <ImageButton
                 android:id="@+id/btnMenos"
                 android:layout_width="44dp"
                 android:layout_height="44dp"
                 android:layout_marginEnd="8dp"
-                android:text="−"
-                android:textColor="@color/white"
-                android:textSize="22sp"
-                android:textStyle="bold"
-                app:backgroundTint="@color/pos_red"
-                app:cornerRadius="22dp" />
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Disminuir cantidad"
+                android:src="@drawable/ic_remove_circle" />
 
-            <com.google.android.material.button.MaterialButton
+            <ImageButton
                 android:id="@+id/btnMas"
                 android:layout_width="44dp"
                 android:layout_height="44dp"
                 android:layout_marginEnd="8dp"
-                android:text="+"
-                android:textColor="@color/white"
-                android:textSize="22sp"
-                android:textStyle="bold"
-                app:backgroundTint="@color/pos_green"
-                app:cornerRadius="22dp" />
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Aumentar cantidad"
+                android:src="@drawable/ic_add_circle" />
 
-            <com.google.android.material.button.MaterialButton
+            <ImageButton
                 android:id="@+id/btnEliminar"
                 android:layout_width="44dp"
                 android:layout_height="44dp"
-                android:text="🗑️"
-                android:textSize="16sp"
-                app:backgroundTint="@color/pos_gray_button"
-                app:cornerRadius="22dp" />
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Eliminar producto"
+                android:src="@drawable/ic_delete" />
         </LinearLayout>
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

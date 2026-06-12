@@ -6,11 +6,13 @@ package com.tuapp.ventas.data.model.relaciones
  */
 data class CuentaResumen(
     val id: Long,
-    val clienteId: Long,
+    val clienteId: Long?,
     val nombreCliente: String,
+    val mesa: String?,
     val fechaApertura: Long,
     val fechaCierre: Long?,
     val estado: String,
     val total: Double,
-    val cantidadProductos: Int
+    val cantidadProductos: Int,
+    val esClienteTemporal: Boolean
 )

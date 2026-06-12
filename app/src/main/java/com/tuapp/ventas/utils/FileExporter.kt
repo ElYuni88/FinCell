@@ -38,7 +38,7 @@ class FileExporter(private val context: Context, private val repository: VentasR
         val detalleCuentas = cuentas.map { cuenta ->
             DetalleCuentaExport(
                 cuenta.cuenta.id,
-                cuenta.cliente.nombre,
+                cuenta.cliente?.nombre ?: cuenta.cuenta.nombreClienteTemporal ?: "Cliente temporal",
                 cuenta.cuenta.total,
                 cuenta.cuenta.fechaCierre ?: time,
                 HashValidator.hashCuenta(cuenta.cuenta.id, cuenta.cuenta.total, cuenta.cuenta.fechaCierre ?: time),

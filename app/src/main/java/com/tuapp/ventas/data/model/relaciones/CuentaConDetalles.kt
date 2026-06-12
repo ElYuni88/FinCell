@@ -15,6 +15,6 @@ data class DetalleConProducto(
 
 data class CuentaConDetalles(
     @Embedded val cuenta: Cuenta,
-    @Relation(parentColumn = "cliente_id", entityColumn = "id") val cliente: Cliente,
+    @Relation(parentColumn = "cliente_id", entityColumn = "id") val cliente: Cliente?,
     @Relation(entity = DetalleCuenta::class, parentColumn = "id", entityColumn = "cuenta_id") val detalles: List<DetalleConProducto>
 )

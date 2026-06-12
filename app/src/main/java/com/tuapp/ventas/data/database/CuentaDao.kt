@@ -10,15 +10,19 @@ import kotlinx.coroutines.flow.Flow
 interface CuentaDao {
     @Insert suspend fun insertar(cuenta: Cuenta): Long
     @Update suspend fun actualizar(cuenta: Cuenta)
+    @Delete suspend fun eliminar(cuenta: Cuenta)
     @Query("UPDATE cuentas SET total = :total WHERE id = :cuentaId") suspend fun actualizarTotal(cuentaId: Long, total: Double)
     @Query("SELECT * FROM cuentas WHERE estado = 'ABIERTA' ORDER BY fecha_apertura DESC") fun observarAbiertas(): Flow<List<Cuenta>>
     @Query("""
-        SELECT c.id AS id, c.cliente_id AS clienteId, cl.nombre AS nombreCliente,
+        SELECT c.id AS id, c.cliente_id AS clienteId,
+               CASE WHEN c.esClienteTemporal = 1 THEN COALESCE(c.nombre_cliente_temporal, 'Cliente temporal') ELSE COALESCE(cl.nombre, 'Cliente') END AS nombreCliente,
+               CASE WHEN c.esClienteTemporal = 1 THEN c.mesa_temporal ELSE cl.mesa END AS mesa,
                c.fecha_apertura AS fechaApertura, c.fecha_cierre AS fechaCierre,
                c.estado AS estado, c.total AS total,
-               COALESCE(SUM(d.cantidad), 0) AS cantidadProductos
+               COALESCE(SUM(d.cantidad), 0) AS cantidadProductos,
+               c.esClienteTemporal AS esClienteTemporal
         FROM cuentas c
-        INNER JOIN clientes cl ON cl.id = c.cliente_id
+        LEFT JOIN clientes cl ON cl.id = c.cliente_id
         LEFT JOIN detalle_cuenta d ON d.cuenta_id = c.id
         GROUP BY c.id
         ORDER BY CASE WHEN c.estado = 'ABIERTA' THEN 0 ELSE 1 END, c.fecha_apertura DESC
