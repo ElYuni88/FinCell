@@ -13,6 +13,7 @@ interface CuentaDao {
     @Delete suspend fun eliminar(cuenta: Cuenta)
     @Query("UPDATE cuentas SET total = :total WHERE id = :cuentaId") suspend fun actualizarTotal(cuentaId: Long, total: Double)
     @Query("SELECT * FROM cuentas WHERE estado = 'ABIERTA' ORDER BY fecha_apertura DESC") fun observarAbiertas(): Flow<List<Cuenta>>
+    @Query("SELECT COUNT(*) FROM cuentas WHERE estado = 'ABIERTA'") fun observarCantidadAbiertas(): Flow<Int>
     @Query("""
         SELECT c.id AS id, c.cliente_id AS clienteId,
                CASE WHEN c.esClienteTemporal = 1 THEN COALESCE(c.nombre_cliente_temporal, 'Cliente temporal') ELSE COALESCE(cl.nombre, 'Cliente') END AS nombreCliente,
