@@ -5,10 +5,12 @@
     android:orientation="vertical"
     android:padding="20dp">
 
-    <com.google.android.material.textfield.TextInputEditText
+    <AutoCompleteTextView
         android:id="@+id/inputNombre"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:completionThreshold="2"
+        android:dropDownHeight="300dp"
         android:hint="Nombre del cliente"
         android:inputType="textPersonName" />
 

@@ -206,6 +206,14 @@
                 android:textSize="14sp"
                 android:textStyle="bold" />
 
+            <TextView
+                android:id="@+id/txtCuentasAbiertasInfo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Cuentas abiertas: 0"
+                android:textAppearance="@style/TextAppearance.FinSell.Secondary" />
+
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnNuevaCuenta"
                 android:layout_width="match_parent"

@@ -14,6 +14,7 @@ class MainViewModel(private val repo: VentasRepository) : ViewModel() {
     val totalSimple = repo.totalVentasDirectasHoy().asLiveData()
     val cantidadSimple = repo.cantidadVentasDirectasHoy().asLiveData()
     val cuentasActivas = repo.resumenCuentas().asLiveData()
+    val cantidadCuentasAbiertas = repo.cantidadCuentasAbiertas().asLiveData()
     private val cuentaSeleccionada = MutableStateFlow(-1L)
     val cuentaActual: LiveData<CuentaConDetalles?> = cuentaSeleccionada.flatMapLatest { if (it > 0) repo.observarCuenta(it) else flowOf(null) }.asLiveData()
     val mensaje = MutableLiveData<String>()
@@ -26,10 +27,25 @@ class MainViewModel(private val repo: VentasRepository) : ViewModel() {
         if (modo == ModoOperacion.CUENTA && cuentaSeleccionada.value <= 0) { mensaje.value = "Primero selecciona o crea una cuenta"; return@launch }
         if (producto == null) codigoNuevoProducto.value = codigoBarras else productoEscaneado.value = producto
     }
-    fun registrarVentaDirecta(producto: Producto, cantidad: Int = 1) = viewModelScope.launch { repo.registrarVentaDirecta(producto, cantidad); mensaje.value = "Venta registrada: ${producto.nombre} x$cantidad" }
+    fun registrarVentaDirecta(producto: Producto, cantidad: Int = 1) = viewModelScope.launch {
+        val cantidadFinal = cantidad.coerceIn(1, 99)
+        runCatching { repo.registrarVentaDirecta(producto, cantidadFinal) }
+            .onSuccess { mensaje.value = "Venta registrada: ${producto.nombre} x$cantidadFinal" }
+            .onFailure { mensaje.value = it.message ?: "Error al registrar" }
+    }
     fun crearProductoYVender(codigo: String, nombre: String, precio: Double, modo: ModoOperacion, cantidad: Int = 1) = viewModelScope.launch {
-        val producto = repo.crearProducto(codigo, nombre, precio)
-        if (modo == ModoOperacion.SIMPLE) registrarVentaDirecta(producto, cantidad) else agregarACuenta(producto, cantidad)
+        val cantidadFinal = cantidad.coerceIn(1, 99)
+        runCatching {
+            val producto = repo.crearProducto(codigo, nombre, precio)
+            if (modo == ModoOperacion.SIMPLE) {
+                repo.registrarVentaDirecta(producto, cantidadFinal)
+                "Venta registrada: ${producto.nombre} x$cantidadFinal"
+            } else {
+                repo.agregarProductoACuenta(cuentaSeleccionada.value, producto, cantidadFinal)
+                "${producto.nombre} agregado a la cuenta"
+            }
+        }.onSuccess { mensaje.value = it }
+            .onFailure { mensaje.value = it.message ?: "Error al registrar" }
     }
     fun crearCuenta(nombre: String, telefono: String?, mesa: String?, recordarCuenta: Boolean) = viewModelScope.launch {
         val id = if (recordarCuenta) repo.crearCuenta(nombre, telefono, mesa, recordarCuenta = true) else repo.crearCuentaTemporal(nombre, mesa)

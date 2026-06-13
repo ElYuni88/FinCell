@@ -19,12 +19,14 @@ class VentasRepository(private val db: AppDatabase) {
     fun totalVentasDirectasHoy(): Flow<Double> = ventas.observarTotalDia(DateUtils.inicioDia(), DateUtils.finDia())
     fun cantidadVentasDirectasHoy(): Flow<Int> = ventas.observarCantidadDia(DateUtils.inicioDia(), DateUtils.finDia())
     fun cuentasActivas(): Flow<List<Cuenta>> = cuentas.observarAbiertas()
+    fun cantidadCuentasAbiertas(): Flow<Int> = cuentas.observarCantidadAbiertas()
     fun resumenCuentas(): Flow<List<CuentaResumen>> = cuentas.observarResumenCuentas()
     fun totalCuentasCerradasHoy(): Flow<Double> = cuentas.observarTotalCerradasDia(DateUtils.inicioDia(), DateUtils.finDia())
     fun cantidadCuentasCerradasHoy(): Flow<Int> = cuentas.observarCantidadCerradasDia(DateUtils.inicioDia(), DateUtils.finDia())
     fun observarCuenta(cuentaId: Long): Flow<CuentaConDetalles?> = cuentas.observarCuentaConDetalles(cuentaId)
 
     suspend fun buscarProducto(codigo: String): Producto? = productos.buscarPorCodigo(codigo)
+    suspend fun buscarClientesPorNombre(query: String): List<Cliente> = clientes.buscarPorNombre(query)
     suspend fun crearProducto(codigo: String, nombre: String, precio: Double): Producto {
         val id = productos.insertar(Producto(codigoBarras = codigo, nombre = nombre, precio = precio))
         return productos.buscarPorCodigo(codigo)!!.copy(id = id)

@@ -88,6 +88,9 @@ class MainActivity : AppCompatActivity() {
         viewModel.totalSimple.observe(this) { binding.txtTotalDia.text = DateUtils.moneda(it) }
         viewModel.cantidadSimple.observe(this) { binding.txtCantidadDia.text = "$it productos" }
         viewModel.cuentasActivas.observe(this) { cuentasAdapter.submitList(it) }
+        viewModel.cantidadCuentasAbiertas.observe(this) { cantidad ->
+            binding.txtCuentasAbiertasInfo.text = "Cuentas abiertas: $cantidad"
+        }
         viewModel.cuentaActual.observe(this) { cuenta ->
             binding.txtCuentaSeleccionada.text = cuenta?.let { c ->
                 val nombre = c.cliente?.nombre ?: c.cuenta.nombreClienteTemporal ?: "Cliente temporal"
@@ -117,5 +120,23 @@ class MainActivity : AppCompatActivity() {
             .setPositiveButton("Eliminar") { _, _ -> viewModel.eliminarCuentaVacia(cuentaId) }
             .show()
     }
-    private fun mostrarDialogoNuevoProducto(codigo: String) { VentaDirectaDialog().apply { codigoNuevo = codigo; modo = this@MainActivity.modo; onConfirmar = { _, c, n, precio, cantidad -> if (n.isNullOrBlank() || precio == null) Toast.makeText(this@MainActivity, "Nombre y precio requeridos", Toast.LENGTH_SHORT).show() else viewModel.crearProductoYVender(c!!, n, precio, modo, cantidad) } }.show(supportFragmentManager, "nuevo_producto") }
+    private fun mostrarDialogoNuevoProducto(codigo: String) {
+        VentaDirectaDialog().apply {
+            codigoNuevo = codigo
+            modo = this@MainActivity.modo
+            onConfirmar = { _, codigoNuevo, nombre, precio, cantidad ->
+                if (nombre.isNullOrBlank() || precio == null) {
+                    Toast.makeText(this@MainActivity, "Nombre y precio requeridos", Toast.LENGTH_SHORT).show()
+                } else {
+                    viewModel.crearProductoYVender(
+                        codigo = codigoNuevo ?: codigo,
+                        nombre = nombre,
+                        precio = precio,
+                        modo = modo,
+                        cantidad = cantidad
+                    )
+                }
+            }
+        }.show(supportFragmentManager, "nuevo_producto")
+    }
 }
