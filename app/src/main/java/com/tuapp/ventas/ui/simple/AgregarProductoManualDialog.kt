@@ -59,7 +59,7 @@ class AgregarProductoManualDialog : DialogFragment() {
             return
         }
         val existente = productos.firstOrNull { it.nombre.equals(nombre, true) }
-        val producto = existente ?: Producto(codigoBarras = binding.inputCodigoManual.text?.toString()?.trim()?.ifBlank { null }, nombre = nombre, precio = precio, tipoProducto = Producto.TIPO_MANUAL)
+        val producto = existente ?: Producto(codigoBarras = binding.inputCodigoManual.text?.toString()?.trim().orEmpty(), nombre = nombre, precio = precio, tipoProducto = Producto.TIPO_MANUAL)
         onConfirmar?.invoke(producto, cantidad)
         dialog.dismiss()
     }

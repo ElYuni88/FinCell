@@ -8,7 +8,7 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "productos", indices = [Index(value = ["codigo_barras"], unique = true)])
 data class Producto(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    @ColumnInfo(name = "codigo_barras") val codigoBarras: String? = null,
+    @ColumnInfo(name = "codigo_barras") val codigoBarras: String = "",
     val nombre: String,
     val precio: Double,
     @ColumnInfo(name = "tipo_producto") val tipoProducto: String = TIPO_CODIGO_BARRAS,

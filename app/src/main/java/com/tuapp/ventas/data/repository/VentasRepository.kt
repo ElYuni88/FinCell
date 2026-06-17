@@ -34,7 +34,7 @@ class VentasRepository(private val db: AppDatabase) {
     }
 
     suspend fun crearProductoManual(codigoManual: String?, nombre: String, precio: Double): Producto {
-        val codigoNormalizado = codigoManual?.ifBlank { null } ?: generarCodigoManual()
+        val codigoNormalizado = codigoManual?.trim()?.ifBlank { null } ?: generarCodigoManual()
         productos.buscarPorCodigo(codigoNormalizado)?.let { return it }
         val producto = Producto(codigoBarras = codigoNormalizado, nombre = nombre, precio = precio, tipoProducto = Producto.TIPO_MANUAL)
         val id = productos.insertar(producto)
@@ -42,16 +42,16 @@ class VentasRepository(private val db: AppDatabase) {
     }
 
     suspend fun guardarProducto(producto: Producto): Producto {
-        if (!producto.codigoBarras.isNullOrBlank()) {
-            val existente = productos.buscarPorCodigo(producto.codigoBarras)
-            require(existente == null || existente.id == producto.id) { "Ya existe un producto con ese código" }
-        }
-        return if (producto.id == 0L) {
-            val id = productos.insertar(producto)
-            producto.copy(id = id)
+        val codigoFinal = producto.codigoBarras.ifBlank { generarCodigoManual() }
+        val normalizado = producto.copy(codigoBarras = codigoFinal, tipoProducto = if (producto.codigoBarras.isBlank()) Producto.TIPO_MANUAL else producto.tipoProducto)
+        val existente = productos.buscarPorCodigo(codigoFinal)
+        require(existente == null || existente.id == producto.id) { "Ya existe un producto con ese código" }
+        return if (normalizado.id == 0L) {
+            val id = productos.insertar(normalizado)
+            normalizado.copy(id = id)
         } else {
-            productos.actualizar(producto)
-            producto
+            productos.actualizar(normalizado)
+            normalizado
         }
     }
 

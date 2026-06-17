@@ -66,7 +66,7 @@ abstract class AppDatabase : RoomDatabase() {
                 database.execSQL("""
                     CREATE TABLE productos_new (
                         id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-                        codigo_barras TEXT,
+                        codigo_barras TEXT NOT NULL,
                         nombre TEXT NOT NULL,
                         precio REAL NOT NULL,
                         tipo_producto TEXT NOT NULL DEFAULT 'CODIGO_BARRAS',
@@ -77,7 +77,7 @@ abstract class AppDatabase : RoomDatabase() {
                 """.trimIndent())
                 database.execSQL("""
                     INSERT INTO productos_new (id, codigo_barras, nombre, precio, tipo_producto, inventario, vendidos, fecha_creacion)
-                    SELECT id, codigo_barras, nombre, precio, 'CODIGO_BARRAS', 0, 0, fecha_creacion FROM productos
+                    SELECT id, COALESCE(NULLIF(codigo_barras, ''), 'LEGACY_' || id), nombre, precio, 'CODIGO_BARRAS', 0, 0, fecha_creacion FROM productos
                 """.trimIndent())
                 database.execSQL("DROP TABLE productos")
                 database.execSQL("ALTER TABLE productos_new RENAME TO productos")
@@ -87,7 +87,7 @@ abstract class AppDatabase : RoomDatabase() {
                     CREATE TABLE ventas_directas_new (
                         id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
                         producto_id INTEGER NOT NULL,
-                        codigo_barras TEXT,
+                        codigo_barras TEXT NOT NULL,
                         nombre_producto TEXT NOT NULL,
                         precio REAL NOT NULL,
                         fecha_venta INTEGER NOT NULL,
@@ -96,7 +96,7 @@ abstract class AppDatabase : RoomDatabase() {
                 """.trimIndent())
                 database.execSQL("""
                     INSERT INTO ventas_directas_new (id, producto_id, codigo_barras, nombre_producto, precio, fecha_venta)
-                    SELECT id, producto_id, codigo_barras, nombre_producto, precio, fecha_venta FROM ventas_directas
+                    SELECT id, producto_id, COALESCE(NULLIF(codigo_barras, ''), 'LEGACY_' || producto_id), nombre_producto, precio, fecha_venta FROM ventas_directas
                 """.trimIndent())
                 database.execSQL("DROP TABLE ventas_directas")
                 database.execSQL("ALTER TABLE ventas_directas_new RENAME TO ventas_directas")

@@ -27,7 +27,7 @@ class ProductosActivity : AppCompatActivity() {
         MaterialAlertDialogBuilder(this).setTitle(if(producto==null)"Agregar producto" else "Editar producto").setView(layout).setNegativeButton("Cancelar",null).setPositiveButton("Guardar"){_,_->
             val p=precio.text.toString().toDoubleOrNull(); if(nombre.text.isBlank()||p==null){ Toast.makeText(this,"Nombre y precio válidos requeridos",Toast.LENGTH_SHORT).show(); return@setPositiveButton }
             val tipo=if(codigo.text.isBlank()) Producto.TIPO_MANUAL else producto?.tipoProducto ?: Producto.TIPO_CODIGO_BARRAS
-            viewModel.guardar((producto ?: Producto(nombre = "", precio = 0.0)).copy(nombre=nombre.text.toString(), codigoBarras=codigo.text.toString().ifBlank{null}, precio=p, inventario=inventario.text.toString().toIntOrNull()?:0, tipoProducto=tipo))
+            viewModel.guardar((producto ?: Producto(nombre = "", precio = 0.0)).copy(nombre=nombre.text.toString(), codigoBarras=codigo.text.toString().trim(), precio=p, inventario=inventario.text.toString().toIntOrNull()?:0, tipoProducto=tipo))
         }.show()
     }
     private fun confirmarEliminar(producto: Producto)=MaterialAlertDialogBuilder(this).setTitle("Eliminar producto").setMessage("¿Eliminar ${producto.nombre}?").setNegativeButton("Cancelar",null).setPositiveButton("Eliminar"){_,_->viewModel.eliminar(producto)}.show()

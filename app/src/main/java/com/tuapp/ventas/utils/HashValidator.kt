@@ -22,7 +22,7 @@ object HashValidator {
         val archivo = gson.fromJson(File(rutaArchivo).readText(), ArchivoVentas::class.java)
         val hashes = mutableListOf<String>()
         archivo.detalleVentasSimples.forEach {
-            val calculado = hashVentaSimple(it.id, it.codigoBarras.orEmpty(), it.precio, it.fechaVenta)
+            val calculado = hashVentaSimple(it.id, it.codigoBarras, it.precio, it.fechaVenta)
             if (calculado != it.hashLinea) return VerificacionResult(false, "Hash inválido en venta simple ${it.id}", calculado, it.hashLinea)
             hashes += calculado
         }

@@ -11,8 +11,8 @@ interface ProductoDao {
     @Query("SELECT * FROM productos ORDER BY nombre") fun observarTodos(): Flow<List<Producto>>
     @Query("SELECT * FROM productos ORDER BY nombre") suspend fun listarTodos(): List<Producto>
     @Query("SELECT * FROM productos WHERE tipo_producto = 'MANUAL' ORDER BY nombre ASC") fun obtenerProductosManuales(): Flow<List<Producto>>
-    @Query("SELECT * FROM productos WHERE tipo_producto = 'MANUAL' OR codigo_barras IS NULL OR codigo_barras = '' ORDER BY nombre ASC") fun obtenerProductosSinCodigo(): Flow<List<Producto>>
-    @Query("SELECT * FROM productos WHERE tipo_producto = 'MANUAL' OR codigo_barras IS NULL OR codigo_barras = '' ORDER BY nombre ASC") suspend fun listarProductosSinCodigo(): List<Producto>
+    @Query("SELECT * FROM productos WHERE tipo_producto = 'MANUAL' ORDER BY nombre ASC") fun obtenerProductosSinCodigo(): Flow<List<Producto>>
+    @Query("SELECT * FROM productos WHERE tipo_producto = 'MANUAL' ORDER BY nombre ASC") suspend fun listarProductosSinCodigo(): List<Producto>
     @Query("SELECT COUNT(*) FROM productos WHERE inventario = 0") fun observarProductosAgotados(): Flow<Int>
     @Insert(onConflict = OnConflictStrategy.ABORT) suspend fun insertar(producto: Producto): Long
     @Update suspend fun actualizar(producto: Producto)
