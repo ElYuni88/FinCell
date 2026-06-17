@@ -34,7 +34,7 @@ class FileExporter(private val context: Context, private val repository: VentasR
         val hashAnterior = buscarHashAnterior(dirLegacy, time)
 
         // Calcular datos (sin cambios)
-        val detalleVentas = ventas.map { DetalleVentaSimpleExport(it.id, it.codigoBarras, it.nombreProducto, it.precio, it.fechaVenta, HashValidator.hashVentaSimple(it.id, it.codigoBarras, it.precio, it.fechaVenta)) }
+        val detalleVentas = ventas.map { DetalleVentaSimpleExport(it.id, it.codigoBarras, it.nombreProducto, it.precio, it.fechaVenta, HashValidator.hashVentaSimple(it.id, it.codigoBarras.orEmpty(), it.precio, it.fechaVenta)) }
         val detalleCuentas = cuentas.map { cuenta ->
             DetalleCuentaExport(
                 cuenta.cuenta.id,

@@ -14,7 +14,7 @@ import androidx.room.PrimaryKey
 data class VentaDirecta(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     @ColumnInfo(name = "producto_id") val productoId: Long,
-    @ColumnInfo(name = "codigo_barras") val codigoBarras: String,
+    @ColumnInfo(name = "codigo_barras") val codigoBarras: String?,
     @ColumnInfo(name = "nombre_producto") val nombreProducto: String,
     val precio: Double,
     @ColumnInfo(name = "fecha_venta") val fechaVenta: Long = System.currentTimeMillis()

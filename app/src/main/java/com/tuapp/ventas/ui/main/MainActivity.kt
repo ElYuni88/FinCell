@@ -4,6 +4,8 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.view.Menu
+import android.view.MenuItem
 import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -12,6 +14,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.tuapp.ventas.R
 import com.tuapp.ventas.VentasApplication
 import com.tuapp.ventas.data.model.ModoOperacion
 import com.tuapp.ventas.data.model.Producto
@@ -21,8 +24,11 @@ import com.tuapp.ventas.ui.cuenta.NuevoClienteDialog
 import com.tuapp.ventas.ui.estadisticas.EstadisticasActivity
 import com.tuapp.ventas.ui.main.adapters.CuentasActivasAdapter
 import com.tuapp.ventas.ui.main.adapters.VentasRecientesAdapter
+import com.tuapp.ventas.ui.productos.ProductosActivity
+import com.tuapp.ventas.ui.exportar.ExportarIPBActivity
 import com.tuapp.ventas.ui.scanner.BarcodeScannerActivity
 import com.tuapp.ventas.ui.settings.SettingsActivity
+import com.tuapp.ventas.ui.simple.AgregarProductoManualDialog
 import com.tuapp.ventas.ui.simple.VentaDirectaDialog
 import com.tuapp.ventas.utils.DateUtils
 import com.tuapp.ventas.utils.PreferencesManager
@@ -79,9 +85,9 @@ class MainActivity : AppCompatActivity() {
         btnVerCuenta.visibility = View.GONE
         txtCuentaSeleccionada.visibility = View.GONE
         btnNuevaCuenta.setOnClickListener { NuevoClienteDialog().apply { onCrear = { n, t, m, r -> viewModel.crearCuenta(n, t, m, r) } }.show(supportFragmentManager, "nuevo") }
-        btnEstadisticas.setOnClickListener { startActivity(Intent(this@MainActivity, EstadisticasActivity::class.java)) }
         btnSettings.setOnClickListener { startActivity(Intent(this@MainActivity, SettingsActivity::class.java)) }
-        btnEntradaManual.setOnClickListener { pedirCodigoManual() }
+        btnAgregarManualSimple.setOnClickListener { mostrarDialogoAgregarManual() }
+        btnAgregarManualCuenta.setOnClickListener { mostrarDialogoAgregarManual() }
     }
     private fun observarDatos() {
         viewModel.ventasHoy.observe(this) { ventasAdapter.submitList(it); binding.txtUltimaVenta.text = it.firstOrNull()?.let { v -> "${v.nombreProducto} - ${DateUtils.moneda(v.precio)}" } ?: "Sin ventas todavía" }
@@ -109,7 +115,28 @@ class MainActivity : AppCompatActivity() {
     }
     private fun solicitarCamara() { if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) abrirScanner() else cameraPermission.launch(Manifest.permission.CAMERA) }
     private fun abrirScanner() = scanLauncher.launch(Intent(this, BarcodeScannerActivity::class.java))
-    private fun pedirCodigoManual() { MaterialAlertDialogBuilder(this).setTitle("Código manual").setMessage("Usa 750100000001 para probar Café Americano.").setPositiveButton("Escanear demo") { _, _ -> viewModel.procesarEscaneo("750100000001", modo) }.setNegativeButton("Cancelar", null).show() }
+        override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.menu_main, menu)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean = when (item.itemId) {
+        R.id.menu_productos -> { startActivity(Intent(this, ProductosActivity::class.java)); true }
+        R.id.menu_estadisticas -> { startActivity(Intent(this, EstadisticasActivity::class.java)); true }
+        R.id.menu_exportar_ipb -> { startActivity(Intent(this, ExportarIPBActivity::class.java)); true }
+        else -> super.onOptionsItemSelected(item)
+    }
+
+    private fun mostrarDialogoAgregarManual() {
+        if (modo == ModoOperacion.CUENTA && prefs.cuentaSeleccionadaId <= 0) {
+            Toast.makeText(this, "Seleccione una cuenta primero", Toast.LENGTH_SHORT).show()
+            return
+        }
+        AgregarProductoManualDialog().apply {
+            onConfirmar = { producto, cantidad -> viewModel.registrarProductoManual(producto, cantidad, modo) }
+        }.show(supportFragmentManager, "agregar_manual")
+    }
+
     private fun mostrarDialogoProducto(producto: Producto) { VentaDirectaDialog().apply { this.producto = producto; this.modo = this@MainActivity.modo; onConfirmar = { p,_,_,_,cantidad -> if (modo == ModoOperacion.SIMPLE) viewModel.registrarVentaDirecta(p!!, cantidad) else viewModel.agregarACuenta(p!!, cantidad) }; onVerCuenta = { val id = prefs.cuentaSeleccionadaId; if (id > 0) startActivity(Intent(this@MainActivity, AccountDetailActivity::class.java).putExtra(AccountDetailActivity.EXTRA_CUENTA_ID, id)) } }.show(supportFragmentManager, "venta") }
 
     private fun confirmarEliminarCuenta(cuentaId: Long, nombreCliente: String) {

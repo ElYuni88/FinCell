@@ -69,6 +69,9 @@ class EstadisticasActivity : AppCompatActivity() {
             binding.btnExportar.isEnabled = it > 0 || (viewModel.cantidadSimple.value ?: 0) > 0
         }
 
+        viewModel.cantidadCuentasAbiertas.observe(this) { binding.txtCuentasAbiertas.text = "$it abiertas" }
+        viewModel.productosAgotados.observe(this) { binding.txtProductosAgotados.text = "$it agotados" }
+
         viewModel.ventasHoy.observe(this) { ventas ->
             binding.txtTopProductos.text = ventas
                 .groupingBy { it.nombreProducto }

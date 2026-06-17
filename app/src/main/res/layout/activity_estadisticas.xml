@@ -8,6 +8,10 @@
 <TextView android:id="@+id/txtTotalCuentas" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="$0.00" />
 <TextView android:id="@+id/txtCantidadCuentas" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="0 cuentas" />
 <com.github.mikephil.charting.charts.BarChart android:id="@+id/chart" android:layout_width="match_parent" android:layout_height="260dp" />
+<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Cuentas abiertas" android:textStyle="bold" />
+<TextView android:id="@+id/txtCuentasAbiertas" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="0 abiertas" />
+<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Productos agotados" android:textStyle="bold" />
+<TextView android:id="@+id/txtProductosAgotados" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="0 agotados" />
 <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Top 5 productos" android:textStyle="bold" />
 <TextView android:id="@+id/txtTopProductos" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Sin ventas" />
 <com.google.android.material.button.MaterialButton android:id="@+id/btnExportar" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Exportar ventas del día" />

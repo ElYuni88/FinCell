@@ -12,6 +12,8 @@ class EstadisticasViewModel(private val repo: VentasRepository, private val cont
     val cantidadSimple = repo.cantidadVentasDirectasHoy().asLiveData()
     val totalCuentas = repo.totalCuentasCerradasHoy().asLiveData()
     val cantidadCuentas = repo.cantidadCuentasCerradasHoy().asLiveData()
+    val cantidadCuentasAbiertas = repo.cantidadCuentasAbiertas().asLiveData()
+    val productosAgotados = repo.productosAgotados().asLiveData()
     val ventasHoy = repo.ventasDirectasHoy().asLiveData()
     val exportacion = MutableLiveData<Result<Uri>>()  // ✅ Ahora devuelve Uri
 

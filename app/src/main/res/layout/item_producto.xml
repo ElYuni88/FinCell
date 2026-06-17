@@ -1,0 +1,8 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="12dp">
+<TextView android:id="@+id/txtNombre" android:layout_width="match_parent" android:layout_height="wrap_content" android:textStyle="bold" />
+<TextView android:id="@+id/txtDetalle" android:layout_width="match_parent" android:layout_height="wrap_content" />
+<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+<Button android:id="@+id/btnEditar" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Editar" />
+<Button android:id="@+id/btnEliminar" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Eliminar" />
+</LinearLayout>
+</LinearLayout>

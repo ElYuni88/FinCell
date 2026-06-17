@@ -7,6 +7,8 @@ data class ArchivoVentas(
     val fecha: String,
     @SerializedName("timestamp_generacion") val timestampGeneracion: Long,
     @SerializedName("hash_anterior") val hashAnterior: String?,
+    val posId: Int = 0,
+    val empleadoId: Int = 0,
     val resumen: ResumenVentas,
     @SerializedName("detalle_ventas_simples") val detalleVentasSimples: List<DetalleVentaSimpleExport>,
     @SerializedName("detalle_cuentas") val detalleCuentas: List<DetalleCuentaExport>,
@@ -26,7 +28,7 @@ data class ProductoMasVendido(val nombre: String, val cantidad: Int)
 
 data class DetalleVentaSimpleExport(
     val id: Long,
-    @SerializedName("codigo_barras") val codigoBarras: String,
+    @SerializedName("codigo_barras") val codigoBarras: String?,
     @SerializedName("nombre_producto") val nombreProducto: String,
     val precio: Double,
     @SerializedName("fecha_venta") val fechaVenta: Long,
@@ -42,4 +44,4 @@ data class DetalleCuentaExport(
     val productos: List<DetalleProductoCuentaExport>
 )
 
-data class DetalleProductoCuentaExport(val nombre: String, @SerializedName("codigo_barras") val codigoBarras: String, val cantidad: Int, @SerializedName("precio_unitario") val precioUnitario: Double, val subtotal: Double)
+data class DetalleProductoCuentaExport(val nombre: String, @SerializedName("codigo_barras") val codigoBarras: String?, val cantidad: Int, @SerializedName("precio_unitario") val precioUnitario: Double, val subtotal: Double)
