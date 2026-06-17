@@ -28,13 +28,53 @@ class VentasRepository(private val db: AppDatabase) {
     suspend fun buscarProducto(codigo: String): Producto? = productos.buscarPorCodigo(codigo)
     suspend fun buscarClientesPorNombre(query: String): List<Cliente> = clientes.buscarPorNombre(query)
     suspend fun crearProducto(codigo: String, nombre: String, precio: Double): Producto {
-        val id = productos.insertar(Producto(codigoBarras = codigo, nombre = nombre, precio = precio))
-        return productos.buscarPorCodigo(codigo)!!.copy(id = id)
+        val codigoNormalizado = codigo.ifBlank { generarCodigoManual() }
+        val id = productos.insertar(Producto(codigoBarras = codigoNormalizado, nombre = nombre, precio = precio, tipoProducto = Producto.TIPO_CODIGO_BARRAS))
+        return productos.buscarPorCodigo(codigoNormalizado)!!.copy(id = id)
+    }
+
+    suspend fun crearProductoManual(codigoManual: String?, nombre: String, precio: Double): Producto {
+        val codigoNormalizado = codigoManual?.trim()?.ifBlank { null } ?: generarCodigoManual()
+        productos.buscarPorCodigo(codigoNormalizado)?.let { return it }
+        val producto = Producto(codigoBarras = codigoNormalizado, nombre = nombre, precio = precio, tipoProducto = Producto.TIPO_MANUAL)
+        val id = productos.insertar(producto)
+        return producto.copy(id = id)
+    }
+
+    suspend fun guardarProducto(producto: Producto): Producto {
+        val codigoFinal = producto.codigoBarras.ifBlank { generarCodigoManual() }
+        val normalizado = producto.copy(codigoBarras = codigoFinal, tipoProducto = if (producto.codigoBarras.isBlank()) Producto.TIPO_MANUAL else producto.tipoProducto)
+        val existente = productos.buscarPorCodigo(codigoFinal)
+        require(existente == null || existente.id == producto.id) { "Ya existe un producto con ese código" }
+        return if (normalizado.id == 0L) {
+            val id = productos.insertar(normalizado)
+            normalizado.copy(id = id)
+        } else {
+            productos.actualizar(normalizado)
+            normalizado
+        }
+    }
+
+    suspend fun eliminarProducto(producto: Producto) = productos.eliminar(producto)
+    fun observarProductos(): Flow<List<Producto>> = productos.observarTodos()
+    fun productosSinCodigo(): Flow<List<Producto>> = productos.obtenerProductosSinCodigo()
+    fun productosAgotados(): Flow<Int> = productos.observarProductosAgotados()
+    suspend fun listarProductos(): List<Producto> = productos.listarTodos()
+
+    private suspend fun generarCodigoManual(): String {
+        var consecutivo = productos.listarTodos().count { it.tipoProducto == Producto.TIPO_MANUAL } + 1
+        while (true) {
+            val codigo = "MANUAL_%03d".format(consecutivo)
+            if (productos.buscarPorCodigo(codigo) == null) return codigo
+            consecutivo++
+        }
     }
     suspend fun registrarVentaDirecta(producto: Producto, cantidad: Int = 1) {
         require(cantidad in 1..99) { "La cantidad debe estar entre 1 y 99" }
         repeat(cantidad) {
             ventas.insertar(VentaDirecta(productoId = producto.id, codigoBarras = producto.codigoBarras, nombreProducto = producto.nombre, precio = producto.precio))
+            productos.descontarInventario(producto.id, 1)
+            productos.incrementarVendidos(producto.id, 1)
         }
     }
     suspend fun crearCuenta(nombreCliente: String, telefono: String?, mesa: String? = null, recordarCuenta: Boolean = true): Long {
@@ -66,6 +106,8 @@ class VentasRepository(private val db: AppDatabase) {
         require(cuenta.estado == Cuenta.ESTADO_ABIERTA) { "No se puede modificar una cuenta cerrada" }
         val subtotal = producto.precio * cantidad
         detalles.insertar(DetalleCuenta(cuentaId = cuentaId, productoId = producto.id, cantidad = cantidad, precioUnitario = producto.precio, subtotal = subtotal))
+        productos.descontarInventario(producto.id, cantidad)
+        productos.incrementarVendidos(producto.id, cantidad)
         recalcularTotal(cuentaId)
     }
 

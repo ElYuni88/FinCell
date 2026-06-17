@@ -192,6 +192,7 @@ class AccountDetailActivity : AppCompatActivity() {
         VentaDirectaDialog().apply {
             this.codigoNuevo = codigo
             modo = ModoOperacion.CUENTA
+            onCancelar = { finish() }
             onConfirmar = { productoExistente, codigoEscaneado, nombre, precio, cantidad ->
                 if (nombre.isNullOrBlank() || precio == null) {
                     toast("Nombre y precio requeridos")

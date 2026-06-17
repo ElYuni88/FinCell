@@ -7,6 +7,8 @@ data class ArchivoVentas(
     val fecha: String,
     @SerializedName("timestamp_generacion") val timestampGeneracion: Long,
     @SerializedName("hash_anterior") val hashAnterior: String?,
+    val posId: Int = 0,
+    val empleadoId: Int = 0,
     val resumen: ResumenVentas,
     @SerializedName("detalle_ventas_simples") val detalleVentasSimples: List<DetalleVentaSimpleExport>,
     @SerializedName("detalle_cuentas") val detalleCuentas: List<DetalleCuentaExport>,

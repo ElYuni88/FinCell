@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
 
 @Database(
     entities = [Producto::class, VentaDirecta::class, Cliente::class, Cuenta::class, DetalleCuenta::class, VentaFinal::class],
-    version = 2,
+    version = 3,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -60,10 +60,56 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("PRAGMA foreign_keys=OFF")
+                database.execSQL("""
+                    CREATE TABLE productos_new (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        codigo_barras TEXT NOT NULL,
+                        nombre TEXT NOT NULL,
+                        precio REAL NOT NULL,
+                        tipo_producto TEXT NOT NULL DEFAULT 'CODIGO_BARRAS',
+                        inventario INTEGER NOT NULL DEFAULT 0,
+                        vendidos INTEGER NOT NULL DEFAULT 0,
+                        fecha_creacion INTEGER NOT NULL
+                    )
+                """.trimIndent())
+                database.execSQL("""
+                    INSERT INTO productos_new (id, codigo_barras, nombre, precio, tipo_producto, inventario, vendidos, fecha_creacion)
+                    SELECT id, COALESCE(NULLIF(codigo_barras, ''), 'LEGACY_' || id), nombre, precio, 'CODIGO_BARRAS', 0, 0, fecha_creacion FROM productos
+                """.trimIndent())
+                database.execSQL("DROP TABLE productos")
+                database.execSQL("ALTER TABLE productos_new RENAME TO productos")
+                database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_productos_codigo_barras ON productos(codigo_barras)")
+
+                database.execSQL("""
+                    CREATE TABLE ventas_directas_new (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        producto_id INTEGER NOT NULL,
+                        codigo_barras TEXT NOT NULL,
+                        nombre_producto TEXT NOT NULL,
+                        precio REAL NOT NULL,
+                        fecha_venta INTEGER NOT NULL,
+                        FOREIGN KEY(producto_id) REFERENCES productos(id) ON UPDATE NO ACTION ON DELETE NO ACTION
+                    )
+                """.trimIndent())
+                database.execSQL("""
+                    INSERT INTO ventas_directas_new (id, producto_id, codigo_barras, nombre_producto, precio, fecha_venta)
+                    SELECT id, producto_id, COALESCE(NULLIF(codigo_barras, ''), 'LEGACY_' || producto_id), nombre_producto, precio, fecha_venta FROM ventas_directas
+                """.trimIndent())
+                database.execSQL("DROP TABLE ventas_directas")
+                database.execSQL("ALTER TABLE ventas_directas_new RENAME TO ventas_directas")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_ventas_directas_fecha_venta ON ventas_directas(fecha_venta)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_ventas_directas_producto_id ON ventas_directas(producto_id)")
+                database.execSQL("PRAGMA foreign_keys=ON")
+            }
+        }
+
         @Volatile private var INSTANCE: AppDatabase? = null
         fun getDatabase(context: Context): AppDatabase = INSTANCE ?: synchronized(this) {
             Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, "ventas_seguras.db")
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .addCallback(object : Callback() {
                     override fun onCreate(db: SupportSQLiteDatabase) {
                         super.onCreate(db)
@@ -78,7 +124,7 @@ abstract class AppDatabase : RoomDatabase() {
         val dao = productoDao()
         val ahora = System.currentTimeMillis()
         listOf(
-            Producto(codigoBarras = "750100000001", nombre = "Café Americano", precio = 35.0, fechaCreacion = ahora),
+            Producto(codigoBarras = "750100000001", nombre = "Café Americano", precio = 35.0, inventario = 100, fechaCreacion = ahora),
             Producto(codigoBarras = "750100000002", nombre = "Capuchino", precio = 48.0, fechaCreacion = ahora),
             Producto(codigoBarras = "750100000003", nombre = "Latte", precio = 52.0, fechaCreacion = ahora),
             Producto(codigoBarras = "750100000004", nombre = "Té Chai", precio = 45.0, fechaCreacion = ahora),

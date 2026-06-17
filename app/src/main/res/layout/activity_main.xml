@@ -71,15 +71,6 @@
                 app:chipStrokeWidth="1dp" />
         </com.google.android.material.chip.ChipGroup>
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnEntradaManual"
-            style="@style/Widget.Material3.Button.TextButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="Usar código demo"
-            android:textColor="@color/text_secondary" />
-
         <LinearLayout
             android:id="@+id/panelSimple"
             android:layout_width="match_parent"
@@ -110,6 +101,16 @@
                 android:textStyle="bold"
                 app:backgroundTint="@color/pos_green"
                 app:cornerRadius="24dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnAgregarManualSimple"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="✏️ Agregar Producto Manual"
+                android:textColor="@color/white"
+                app:backgroundTint="@color/pos_blue"
+                app:cornerRadius="18dp" />
 
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
@@ -226,6 +227,16 @@
                 app:backgroundTint="@color/create_account_background"
                 app:cornerRadius="24dp" />
 
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnAgregarManualCuenta"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="✏️ Agregar Producto Manual"
+                android:textColor="@color/white"
+                app:backgroundTint="@color/pos_blue"
+                app:cornerRadius="18dp" />
+
             <TextView
                 android:id="@+id/txtCuentaSeleccionada"
                 android:visibility="gone"
@@ -269,13 +280,6 @@
                 android:textColor="@color/pos_blue" />
         </LinearLayout>
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnEstadisticas"
-            style="@style/Widget.FinSell.Button.Outlined"
-            android:layout_width="match_parent"
-            android:layout_height="52dp"
-            android:layout_marginTop="16dp"
-            android:text="📊 Estadísticas"
-            android:textColor="@color/text_secondary" />
+
     </LinearLayout>
 </ScrollView>

@@ -27,6 +27,7 @@ class VentaDirectaDialog : DialogFragment() {
     var modo: ModoOperacion = ModoOperacion.SIMPLE
     var onConfirmar: ((Producto?, String?, String?, Double?, Int) -> Unit)? = null
     var onVerCuenta: (() -> Unit)? = null
+    var onCancelar: (() -> Unit)? = null
 
     private var cantidad = 1
     private var _binding: DialogVentaDirectaBinding? = null
@@ -39,7 +40,7 @@ class VentaDirectaDialog : DialogFragment() {
         val builder = AlertDialog.Builder(requireContext()).setView(binding.root)
         if (modo == ModoOperacion.CUENTA) builder.setNeutralButton("Ver cuenta") { _, _ -> onVerCuenta?.invoke() }
         return builder
-            .setNegativeButton("CANCELAR", null)
+            .setNegativeButton("CANCELAR") { _, _ -> onCancelar?.invoke() }
             .setPositiveButton(if (modo == ModoOperacion.SIMPLE) "REGISTRAR VENTA" else "AGREGAR") { _, _ -> confirmar() }
             .create()
             .also { dialog ->
