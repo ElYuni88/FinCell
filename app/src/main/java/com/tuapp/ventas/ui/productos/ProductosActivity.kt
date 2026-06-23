@@ -1,34 +1,127 @@
 package com.tuapp.ventas.ui.productos
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
-import android.widget.EditText
-import android.widget.LinearLayout
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.tuapp.ventas.VentasApplication
 import com.tuapp.ventas.data.model.Producto
 import com.tuapp.ventas.databinding.ActivityProductosBinding
+import com.tuapp.ventas.databinding.DialogAgregarProductoBinding
+import com.tuapp.ventas.ui.scanner.BarcodeScannerActivity
 
+/** Pantalla de gestión de productos con alta por escáner, alta manual, edición y eliminación. */
 class ProductosActivity : AppCompatActivity() {
     private lateinit var binding: ActivityProductosBinding
     private val viewModel: ProductosViewModel by viewModels { ProductosViewModelFactory((application as VentasApplication).repository) }
-    private val adapter = ProductoAdapter(::mostrarEditor, ::confirmarEliminar)
-    override fun onCreate(savedInstanceState: Bundle?) { super.onCreate(savedInstanceState); binding=ActivityProductosBinding.inflate(layoutInflater); setContentView(binding.root); binding.recyclerProductos.layoutManager=LinearLayoutManager(this); binding.recyclerProductos.adapter=adapter; binding.btnAgregarProducto.setOnClickListener{mostrarEditor(null)}; binding.btnVolver.setOnClickListener{finish()}; viewModel.productos.observe(this){adapter.submitList(it)}; viewModel.mensaje.observe(this){Toast.makeText(this,it,Toast.LENGTH_SHORT).show()} }
-    private fun mostrarEditor(producto: Producto?) {
-        val layout=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL; setPadding(48,16,48,0)}
-        val nombre=EditText(this).apply{hint="Nombre"; setText(producto?.nombre.orEmpty())}
-        val codigo=EditText(this).apply{hint="Código de barras o manual"; setText(producto?.codigoBarras.orEmpty()); isEnabled=producto?.codigoBarras.isNullOrBlank()}
-        val precio=EditText(this).apply{hint="Precio"; inputType=8194; setText(producto?.precio?.toString().orEmpty())}
-        val inventario=EditText(this).apply{hint="Inventario"; inputType=2; setText((producto?.inventario ?: 0).toString())}
-        layout.addView(nombre); layout.addView(codigo); layout.addView(precio); layout.addView(inventario)
-        MaterialAlertDialogBuilder(this).setTitle(if(producto==null)"Agregar producto" else "Editar producto").setView(layout).setNegativeButton("Cancelar",null).setPositiveButton("Guardar"){_,_->
-            val p=precio.text.toString().toDoubleOrNull(); if(nombre.text.isBlank()||p==null){ Toast.makeText(this,"Nombre y precio válidos requeridos",Toast.LENGTH_SHORT).show(); return@setPositiveButton }
-            val tipo=if(codigo.text.isBlank()) Producto.TIPO_MANUAL else producto?.tipoProducto ?: Producto.TIPO_CODIGO_BARRAS
-            viewModel.guardar((producto ?: Producto(nombre = "", precio = 0.0)).copy(nombre=nombre.text.toString(), codigoBarras=codigo.text.toString().trim(), precio=p, inventario=inventario.text.toString().toIntOrNull()?:0, tipoProducto=tipo))
-        }.show()
+    private val adapter = ProductoAdapter(::mostrarDialogoEditar, ::confirmarEliminar)
+
+    private val scanLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val codigo = result.data?.getStringExtra(BarcodeScannerActivity.EXTRA_BARCODE).orEmpty()
+        if (codigo.isNotBlank()) mostrarDialogoAgregar(codigoEscaneado = codigo)
     }
-    private fun confirmarEliminar(producto: Producto)=MaterialAlertDialogBuilder(this).setTitle("Eliminar producto").setMessage("¿Eliminar ${producto.nombre}?").setNegativeButton("Cancelar",null).setPositiveButton("Eliminar"){_,_->viewModel.eliminar(producto)}.show()
+
+    private val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { concedido ->
+        if (concedido) abrirScanner() else toast("Permiso de cámara requerido")
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        binding = ActivityProductosBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+        configurarRecycler()
+        configurarClicks()
+        observarDatos()
+    }
+
+    private fun configurarRecycler() = with(binding.recyclerProductos) {
+        layoutManager = LinearLayoutManager(this@ProductosActivity)
+        adapter = this@ProductosActivity.adapter
+    }
+
+    private fun configurarClicks() = with(binding) {
+        btnAgregarEscaneo.setOnClickListener { solicitarCamara() }
+        btnAgregarManual.setOnClickListener { mostrarDialogoAgregar(codigoEscaneado = null) }
+        btnVolver.setOnClickListener { finish() }
+    }
+
+    private fun observarDatos() {
+        viewModel.productos.observe(this) { adapter.submitList(it) }
+        viewModel.mensaje.observe(this) { toast(it) }
+    }
+
+    private fun solicitarCamara() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) abrirScanner()
+        else requestPermissionLauncher.launch(Manifest.permission.CAMERA)
+    }
+
+    private fun abrirScanner() = scanLauncher.launch(Intent(this, BarcodeScannerActivity::class.java))
+
+    private fun mostrarDialogoAgregar(codigoEscaneado: String?) {
+        mostrarDialogoProducto(
+            titulo = if (codigoEscaneado == null) "Agregar producto manual" else "Agregar producto escaneado",
+            producto = null,
+            codigoInicial = codigoEscaneado.orEmpty(),
+            codigoEditable = codigoEscaneado == null
+        )
+    }
+
+    private fun mostrarDialogoEditar(producto: Producto) {
+        mostrarDialogoProducto(
+            titulo = "Editar producto",
+            producto = producto,
+            codigoInicial = producto.codigoBarras,
+            codigoEditable = false
+        )
+    }
+
+    private fun mostrarDialogoProducto(titulo: String, producto: Producto?, codigoInicial: String, codigoEditable: Boolean) {
+        val dialogBinding = DialogAgregarProductoBinding.inflate(layoutInflater)
+        dialogBinding.inputCodigo.setText(codigoInicial)
+        dialogBinding.inputCodigo.isEnabled = codigoEditable
+        dialogBinding.inputNombre.setText(producto?.nombre.orEmpty())
+        dialogBinding.inputPrecio.setText(producto?.precio?.toString().orEmpty())
+        dialogBinding.inputInventario.setText((producto?.inventario ?: 0).toString())
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(titulo)
+            .setView(dialogBinding.root)
+            .setNegativeButton("Cancelar", null)
+            .setPositiveButton("Guardar") { _, _ ->
+                val nombre = dialogBinding.inputNombre.text?.toString()?.trim().orEmpty()
+                val precio = dialogBinding.inputPrecio.text?.toString()?.toDoubleOrNull()
+                val inventario = dialogBinding.inputInventario.text?.toString()?.toIntOrNull() ?: 0
+                val codigo = dialogBinding.inputCodigo.text?.toString()?.trim().orEmpty()
+                    .ifBlank { if (producto == null) viewModel.generarCodigoManualSugerido() else producto.codigoBarras }
+
+                if (nombre.isBlank() || precio == null || precio < 0.0 || inventario < 0) {
+                    toast("Nombre, precio e inventario válidos son requeridos")
+                    return@setPositiveButton
+                }
+
+                val tipo = if (codigo.startsWith("MANUAL_", ignoreCase = true)) Producto.TIPO_MANUAL else Producto.TIPO_CODIGO_BARRAS
+                val base = producto ?: Producto(nombre = nombre, precio = precio)
+                viewModel.guardar(base.copy(nombre = nombre, codigoBarras = codigo, precio = precio, inventario = inventario, tipoProducto = producto?.tipoProducto ?: tipo))
+            }
+            .show()
+    }
+
+    private fun confirmarEliminar(producto: Producto) {
+        val advertenciaVentas = if (producto.vendidos > 0) "\n\nAdvertencia: tiene ${producto.vendidos} ventas asociadas." else ""
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Eliminar producto")
+            .setMessage("¿Eliminar ${producto.nombre}?$advertenciaVentas")
+            .setNegativeButton("Cancelar", null)
+            .setPositiveButton("Eliminar") { _, _ -> viewModel.eliminar(producto) }
+            .show()
+    }
+
+    private fun toast(texto: String) = Toast.makeText(this, texto, Toast.LENGTH_SHORT).show()
 }

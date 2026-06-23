@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.asLiveData
 import androidx.lifecycle.viewModelScope
+import com.tuapp.ventas.data.model.Producto
 import com.tuapp.ventas.data.model.VentaFinal
 import com.tuapp.ventas.data.repository.VentasRepository
 import kotlinx.coroutines.launch
@@ -35,6 +36,17 @@ class AccountDetailViewModel(private val repo: VentasRepository, private val cue
         } catch (e: Exception) {
             Log.e(TAG, "Error al procesar escaneo directo", e)
             mensaje.value = "Error: ${e.message ?: "No se pudo agregar"}"
+        }
+    }
+
+    fun agregarProductoManual(producto: Producto, cantidad: Int = 1) = viewModelScope.launch {
+        runCatching {
+            val guardado = if (producto.id == 0L) repo.crearProductoManual(producto.codigoBarras, producto.nombre, producto.precio) else producto
+            repo.agregarProductoACuenta(cuentaId, guardado, cantidad)
+        }.onSuccess {
+            mensaje.value = "${producto.nombre} agregado a la cuenta"
+        }.onFailure {
+            mensaje.value = it.message ?: "No se pudo agregar el producto manual"
         }
     }
 

@@ -24,6 +24,7 @@ import com.tuapp.ventas.data.model.relaciones.DetalleConProducto
 import com.tuapp.ventas.databinding.ActivityAccountDetailBinding
 import com.tuapp.ventas.ui.cuenta.adapters.DetalleCuentaAdapter
 import com.tuapp.ventas.ui.scanner.BarcodeScannerActivity
+import com.tuapp.ventas.ui.simple.AgregarProductoManualDialog
 import com.tuapp.ventas.ui.simple.VentaDirectaDialog
 import com.tuapp.ventas.utils.DateUtils
 import com.tuapp.ventas.utils.SoundUtils
@@ -64,6 +65,7 @@ class AccountDetailActivity : AppCompatActivity() {
     private fun configurarClicks() = with(binding) {
         btnVolver.setOnClickListener { finish() }
         btnEscanear.setOnClickListener { solicitarCamara() }
+        btnAgregarManual.setOnClickListener { mostrarDialogoAgregarManual() }
         btnCerrarCuenta.setOnClickListener { mostrarDialogoCerrar() }
         btnTicket.setOnClickListener { generarTicket() }
     }
@@ -80,6 +82,7 @@ class AccountDetailActivity : AppCompatActivity() {
             }
             binding.txtTotal.text = "Total: ${DateUtils.moneda(cuentaConDetalles.cuenta.total)}"
             binding.btnEscanear.visibility = if (abierta) View.VISIBLE else View.GONE
+            binding.btnAgregarManual.visibility = if (abierta) View.VISIBLE else View.GONE
             binding.btnCerrarCuenta.visibility = if (abierta) View.VISIBLE else View.GONE
             binding.btnTicket.visibility = if (abierta) View.GONE else View.VISIBLE
             if (adapterSoloLectura() != !abierta) {
@@ -186,6 +189,12 @@ class AccountDetailActivity : AppCompatActivity() {
             this.total = total
             onCerrar = { metodo, observaciones -> viewModel.cerrarCuenta(metodo, observaciones) }
         }.show(supportFragmentManager, "cerrar_cuenta")
+    }
+
+    private fun mostrarDialogoAgregarManual() {
+        AgregarProductoManualDialog().apply {
+            onConfirmar = { producto, cantidad -> viewModel.agregarProductoManual(producto, cantidad) }
+        }.show(supportFragmentManager, "agregar_manual_cuenta")
     }
 
     private fun mostrarDialogoProductoNuevo(codigo: String) {

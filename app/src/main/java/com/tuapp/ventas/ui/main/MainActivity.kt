@@ -85,9 +85,7 @@ class MainActivity : AppCompatActivity() {
         btnVerCuenta.visibility = View.GONE
         txtCuentaSeleccionada.visibility = View.GONE
         btnNuevaCuenta.setOnClickListener { NuevoClienteDialog().apply { onCrear = { n, t, m, r -> viewModel.crearCuenta(n, t, m, r) } }.show(supportFragmentManager, "nuevo") }
-        btnSettings.setOnClickListener { startActivity(Intent(this@MainActivity, SettingsActivity::class.java)) }
         btnAgregarManualSimple.setOnClickListener { mostrarDialogoAgregarManual() }
-        btnAgregarManualCuenta.setOnClickListener { mostrarDialogoAgregarManual() }
     }
     private fun observarDatos() {
         viewModel.ventasHoy.observe(this) { ventasAdapter.submitList(it); binding.txtUltimaVenta.text = it.firstOrNull()?.let { v -> "${v.nombreProducto} - ${DateUtils.moneda(v.precio)}" } ?: "Sin ventas todavía" }
@@ -124,6 +122,7 @@ class MainActivity : AppCompatActivity() {
         R.id.menu_productos -> { startActivity(Intent(this, ProductosActivity::class.java)); true }
         R.id.menu_estadisticas -> { startActivity(Intent(this, EstadisticasActivity::class.java)); true }
         R.id.menu_exportar_ipb -> { startActivity(Intent(this, ExportarIPBActivity::class.java)); true }
+        R.id.menu_configuraciones -> { startActivity(Intent(this, SettingsActivity::class.java)); true }
         else -> super.onOptionsItemSelected(item)
     }
 
