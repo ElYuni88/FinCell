@@ -57,6 +57,12 @@ class VentasRepository(private val db: AppDatabase) {
 
     suspend fun eliminarProducto(producto: Producto) = productos.eliminar(producto)
     fun observarProductos(): Flow<List<Producto>> = productos.observarTodos()
+    fun obtenerTodosLosProductos(): Flow<List<Producto>> = productos.obtenerTodos()
+    suspend fun insertarProducto(producto: Producto): Long = productos.insertar(producto)
+    suspend fun actualizarProducto(producto: Producto) = productos.actualizar(producto)
+    suspend fun buscarProductoPorCodigo(codigo: String): Producto? = productos.buscarPorCodigo(codigo)
+    suspend fun existeCodigoDuplicado(codigo: String, id: Long): Boolean = codigo.isNotBlank() && productos.existeCodigoDuplicado(codigo, id) > 0
+    fun obtenerProductosAgotados(): Flow<List<Producto>> = productos.obtenerAgotados()
     fun productosSinCodigo(): Flow<List<Producto>> = productos.obtenerProductosSinCodigo()
     fun productosAgotados(): Flow<Int> = productos.observarProductosAgotados()
     suspend fun listarProductos(): List<Producto> = productos.listarTodos()

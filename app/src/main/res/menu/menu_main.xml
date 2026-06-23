@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<menu xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto">
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
     <item android:id="@+id/menu_productos" android:title="📦 Productos" app:showAsAction="never" />
     <item android:id="@+id/menu_estadisticas" android:title="📊 Estadísticas" app:showAsAction="never" />
     <item android:id="@+id/menu_exportar_ipb" android:title="📤 Exportar IPB" app:showAsAction="never" />
+    <item android:id="@+id/menu_configuraciones" android:title="⚙️ Configuraciones" app:showAsAction="never" />
 </menu>

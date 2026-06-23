@@ -14,28 +14,18 @@
         android:orientation="vertical"
         android:padding="20dp">
 
-        <LinearLayout
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbarMain"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Ventas Cafetería"
-                android:textAppearance="@style/TextAppearance.FinSell.Title"
-                android:textSize="24sp" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnSettings"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:text="⚙️"
-                app:backgroundTint="@color/card_background"
-                app:cornerRadius="24dp" />
-        </LinearLayout>
+            android:background="@color/card_background"
+            android:elevation="4dp"
+            android:minHeight="56dp"
+            app:navigationIconTint="@color/text_primary"
+            app:overflowIconTint="@color/text_primary"
+            app:title="Ventas Cafetería"
+            app:titleTextAppearance="@style/TextAppearance.FinSell.Title"
+            app:titleTextColor="@color/text_primary" />
 
         <com.google.android.material.chip.ChipGroup
             android:layout_width="match_parent"
@@ -226,16 +216,6 @@
                 android:textStyle="bold"
                 app:backgroundTint="@color/create_account_background"
                 app:cornerRadius="24dp" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnAgregarManualCuenta"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:text="✏️ Agregar Producto Manual"
-                android:textColor="@color/white"
-                app:backgroundTint="@color/pos_blue"
-                app:cornerRadius="18dp" />
 
             <TextView
                 android:id="@+id/txtCuentaSeleccionada"

@@ -27,13 +27,10 @@ class ProductoAdapter(
 
     inner class VH(private val binding: ItemProductoBinding) : RecyclerView.ViewHolder(binding.root) {
         fun bind(producto: Producto) = with(binding) {
-            val codigo = if (producto.tipoProducto == Producto.TIPO_MANUAL) {
-                "${producto.codigoBarras} (manual)"
-            } else {
-                producto.codigoBarras
-            }
+            val codigo = producto.codigoBarras.ifBlank { "S/C" }
+            val etiquetaCodigo = if (producto.tipoProducto == Producto.TIPO_MANUAL) "$codigo (manual)" else codigo
             txtNombre.text = producto.nombre
-            txtDetalle.text = "Código: $codigo · ${DateUtils.moneda(producto.precio)} · Inventario: ${producto.inventario} · Vendidos: ${producto.vendidos}"
+            txtDetalle.text = "Código: $etiquetaCodigo · Precio: ${DateUtils.moneda(producto.precio)} · Inventario: ${producto.inventario} · Vendidos: ${producto.vendidos}"
             btnEditar.setOnClickListener { onEditar(producto) }
             btnEliminar.setOnClickListener { onEliminar(producto) }
         }
