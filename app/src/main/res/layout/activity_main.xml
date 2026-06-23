@@ -15,20 +15,14 @@
         android:padding="20dp">
 
         <com.google.android.material.appbar.MaterialToolbar
-            android:id="@+id/toolbarMain"
+            android:id="@+id/toolbar"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Ventas Cafetería"
-                android:textAppearance="@style/TextAppearance.FinSell.Title"
-                android:textSize="24sp" />
-        </LinearLayout>
+            android:layout_height="?attr/actionBarSize"
+            android:background="@color/pos_green"
+            android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+            app:title="CafePos"
+            app:titleTextColor="@android:color/white">
+        </com.google.android.material.appbar.MaterialToolbar>
 
         <com.google.android.material.chip.ChipGroup
             android:layout_width="match_parent"
