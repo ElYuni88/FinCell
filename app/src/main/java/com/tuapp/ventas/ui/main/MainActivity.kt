@@ -51,7 +51,8 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        setSupportActionBar(binding.toolbarMain)
+        // Configura el Toolbar del layout como ActionBar para mostrar el menú desplegable.
+        setSupportActionBar(binding.toolbar)
         prefs = PreferencesManager(this)
         modo = when (prefs.modoPredeterminado) {
             "SIMPLE" -> ModoOperacion.SIMPLE
@@ -114,7 +115,7 @@ class MainActivity : AppCompatActivity() {
     }
     private fun solicitarCamara() { if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) abrirScanner() else cameraPermission.launch(Manifest.permission.CAMERA) }
     private fun abrirScanner() = scanLauncher.launch(Intent(this, BarcodeScannerActivity::class.java))
-        override fun onCreateOptionsMenu(menu: Menu): Boolean {
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.menu_main, menu)
         return true
     }
