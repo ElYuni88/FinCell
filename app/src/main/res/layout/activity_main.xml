@@ -18,14 +18,17 @@
             android:id="@+id/toolbarMain"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@color/card_background"
-            android:elevation="4dp"
-            android:minHeight="56dp"
-            app:navigationIconTint="@color/text_primary"
-            app:overflowIconTint="@color/text_primary"
-            app:title="Ventas Cafetería"
-            app:titleTextAppearance="@style/TextAppearance.FinSell.Title"
-            app:titleTextColor="@color/text_primary" />
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Ventas Cafetería"
+                android:textAppearance="@style/TextAppearance.FinSell.Title"
+                android:textSize="24sp" />
+        </LinearLayout>
 
         <com.google.android.material.chip.ChipGroup
             android:layout_width="match_parent"
