@@ -27,14 +27,6 @@
                 android:text="Ventas Cafetería"
                 android:textAppearance="@style/TextAppearance.FinSell.Title"
                 android:textSize="24sp" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnSettings"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:text="⚙️"
-                app:backgroundTint="@color/card_background"
-                app:cornerRadius="24dp" />
         </LinearLayout>
 
         <com.google.android.material.chip.ChipGroup
@@ -226,16 +218,6 @@
                 android:textStyle="bold"
                 app:backgroundTint="@color/create_account_background"
                 app:cornerRadius="24dp" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnAgregarManualCuenta"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:text="✏️ Agregar Producto Manual"
-                android:textColor="@color/white"
-                app:backgroundTint="@color/pos_blue"
-                app:cornerRadius="18dp" />
 
             <TextView
                 android:id="@+id/txtCuentaSeleccionada"

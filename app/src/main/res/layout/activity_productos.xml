@@ -1,6 +1,54 @@
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="16dp">
-<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="📦 Productos" android:textSize="24sp" android:textStyle="bold" />
-<com.google.android.material.button.MaterialButton android:id="@+id/btnAgregarProducto" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Agregar Producto" />
-<androidx.recyclerview.widget.RecyclerView android:id="@+id/recyclerProductos" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" />
-<com.google.android.material.button.MaterialButton android:id="@+id/btnVolver" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Volver" />
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/pos_gray_bg"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="📦 Productos"
+        android:textAppearance="@style/TextAppearance.FinSell.Title"
+        android:textSize="24sp" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnAgregarEscaneo"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_marginTop="12dp"
+        android:text="📷 Agregar con Escáner"
+        android:textColor="@color/white"
+        app:backgroundTint="@color/pos_green"
+        app:cornerRadius="20dp" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnAgregarManual"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_marginTop="8dp"
+        android:text="✏️ Agregar Manual"
+        android:textColor="@color/white"
+        app:backgroundTint="@color/pos_blue"
+        app:cornerRadius="20dp" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerProductos"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="12dp"
+        android:layout_weight="1"
+        tools:listitem="@layout/item_producto" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnVolver"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:text="↩️ Volver"
+        android:textColor="@color/text_secondary"
+        app:backgroundTint="@color/pos_gray_button"
+        app:cornerRadius="20dp" />
 </LinearLayout>

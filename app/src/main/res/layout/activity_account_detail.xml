@@ -95,6 +95,17 @@
         app:backgroundTint="@color/pos_blue"
         app:cornerRadius="24dp" />
 
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnAgregarManual"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_marginHorizontal="20dp"
+        android:layout_marginTop="8dp"
+        android:text="✏️ Agregar Manual"
+        android:textColor="@color/white"
+        app:backgroundTint="@color/pos_blue"
+        app:cornerRadius="20dp" />
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerDetalle"
         android:layout_width="match_parent"
