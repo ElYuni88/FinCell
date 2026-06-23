@@ -51,6 +51,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        setSupportActionBar(binding.toolbarMain)
         prefs = PreferencesManager(this)
         modo = when (prefs.modoPredeterminado) {
             "SIMPLE" -> ModoOperacion.SIMPLE
