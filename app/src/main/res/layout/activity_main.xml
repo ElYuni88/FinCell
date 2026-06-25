@@ -1,10 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/pos_gray_bg"
+    android:orientation="vertical"
+    android:background="@color/background">
+
+<ScrollView
+    android:layout_width="match_parent"
+    android:layout_height="0dp"
+    android:layout_weight="1"
     android:fillViewport="true">
 
     <LinearLayout
@@ -86,8 +92,9 @@
                 android:textColor="@color/white"
                 android:textSize="18sp"
                 android:textStyle="bold"
-                app:backgroundTint="@color/pos_green"
-                app:cornerRadius="24dp" />
+                app:backgroundTint="@color/primary_container"
+                app:icon="@drawable/ic_barcode_scanner"
+                app:cornerRadius="12dp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnAgregarManualSimple"
@@ -96,8 +103,11 @@
                 android:layout_marginTop="10dp"
                 android:text="✏️ Agregar Producto Manual"
                 android:textColor="@color/white"
-                app:backgroundTint="@color/pos_blue"
-                app:cornerRadius="18dp" />
+                app:backgroundTint="@color/surface"
+                app:icon="@drawable/ic_edit"
+                app:strokeColor="@color/primary"
+                app:strokeWidth="1dp"
+                app:cornerRadius="12dp" />
 
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
@@ -260,3 +270,5 @@
 
     </LinearLayout>
 </ScrollView>
+<com.google.android.material.bottomnavigation.BottomNavigationView android:id="@+id/bottomNavigation" style="@style/Widget.FinSell.BottomNavigation" android:layout_width="match_parent" android:layout_height="72dp" android:background="@color/surface" app:menu="@menu/menu_bottom" app:itemIconTint="@color/bottom_nav_tint" app:itemTextColor="@color/bottom_nav_tint"/>
+</LinearLayout>

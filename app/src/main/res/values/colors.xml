@@ -1,30 +1,39 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-
-    <!-- Paleta POS Banani / cafetería -->
-    <color name="pos_green">#4CAF50</color>
-    <color name="pos_blue">#2196F3</color>
-    <color name="pos_blue_dark">#1976D2</color>
-    <color name="pos_red">#F44336</color>
-    <color name="pos_gray_bg">#F8F9FA</color>
-    <color name="pos_gray_button">#F1F3F5</color>
-    <color name="pos_gray_border">#DADDE1</color>
-
+    <color name="primary_seed">#006E1C</color>
+    <color name="primary">#006E1C</color>
+    <color name="primary_dark">#005316</color>
+    <color name="primary_container">#4CAF50</color>
+    <color name="on_primary">#FFFFFF</color>
+    <color name="secondary">#0061A4</color>
+    <color name="secondary_container">#D1E4FF</color>
+    <color name="error">#BA1A1A</color>
+    <color name="error_container">#FFDAD6</color>
+    <color name="background">#F8F9FA</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="surface_variant">#F1F3F5</color>
+    <color name="outline">#727970</color>
+    <color name="outline_variant">#DADDE1</color>
     <color name="text_primary">#1A1A1A</color>
     <color name="text_secondary">#666666</color>
     <color name="card_background">#FFFFFF</color>
     <color name="card_background_abierta">#FFEBEE</color>
     <color name="card_background_cerrada">#E8F5E9</color>
-    <color name="create_account_background">#E3F2FD</color>
+    <color name="cuenta_abierta_border">#FFCDD2</color>
+    <color name="cuenta_cerrada_border">#C8E6C9</color>
     <color name="cuenta_abierta_text">#B71C1C</color>
     <color name="cuenta_cerrada_text">#1B5E20</color>
+    <color name="create_account_background">#E3F2FD</color>
+    <color name="pos_green">#4CAF50</color>
+    <color name="pos_blue">#0061A4</color>
+    <color name="pos_blue_dark">#00497C</color>
+    <color name="pos_red">#BA1A1A</color>
+    <color name="pos_gray_bg">#F8F9FA</color>
+    <color name="pos_gray_button">#F1F3F5</color>
+    <color name="pos_gray_border">#DADDE1</color>
     <color name="success">#4CAF50</color>
-    <color name="error">#F44336</color>
-
     <color name="simple">#4CAF50</color>
-    <color name="cuenta">#2196F3</color>
-    <color name="primary">#4CAF50</color>
-    <color name="primary_dark">#2E7D32</color>
-    <color name="accent">#2196F3</color>
+    <color name="cuenta">#0061A4</color>
+    <color name="accent">#0061A4</color>
 </resources>
