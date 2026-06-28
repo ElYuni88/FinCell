@@ -50,9 +50,9 @@ class AccountDetailViewModel(private val repo: VentasRepository, private val cue
         }
     }
 
-    fun crearProductoYAgregar(codigo: String, nombre: String, precio: Double, cantidad: Int = 1) = viewModelScope.launch {
+    fun crearProductoYAgregar(codigo: String, nombre: String, precio: Double, cantidad: Int = 1, inventario: Int = 0) = viewModelScope.launch {
         try {
-            val producto = repo.crearProducto(codigo, nombre, precio)
+            val producto = repo.crearProducto(codigo, nombre, precio, inventario)
             repo.agregarProductoACuenta(cuentaId, producto, cantidad)
             mensaje.value = "${producto.nombre} creado y agregado (x$cantidad)"
         } catch (e: Exception) {

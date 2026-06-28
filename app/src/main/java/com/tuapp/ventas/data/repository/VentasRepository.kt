@@ -27,9 +27,9 @@ class VentasRepository(private val db: AppDatabase) {
 
     suspend fun buscarProducto(codigo: String): Producto? = productos.buscarPorCodigo(codigo)
     suspend fun buscarClientesPorNombre(query: String): List<Cliente> = clientes.buscarPorNombre(query)
-    suspend fun crearProducto(codigo: String, nombre: String, precio: Double): Producto {
+    suspend fun crearProducto(codigo: String, nombre: String, precio: Double, inventario: Int = 0): Producto {
         val codigoNormalizado = codigo.ifBlank { generarCodigoManual() }
-        val id = productos.insertar(Producto(codigoBarras = codigoNormalizado, nombre = nombre, precio = precio, tipoProducto = Producto.TIPO_CODIGO_BARRAS))
+        val id = productos.insertar(Producto(codigoBarras = codigoNormalizado, nombre = nombre, precio = precio, inventario = inventario.coerceAtLeast(0), tipoProducto = Producto.TIPO_CODIGO_BARRAS))
         return productos.buscarPorCodigo(codigoNormalizado)!!.copy(id = id)
     }
 

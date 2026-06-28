@@ -6,7 +6,7 @@
             <TextView android:id="@+id/txtNombre" android:layout_width="match_parent" android:layout_height="wrap_content" android:textAppearance="@style/TextAppearance.FinSell.Title"/>
             <TextView android:id="@+id/txtDetalle" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:textAppearance="@style/TextAppearance.FinSell.Secondary"/>
         </LinearLayout>
-        <com.google.android.material.button.MaterialButton android:id="@+id/btnEditar" style="@style/Widget.FinSell.Button.Outlined" android:layout_width="48dp" android:layout_height="44dp" android:text="✎"/>
-        <com.google.android.material.button.MaterialButton android:id="@+id/btnEliminar" android:layout_width="48dp" android:layout_height="44dp" android:layout_marginStart="6dp" android:text="🗑" app:backgroundTint="@color/error"/>
+        <com.google.android.material.button.MaterialButton android:id="@+id/btnEditar" style="@style/Widget.FinSell.Button.Outlined" android:layout_width="48dp" android:layout_height="44dp" android:text="" app:icon="@drawable/ic_edit" app:iconGravity="textStart" app:iconPadding="0dp"/>
+        <com.google.android.material.button.MaterialButton android:id="@+id/btnEliminar" android:layout_width="48dp" android:layout_height="44dp" android:layout_marginStart="6dp" android:text="" app:icon="@drawable/ic_delete" app:iconTint="@color/white" app:iconGravity="textStart" app:iconPadding="0dp" app:backgroundTint="@color/error"/>
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

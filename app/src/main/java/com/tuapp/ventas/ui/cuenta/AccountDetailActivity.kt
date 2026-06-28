@@ -24,8 +24,9 @@ import com.tuapp.ventas.data.model.relaciones.DetalleConProducto
 import com.tuapp.ventas.databinding.ActivityAccountDetailBinding
 import com.tuapp.ventas.ui.cuenta.adapters.DetalleCuentaAdapter
 import com.tuapp.ventas.ui.scanner.BarcodeScannerActivity
+import com.tuapp.ventas.databinding.DialogAgregarProductoBinding
+import com.tuapp.ventas.ui.common.ProductoNoEncontradoDialogFragment
 import com.tuapp.ventas.ui.simple.AgregarProductoManualDialog
-import com.tuapp.ventas.ui.simple.VentaDirectaDialog
 import com.tuapp.ventas.utils.DateUtils
 import com.tuapp.ventas.utils.SoundUtils
 import java.io.File
@@ -198,24 +199,31 @@ class AccountDetailActivity : AppCompatActivity() {
     }
 
     private fun mostrarDialogoProductoNuevo(codigo: String) {
-        VentaDirectaDialog().apply {
-            this.codigoNuevo = codigo
-            modo = ModoOperacion.CUENTA
-            onCancelar = { finish() }
-            onConfirmar = { productoExistente, codigoEscaneado, nombre, precio, cantidad ->
-                if (nombre.isNullOrBlank() || precio == null) {
-                    toast("Nombre y precio requeridos")
+        ProductoNoEncontradoDialogFragment.newInstance(codigo).apply {
+            onDarEntrada = { codigoEscaneado -> mostrarDialogoAltaProductoEscaneado(codigoEscaneado) }
+        }.show(supportFragmentManager, "producto_no_encontrado_cuenta")
+    }
+
+    private fun mostrarDialogoAltaProductoEscaneado(codigo: String) {
+        val dialogBinding = DialogAgregarProductoBinding.inflate(layoutInflater)
+        dialogBinding.inputCodigo.setText(codigo)
+        dialogBinding.inputCodigo.isEnabled = false
+        dialogBinding.inputInventario.hint = "Cantidad en inventario"
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Agregar producto escaneado")
+            .setView(dialogBinding.root)
+            .setNegativeButton("Cancelar", null)
+            .setPositiveButton("Guardar y agregar") { _, _ ->
+                val nombre = dialogBinding.inputNombre.text?.toString()?.trim().orEmpty()
+                val precio = dialogBinding.inputPrecio.text?.toString()?.toDoubleOrNull()
+                val cantidadInventario = dialogBinding.inputInventario.text?.toString()?.toIntOrNull() ?: 1
+                if (nombre.isBlank() || precio == null || precio < 0.0 || cantidadInventario < 0) {
+                    toast("Nombre, precio y cantidad en inventario válidos son requeridos")
                 } else {
-                    val cantidadFinal = if (cantidad > 0) cantidad else 1
-                    viewModel.crearProductoYAgregar(
-                        codigo = codigoEscaneado ?: codigo,
-                        nombre = nombre,
-                        precio = precio,
-                        cantidad = cantidadFinal
-                    )
+                    viewModel.crearProductoYAgregar(codigo = codigo, nombre = nombre, precio = precio, cantidad = 1, inventario = cantidadInventario)
                 }
             }
-        }.show(supportFragmentManager, "nuevo_producto_cuenta")
+            .show()
     }
 
     private fun solicitarCamara() {

@@ -33,10 +33,10 @@ class MainViewModel(private val repo: VentasRepository) : ViewModel() {
             .onSuccess { mensaje.value = "Venta registrada: ${producto.nombre} x$cantidadFinal" }
             .onFailure { mensaje.value = it.message ?: "Error al registrar" }
     }
-    fun crearProductoYVender(codigo: String, nombre: String, precio: Double, modo: ModoOperacion, cantidad: Int = 1) = viewModelScope.launch {
+    fun crearProductoYVender(codigo: String, nombre: String, precio: Double, modo: ModoOperacion, cantidad: Int = 1, inventario: Int = 0) = viewModelScope.launch {
         val cantidadFinal = cantidad.coerceIn(1, 99)
         runCatching {
-            val producto = repo.crearProducto(codigo, nombre, precio)
+            val producto = repo.crearProducto(codigo, nombre, precio, inventario)
             if (modo == ModoOperacion.SIMPLE) {
                 repo.registrarVentaDirecta(producto, cantidadFinal)
                 "Venta registrada: ${producto.nombre} x$cantidadFinal"
