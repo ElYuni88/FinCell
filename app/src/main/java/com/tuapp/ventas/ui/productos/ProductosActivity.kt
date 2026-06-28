@@ -4,6 +4,8 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -11,10 +13,14 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.tuapp.ventas.R
 import com.tuapp.ventas.VentasApplication
 import com.tuapp.ventas.data.model.Producto
 import com.tuapp.ventas.databinding.ActivityProductosBinding
 import com.tuapp.ventas.databinding.DialogAgregarProductoBinding
+import com.tuapp.ventas.ui.exportar.ExportarIPBActivity
+import com.tuapp.ventas.ui.estadisticas.EstadisticasActivity
+import com.tuapp.ventas.ui.main.MainActivity
 import com.tuapp.ventas.ui.scanner.BarcodeScannerActivity
 
 /** Pantalla de gestión de productos con alta por escáner, alta manual, edición y eliminación. */
@@ -22,6 +28,7 @@ class ProductosActivity : AppCompatActivity() {
     private lateinit var binding: ActivityProductosBinding
     private val viewModel: ProductosViewModel by viewModels { ProductosViewModelFactory((application as VentasApplication).repository) }
     private val adapter = ProductoAdapter(::mostrarDialogoEditar, ::confirmarEliminar)
+    private var productosCompletos: List<Producto> = emptyList()
 
     private val scanLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val codigo = result.data?.getStringExtra(BarcodeScannerActivity.EXTRA_BARCODE).orEmpty()
@@ -50,10 +57,25 @@ class ProductosActivity : AppCompatActivity() {
         btnAgregarEscaneo.setOnClickListener { solicitarCamara() }
         btnAgregarManual.setOnClickListener { mostrarDialogoAgregar(codigoEscaneado = null) }
         btnVolver.setOnClickListener { finish() }
+        bottomNavigation.selectedItemId = R.id.nav_productos
+        bottomNavigation.setOnItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.nav_scan -> { startActivity(Intent(this@ProductosActivity, MainActivity::class.java)); true }
+                R.id.nav_productos -> true
+                R.id.nav_estadisticas -> { startActivity(Intent(this@ProductosActivity, EstadisticasActivity::class.java)); true }
+                R.id.nav_exportar_ipb -> { confirmarExportarIPB(); true }
+                else -> false
+            }
+        }
+        inputBuscarProductos.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = filtrarProductos(s?.toString().orEmpty())
+            override fun afterTextChanged(s: Editable?) = Unit
+        })
     }
 
     private fun observarDatos() {
-        viewModel.productos.observe(this) { adapter.submitList(it) }
+        viewModel.productos.observe(this) { productos -> productosCompletos = productos.sortedBy { it.nombre.lowercase() }; filtrarProductos(binding.inputBuscarProductos.text?.toString().orEmpty()) }
         viewModel.mensaje.observe(this) { toast(it) }
     }
 
@@ -120,6 +142,23 @@ class ProductosActivity : AppCompatActivity() {
             .setMessage("¿Eliminar ${producto.nombre}?$advertenciaVentas")
             .setNegativeButton("Cancelar", null)
             .setPositiveButton("Eliminar") { _, _ -> viewModel.eliminar(producto) }
+            .show()
+    }
+
+    private fun filtrarProductos(query: String) {
+        val normalizada = query.trim().lowercase()
+        val filtrados = if (normalizada.isBlank()) productosCompletos else productosCompletos.filter {
+            it.nombre.lowercase().contains(normalizada) || it.codigoBarras.lowercase().contains(normalizada)
+        }
+        adapter.submitList(filtrados)
+    }
+
+    private fun confirmarExportarIPB() {
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Exportar IPB")
+            .setMessage("¿Exportar las operaciones del día en formato IPB?")
+            .setNegativeButton("Cancelar", null)
+            .setPositiveButton("Exportar") { _, _ -> startActivity(Intent(this, ExportarIPBActivity::class.java)) }
             .show()
     }
 
