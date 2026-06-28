@@ -1,6 +1,7 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="transparent">#00000000</color>
     <color name="primary_seed">#006E1C</color>
     <color name="primary">#006E1C</color>
     <color name="primary_dark">#005316</color>
@@ -12,6 +13,8 @@
     <color name="error_container">#FFDAD6</color>
     <color name="background">#F8F9FA</color>
     <color name="surface">#FFFFFF</color>
+    <color name="on_surface">#1A1A1A</color>
+    <color name="on_surface_variant">#666666</color>
     <color name="surface_variant">#F1F3F5</color>
     <color name="outline">#727970</color>
     <color name="outline_variant">#DADDE1</color>

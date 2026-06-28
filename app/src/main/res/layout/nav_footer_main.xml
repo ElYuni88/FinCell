@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:padding="16dp"
+    android:background="@color/surface"
+    android:elevation="4dp">
+
+    <TextView
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:gravity="center"
+        android:text="PV"
+        android:textColor="@color/white"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:background="@drawable/circle_background"
+        android:backgroundTint="@color/pos_green" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginStart="12dp"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tvNavPVNombre"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Cafetería Central"
+            android:textAppearance="@style/TextAppearance.FinSell.Title"
+            android:textSize="14sp"
+            android:textColor="@color/text_primary" />
+
+        <TextView
+            android:id="@+id/tvNavPVRol"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Punto de Venta · Código: PV-001"
+            android:textAppearance="@style/TextAppearance.FinSell.Secondary"
+            android:textSize="10sp"
+            android:textColor="@color/on_surface_variant"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <ImageView
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:src="@drawable/ic_swap_horiz"
+        app:tint="@color/on_surface_variant"
+        android:layout_gravity="center" />
+</LinearLayout>
