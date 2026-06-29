@@ -285,6 +285,18 @@
             </LinearLayout>
         </ScrollView>
 
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/fabAltaProducto"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:layout_marginEnd="20dp"
+            android:layout_marginBottom="12dp"
+            android:contentDescription="Dar alta a producto escaneado"
+            app:backgroundTint="@color/pos_green"
+            app:srcCompat="@drawable/ic_box_add"
+            app:tint="@android:color/white" />
+
         <!-- BottomNavigationView (barra inferior) -->
         <com.google.android.material.bottomnavigation.BottomNavigationView
             android:id="@+id/bottomNavigation"

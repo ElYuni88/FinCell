@@ -14,8 +14,12 @@ import androidx.core.content.ContextCompat
 import com.github.mikephil.charting.data.BarData
 import com.github.mikephil.charting.data.BarDataSet
 import com.github.mikephil.charting.data.BarEntry
+import com.tuapp.ventas.R
 import com.tuapp.ventas.VentasApplication
 import com.tuapp.ventas.databinding.ActivityEstadisticasBinding
+import com.tuapp.ventas.ui.exportar.ExportarIPBActivity
+import com.tuapp.ventas.ui.main.MainActivity
+import com.tuapp.ventas.ui.productos.ProductosActivity
 import com.tuapp.ventas.utils.DateUtils
 
 class EstadisticasActivity : AppCompatActivity() {
@@ -34,8 +38,19 @@ class EstadisticasActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityEstadisticasBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        binding.toolbar.setNavigationOnClickListener { startActivity(Intent(this, MainActivity::class.java)) }
         binding.btnVolver.setOnClickListener { finish() }
         binding.btnExportar.setOnClickListener { exportarConPermisos() }
+        binding.bottomNavigation.selectedItemId = R.id.nav_estadisticas
+        binding.bottomNavigation.setOnItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.nav_scan -> { startActivity(Intent(this, MainActivity::class.java)); true }
+                R.id.nav_productos -> { startActivity(Intent(this, ProductosActivity::class.java)); true }
+                R.id.nav_estadisticas -> true
+                R.id.nav_exportar_ipb -> { startActivity(Intent(this, ExportarIPBActivity::class.java)); true }
+                else -> false
+            }
+        }
         observar()
     }
 

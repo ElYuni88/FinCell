@@ -20,6 +20,7 @@ class MainViewModel(private val repo: VentasRepository) : ViewModel() {
     val mensaje = MutableLiveData<String>()
     val productoEscaneado = MutableLiveData<Producto?>()
     val codigoNuevoProducto = MutableLiveData<String?>()
+    val productoCreadoParaVenta = MutableLiveData<Producto?>()
 
     fun seleccionarCuenta(id: Long) { cuentaSeleccionada.value = id }
     fun procesarEscaneo(codigoBarras: String, modo: ModoOperacion) = viewModelScope.launch {
@@ -27,12 +28,25 @@ class MainViewModel(private val repo: VentasRepository) : ViewModel() {
         if (modo == ModoOperacion.CUENTA && cuentaSeleccionada.value <= 0) { mensaje.value = "Primero selecciona o crea una cuenta"; return@launch }
         if (producto == null) codigoNuevoProducto.value = codigoBarras else productoEscaneado.value = producto
     }
+
+    fun procesarEscaneoAlta(codigoBarras: String) = viewModelScope.launch {
+        val producto = repo.buscarProducto(codigoBarras)
+        if (producto == null) codigoNuevoProducto.value = "FAB:$codigoBarras" else mensaje.value = "Producto ya registrado"
+    }
     fun registrarVentaDirecta(producto: Producto, cantidad: Int = 1) = viewModelScope.launch {
         val cantidadFinal = cantidad.coerceIn(1, 99)
         runCatching { repo.registrarVentaDirecta(producto, cantidadFinal) }
             .onSuccess { mensaje.value = "Venta registrada: ${producto.nombre} x$cantidadFinal" }
             .onFailure { mensaje.value = it.message ?: "Error al registrar" }
     }
+    fun crearProductoEscaneado(codigo: String, nombre: String, precio: Double, inventario: Int = 0, abrirVenta: Boolean = false) = viewModelScope.launch {
+        runCatching { repo.crearProducto(codigo, nombre, precio, inventario) }
+            .onSuccess { producto ->
+                if (abrirVenta) productoCreadoParaVenta.value = producto else mensaje.value = "Producto guardado exitosamente"
+            }
+            .onFailure { mensaje.value = it.message ?: "Error al guardar producto" }
+    }
+
     fun crearProductoYVender(codigo: String, nombre: String, precio: Double, modo: ModoOperacion, cantidad: Int = 1, inventario: Int = 0) = viewModelScope.launch {
         val cantidadFinal = cantidad.coerceIn(1, 99)
         runCatching {

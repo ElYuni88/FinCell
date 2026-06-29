@@ -16,10 +16,11 @@ import com.tuapp.ventas.data.model.ModoOperacion
 import com.tuapp.ventas.data.model.Producto
 import com.tuapp.ventas.databinding.DialogVentaDirectaBinding
 import com.tuapp.ventas.utils.DateUtils
+import android.widget.Toast
 
 /**
  * Diálogo Material para registrar ventas o agregar productos a cuenta.
- * La cantidad siempre está habilitada (1-99) y el subtotal se recalcula en vivo.
+ * La cantidad se limita al inventario disponible y el subtotal se recalcula en vivo.
  */
 class VentaDirectaDialog : DialogFragment() {
     var producto: Producto? = null
@@ -30,6 +31,8 @@ class VentaDirectaDialog : DialogFragment() {
     var onCancelar: (() -> Unit)? = null
 
     private var cantidad = 1
+    private val inventarioDisponible: Int get() = producto?.inventario ?: 99
+    private val sinInventario: Boolean get() = producto != null && inventarioDisponible <= 0
     private var _binding: DialogVentaDirectaBinding? = null
     private val binding get() = _binding!!
 
@@ -50,6 +53,7 @@ class VentaDirectaDialog : DialogFragment() {
                     val negativo = dialog.getButton(AlertDialog.BUTTON_NEGATIVE)
                     positivo.setTextColor(ContextCompat.getColor(requireContext(), R.color.white))
                     positivo.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(requireContext(), R.color.pos_green))
+                    positivo.isEnabled = !sinInventario
                     negativo.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_secondary))
                     negativo.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(requireContext(), R.color.pos_gray_button))
                 }
@@ -62,8 +66,10 @@ class VentaDirectaDialog : DialogFragment() {
         txtCodigo.text = "Código: ${producto?.codigoBarras ?: codigoNuevo.orEmpty()}"
         inputNombre.setText(producto?.nombre.orEmpty())
         inputPrecio.setText(producto?.precio?.toString().orEmpty())
-        inputNombre.isEnabled = esNuevo
-        inputPrecio.isEnabled = esNuevo
+        txtInventarioCero.visibility = if (sinInventario) android.view.View.VISIBLE else android.view.View.GONE
+        inputNombre.isEnabled = esNuevo && !sinInventario
+        inputPrecio.isEnabled = esNuevo && !sinInventario
+        if (sinInventario) cantidad = 0 else cantidad = cantidad.coerceIn(1, inventarioDisponible.coerceAtLeast(1))
         btnMenos.setOnClickListener { cambiarCantidad(-1) }
         btnMas.setOnClickListener { cambiarCantidad(1) }
         inputPrecio.addTextChangedListener(object : TextWatcher {
@@ -75,7 +81,9 @@ class VentaDirectaDialog : DialogFragment() {
     }
 
     private fun cambiarCantidad(delta: Int) {
-        val nueva = (cantidad + delta).coerceIn(1, 99)
+        val maximo = inventarioDisponible.coerceAtMost(99)
+        if (maximo <= 0) return
+        val nueva = (cantidad + delta).coerceIn(1, maximo)
         if (nueva == cantidad) return
         cantidad = nueva
         val anim = AnimationUtils.loadAnimation(requireContext(), R.anim.anim_bounce)
@@ -87,13 +95,18 @@ class VentaDirectaDialog : DialogFragment() {
         txtCantidad.text = cantidad.toString()
         val precio = inputPrecio.text?.toString()?.toDoubleOrNull() ?: 0.0
         txtSubtotal.text = "Subtotal: ${DateUtils.moneda(precio * cantidad)}"
-        btnMenos.isEnabled = cantidad > 1
-        btnMas.isEnabled = cantidad < 99
+        val maximo = inventarioDisponible.coerceAtMost(99)
+        btnMenos.isEnabled = !sinInventario && cantidad > 1
+        btnMas.isEnabled = !sinInventario && cantidad < maximo
     }
 
     private fun confirmar() {
         val precio = binding.inputPrecio.text?.toString()?.toDoubleOrNull()
-        onConfirmar?.invoke(producto, codigoNuevo, binding.inputNombre.text?.toString(), precio, cantidad.coerceIn(1, 99))
+        if (sinInventario || cantidad <= 0 || cantidad > inventarioDisponible) {
+            Toast.makeText(requireContext(), "Inventario insuficiente. Disponible: $inventarioDisponible", Toast.LENGTH_SHORT).show()
+            return
+        }
+        onConfirmar?.invoke(producto, codigoNuevo, binding.inputNombre.text?.toString(), precio, cantidad.coerceIn(1, inventarioDisponible.coerceAtMost(99)))
     }
 
     override fun onSaveInstanceState(outState: Bundle) {

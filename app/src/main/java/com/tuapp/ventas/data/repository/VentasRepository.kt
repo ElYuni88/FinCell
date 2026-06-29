@@ -77,6 +77,8 @@ class VentasRepository(private val db: AppDatabase) {
     }
     suspend fun registrarVentaDirecta(producto: Producto, cantidad: Int = 1) {
         require(cantidad in 1..99) { "La cantidad debe estar entre 1 y 99" }
+        val actualizado = productos.buscarPorId(producto.id) ?: producto
+        require(cantidad <= actualizado.inventario) { "Inventario insuficiente. Disponible: ${actualizado.inventario}" }
         repeat(cantidad) {
             ventas.insertar(VentaDirecta(productoId = producto.id, codigoBarras = producto.codigoBarras, nombreProducto = producto.nombre, precio = producto.precio))
             productos.descontarInventario(producto.id, 1)
@@ -108,6 +110,8 @@ class VentasRepository(private val db: AppDatabase) {
     }
     suspend fun agregarProductoACuenta(cuentaId: Long, producto: Producto, cantidad: Int) {
         require(cantidad in 1..99) { "La cantidad debe estar entre 1 y 99" }
+        val actualizado = productos.buscarPorId(producto.id) ?: producto
+        require(cantidad <= actualizado.inventario) { "Inventario insuficiente. Disponible: ${actualizado.inventario}" }
         val cuenta = cuentas.obtener(cuentaId) ?: error("Cuenta no encontrada")
         require(cuenta.estado == Cuenta.ESTADO_ABIERTA) { "No se puede modificar una cuenta cerrada" }
         val subtotal = producto.precio * cantidad
