@@ -43,9 +43,16 @@ class MainActivity : AppCompatActivity() {
     private val viewModel: MainViewModel by viewModels { MainViewModelFactory((application as VentasApplication).repository) }
     private val ventasAdapter = VentasRecientesAdapter()
     private lateinit var cuentasAdapter: CuentasActivasAdapter
+    private enum class ScanFlow { VENTA, ALTA_PRODUCTO }
+    private var scanFlow = ScanFlow.VENTA
     private val scanLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val codigo = result.data?.getStringExtra(BarcodeScannerActivity.EXTRA_BARCODE).orEmpty()
-        if (codigo.isNotBlank()) { if (prefs.sonidoEscaneo) SoundUtils.beep(); if (prefs.vibrarEscaneo) SoundUtils.vibrar(this); viewModel.procesarEscaneo(codigo, modo) }
+        if (codigo.isNotBlank()) {
+            if (prefs.sonidoEscaneo) SoundUtils.beep()
+            if (prefs.vibrarEscaneo) SoundUtils.vibrar(this)
+            if (scanFlow == ScanFlow.ALTA_PRODUCTO) viewModel.procesarEscaneoAlta(codigo) else viewModel.procesarEscaneo(codigo, modo)
+            scanFlow = ScanFlow.VENTA
+        }
     }
     private val cameraPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { if (it) abrirScanner() else Toast.makeText(this, "Permiso de cámara requerido", Toast.LENGTH_LONG).show() }
 
@@ -118,6 +125,7 @@ class MainActivity : AppCompatActivity() {
         txtCuentaSeleccionada.visibility = View.GONE
         btnNuevaCuenta.setOnClickListener { NuevoClienteDialog().apply { onCrear = { n, t, m, r -> viewModel.crearCuenta(n, t, m, r) } }.show(supportFragmentManager, "nuevo") }
         btnAgregarManualSimple.setOnClickListener { mostrarDialogoAgregarManual() }
+        fabAltaProducto.setOnClickListener { scanFlow = ScanFlow.ALTA_PRODUCTO; solicitarCamara() }
         bottomNavigation.setOnItemSelectedListener { item -> manejarNavegacionPrincipal(item.itemId) }
     }
     private fun observarDatos() {
@@ -136,7 +144,13 @@ class MainActivity : AppCompatActivity() {
         }
         viewModel.mensaje.observe(this) { Toast.makeText(this, it, Toast.LENGTH_SHORT).show() }
         viewModel.productoEscaneado.observe(this) { it?.let(::mostrarDialogoProducto) }
-        viewModel.codigoNuevoProducto.observe(this) { it?.let { codigo -> mostrarDialogoNuevoProducto(codigo) } }
+        viewModel.codigoNuevoProducto.observe(this) { valor ->
+            valor?.let { codigo ->
+                if (codigo.startsWith("FAB:")) mostrarDialogoAltaProductoEscaneado(codigo.removePrefix("FAB:"), abrirVentaAlGuardar = false)
+                else mostrarDialogoNuevoProducto(codigo)
+            }
+        }
+        viewModel.productoCreadoParaVenta.observe(this) { it?.let(::mostrarDialogoProducto) }
     }
     private fun cambiarModo(nuevo: ModoOperacion) { modo = nuevo; prefs.modoActual = nuevo; renderModo() }
     private fun renderModo() = with(binding) {
@@ -182,7 +196,7 @@ class MainActivity : AppCompatActivity() {
         }.show(supportFragmentManager, "producto_no_encontrado")
     }
 
-    private fun mostrarDialogoAltaProductoEscaneado(codigo: String) {
+    private fun mostrarDialogoAltaProductoEscaneado(codigo: String, abrirVentaAlGuardar: Boolean = true) {
         val dialogBinding = com.tuapp.ventas.databinding.DialogAgregarProductoBinding.inflate(layoutInflater)
         dialogBinding.inputCodigo.setText(codigo)
         dialogBinding.inputCodigo.isEnabled = false
@@ -191,14 +205,14 @@ class MainActivity : AppCompatActivity() {
             .setTitle("Agregar producto escaneado")
             .setView(dialogBinding.root)
             .setNegativeButton("Cancelar", null)
-            .setPositiveButton("Guardar y vender") { _, _ ->
+            .setPositiveButton("Guardar") { _, _ ->
                 val nombre = dialogBinding.inputNombre.text?.toString()?.trim().orEmpty()
                 val precio = dialogBinding.inputPrecio.text?.toString()?.toDoubleOrNull()
                 val cantidad = dialogBinding.inputInventario.text?.toString()?.toIntOrNull() ?: 1
                 if (nombre.isBlank() || precio == null || precio < 0.0 || cantidad < 0) {
                     Toast.makeText(this, "Nombre, precio y cantidad en inventario válidos son requeridos", Toast.LENGTH_SHORT).show()
                 } else {
-                    viewModel.crearProductoYVender(codigo, nombre, precio, modo, 1, cantidad)
+                    viewModel.crearProductoEscaneado(codigo, nombre, precio, cantidad, abrirVentaAlGuardar)
                 }
             }
             .show()

@@ -54,6 +54,7 @@ class ProductosActivity : AppCompatActivity() {
     }
 
     private fun configurarClicks() = with(binding) {
+        toolbar.setNavigationOnClickListener { startActivity(Intent(this@ProductosActivity, MainActivity::class.java)) }
         btnAgregarEscaneo.setOnClickListener { solicitarCamara() }
         btnAgregarManual.setOnClickListener { mostrarDialogoAgregar(codigoEscaneado = null) }
         btnVolver.setOnClickListener { finish() }
