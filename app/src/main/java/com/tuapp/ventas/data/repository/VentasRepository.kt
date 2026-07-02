@@ -29,21 +29,21 @@ class VentasRepository(private val db: AppDatabase) {
     suspend fun buscarClientesPorNombre(query: String): List<Cliente> = clientes.buscarPorNombre(query)
     suspend fun crearProducto(codigo: String, nombre: String, precio: Double, inventario: Int = 0): Producto {
         val codigoNormalizado = codigo.ifBlank { generarCodigoManual() }
-        val id = productos.insertar(Producto(codigoBarras = codigoNormalizado, nombre = nombre, precio = precio, inventario = inventario.coerceAtLeast(0), tipoProducto = Producto.TIPO_CODIGO_BARRAS))
+        val id = productos.insertar(Producto(codigoBarras = codigoNormalizado, nombre = nombre, precio = precio, inventario = inventario.coerceAtLeast(0), tipoProducto = Producto.TIPO_CODIGO_BARRAS, esManual = false))
         return productos.buscarPorCodigo(codigoNormalizado)!!.copy(id = id)
     }
 
     suspend fun crearProductoManual(codigoManual: String?, nombre: String, precio: Double): Producto {
         val codigoNormalizado = codigoManual?.trim()?.ifBlank { null } ?: generarCodigoManual()
         productos.buscarPorCodigo(codigoNormalizado)?.let { return it }
-        val producto = Producto(codigoBarras = codigoNormalizado, nombre = nombre, precio = precio, tipoProducto = Producto.TIPO_MANUAL)
+        val producto = Producto(codigoBarras = codigoNormalizado, nombre = nombre, precio = precio, tipoProducto = Producto.TIPO_MANUAL, esManual = true)
         val id = productos.insertar(producto)
         return producto.copy(id = id)
     }
 
     suspend fun guardarProducto(producto: Producto): Producto {
         val codigoFinal = producto.codigoBarras.ifBlank { generarCodigoManual() }
-        val normalizado = producto.copy(codigoBarras = codigoFinal, tipoProducto = if (producto.codigoBarras.isBlank()) Producto.TIPO_MANUAL else producto.tipoProducto)
+        val normalizado = producto.copy(codigoBarras = codigoFinal, tipoProducto = if (producto.codigoBarras.isBlank()) Producto.TIPO_MANUAL else producto.tipoProducto, esManual = producto.esManual || producto.tipoProducto == Producto.TIPO_MANUAL || producto.codigoBarras.startsWith("MANUAL_", true))
         val existente = productos.buscarPorCodigo(codigoFinal)
         require(existente == null || existente.id == producto.id) { "Ya existe un producto con ese código" }
         return if (normalizado.id == 0L) {
@@ -62,13 +62,14 @@ class VentasRepository(private val db: AppDatabase) {
     suspend fun actualizarProducto(producto: Producto) = productos.actualizar(producto)
     suspend fun buscarProductoPorCodigo(codigo: String): Producto? = productos.buscarPorCodigo(codigo)
     suspend fun existeCodigoDuplicado(codigo: String, id: Long): Boolean = codigo.isNotBlank() && productos.existeCodigoDuplicado(codigo, id) > 0
+    suspend fun verificarCodigoDuplicado(codigo: String): Boolean = codigo.isNotBlank() && productos.existeCodigo(codigo) > 0
     fun obtenerProductosAgotados(): Flow<List<Producto>> = productos.obtenerAgotados()
     fun productosSinCodigo(): Flow<List<Producto>> = productos.obtenerProductosSinCodigo()
     fun productosAgotados(): Flow<Int> = productos.observarProductosAgotados()
     suspend fun listarProductos(): List<Producto> = productos.listarTodos()
 
     private suspend fun generarCodigoManual(): String {
-        var consecutivo = productos.listarTodos().count { it.tipoProducto == Producto.TIPO_MANUAL } + 1
+        var consecutivo = productos.listarTodos().count { it.esManual || it.tipoProducto == Producto.TIPO_MANUAL } + 1
         while (true) {
             val codigo = "MANUAL_%03d".format(consecutivo)
             if (productos.buscarPorCodigo(codigo) == null) return codigo

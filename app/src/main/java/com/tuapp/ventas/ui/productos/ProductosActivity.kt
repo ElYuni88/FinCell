@@ -4,12 +4,13 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.view.View
 import android.text.Editable
 import android.text.TextWatcher
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.appcompat.app.AppCompatActivity
+import com.tuapp.ventas.ui.base.BaseActivity
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -24,7 +25,7 @@ import com.tuapp.ventas.ui.main.MainActivity
 import com.tuapp.ventas.ui.scanner.BarcodeScannerActivity
 
 /** Pantalla de gestión de productos con alta por escáner, alta manual, edición y eliminación. */
-class ProductosActivity : AppCompatActivity() {
+class ProductosActivity : BaseActivity() {
     private lateinit var binding: ActivityProductosBinding
     private val viewModel: ProductosViewModel by viewModels { ProductosViewModelFactory((application as VentasApplication).repository) }
     private val adapter = ProductoAdapter(::mostrarDialogoEditar, ::confirmarEliminar)
@@ -43,6 +44,8 @@ class ProductosActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityProductosBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        binding.toolbar.visibility = View.GONE
+        binding.bottomNavigation.visibility = View.GONE
         configurarRecycler()
         configurarClicks()
         observarDatos()
@@ -131,7 +134,7 @@ class ProductosActivity : AppCompatActivity() {
 
                 val tipo = if (codigo.startsWith("MANUAL_", ignoreCase = true)) Producto.TIPO_MANUAL else Producto.TIPO_CODIGO_BARRAS
                 val base = producto ?: Producto(nombre = nombre, precio = precio)
-                viewModel.guardar(base.copy(nombre = nombre, codigoBarras = codigo, precio = precio, inventario = inventario, tipoProducto = producto?.tipoProducto ?: tipo))
+                viewModel.guardar(base.copy(nombre = nombre, codigoBarras = codigo, precio = precio, inventario = inventario, tipoProducto = producto?.tipoProducto ?: tipo, esManual = producto?.esManual ?: (tipo == Producto.TIPO_MANUAL)))
             }
             .show()
     }

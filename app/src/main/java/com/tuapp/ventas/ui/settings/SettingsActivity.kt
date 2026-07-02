@@ -1,11 +1,11 @@
 package com.tuapp.ventas.ui.settings
 
 import android.os.Bundle
-import androidx.appcompat.app.AppCompatActivity
+import com.tuapp.ventas.ui.base.BaseActivity
 import com.tuapp.ventas.databinding.ActivitySettingsBinding
 import com.tuapp.ventas.utils.PreferencesManager
 
-class SettingsActivity : AppCompatActivity() {
+class SettingsActivity : BaseActivity() {
     private lateinit var binding: ActivitySettingsBinding
     private lateinit var prefs: PreferencesManager
     override fun onCreate(savedInstanceState: Bundle?) { super.onCreate(savedInstanceState); binding = ActivitySettingsBinding.inflate(layoutInflater); setContentView(binding.root); prefs = PreferencesManager(this); cargar(); binding.btnGuardar.setOnClickListener { guardar(); finish() }; binding.btnVolver.setOnClickListener { finish() } }

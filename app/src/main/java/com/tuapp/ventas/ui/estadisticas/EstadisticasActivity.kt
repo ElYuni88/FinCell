@@ -6,10 +6,11 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.appcompat.app.AppCompatActivity
+import com.tuapp.ventas.ui.base.BaseActivity
 import androidx.core.content.ContextCompat
 import com.github.mikephil.charting.data.BarData
 import com.github.mikephil.charting.data.BarDataSet
@@ -22,7 +23,7 @@ import com.tuapp.ventas.ui.main.MainActivity
 import com.tuapp.ventas.ui.productos.ProductosActivity
 import com.tuapp.ventas.utils.DateUtils
 
-class EstadisticasActivity : AppCompatActivity() {
+class EstadisticasActivity : BaseActivity() {
     private lateinit var binding: ActivityEstadisticasBinding
 
     private val storagePermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) {
@@ -38,6 +39,8 @@ class EstadisticasActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityEstadisticasBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        binding.toolbar.visibility = View.GONE
+        binding.bottomNavigation.visibility = View.GONE
         binding.toolbar.setNavigationOnClickListener { startActivity(Intent(this, MainActivity::class.java)) }
         binding.btnVolver.setOnClickListener { finish() }
         binding.btnExportar.setOnClickListener { exportarConPermisos() }

@@ -14,6 +14,8 @@ class ProductosViewModel(private val repo: VentasRepository) : ViewModel() {
     val productos = repo.obtenerTodosLosProductos().asLiveData()
     val mensaje = MutableLiveData<String>()
 
+    suspend fun verificarCodigoDuplicado(codigo: String): Boolean = repo.verificarCodigoDuplicado(codigo)
+
     fun guardar(producto: Producto) = viewModelScope.launch {
         runCatching {
             val codigo = producto.codigoBarras.trim()
