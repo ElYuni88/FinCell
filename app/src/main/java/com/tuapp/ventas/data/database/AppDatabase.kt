@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
 
 @Database(
     entities = [Producto::class, VentaDirecta::class, Cliente::class, Cuenta::class, DetalleCuenta::class, VentaFinal::class],
-    version = 3,
+    version = 4,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -72,12 +72,13 @@ abstract class AppDatabase : RoomDatabase() {
                         tipo_producto TEXT NOT NULL DEFAULT 'CODIGO_BARRAS',
                         inventario INTEGER NOT NULL DEFAULT 0,
                         vendidos INTEGER NOT NULL DEFAULT 0,
+                        esManual INTEGER NOT NULL DEFAULT 0,
                         fecha_creacion INTEGER NOT NULL
                     )
                 """.trimIndent())
                 database.execSQL("""
-                    INSERT INTO productos_new (id, codigo_barras, nombre, precio, tipo_producto, inventario, vendidos, fecha_creacion)
-                    SELECT id, COALESCE(NULLIF(codigo_barras, ''), 'LEGACY_' || id), nombre, precio, 'CODIGO_BARRAS', 0, 0, fecha_creacion FROM productos
+                    INSERT INTO productos_new (id, codigo_barras, nombre, precio, tipo_producto, inventario, vendidos, esManual, fecha_creacion)
+                    SELECT id, COALESCE(NULLIF(codigo_barras, ''), 'LEGACY_' || id), nombre, precio, 'CODIGO_BARRAS', 0, 0, 0, fecha_creacion FROM productos
                 """.trimIndent())
                 database.execSQL("DROP TABLE productos")
                 database.execSQL("ALTER TABLE productos_new RENAME TO productos")
@@ -106,10 +107,18 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE productos ADD COLUMN esManual INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("UPDATE productos SET esManual = 1 WHERE tipo_producto = 'MANUAL' OR codigo_barras LIKE 'MANUAL_%'")
+            }
+        }
+
         @Volatile private var INSTANCE: AppDatabase? = null
         fun getDatabase(context: Context): AppDatabase = INSTANCE ?: synchronized(this) {
             Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, "ventas_seguras.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .addCallback(object : Callback() {
                     override fun onCreate(db: SupportSQLiteDatabase) {
                         super.onCreate(db)

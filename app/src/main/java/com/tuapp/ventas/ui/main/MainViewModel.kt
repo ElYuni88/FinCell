@@ -23,6 +23,7 @@ class MainViewModel(private val repo: VentasRepository) : ViewModel() {
     val productoCreadoParaVenta = MutableLiveData<Producto?>()
 
     fun seleccionarCuenta(id: Long) { cuentaSeleccionada.value = id }
+    suspend fun verificarCodigoDuplicado(codigo: String): Boolean = repo.verificarCodigoDuplicado(codigo)
     fun procesarEscaneo(codigoBarras: String, modo: ModoOperacion) = viewModelScope.launch {
         val producto = repo.buscarProducto(codigoBarras)
         if (modo == ModoOperacion.CUENTA && cuentaSeleccionada.value <= 0) { mensaje.value = "Primero selecciona o crea una cuenta"; return@launch }

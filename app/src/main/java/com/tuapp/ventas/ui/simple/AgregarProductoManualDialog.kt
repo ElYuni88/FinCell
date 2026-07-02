@@ -42,7 +42,7 @@ class AgregarProductoManualDialog : DialogFragment() {
             productos = (requireActivity().application as VentasApplication).repository.productosSinCodigo().first()
             val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, productos.map { it.nombre })
             binding.inputNombre.setAdapter(adapter)
-            binding.inputNombre.threshold = 1
+            binding.inputNombre.threshold = 2
             binding.inputNombre.setOnItemClickListener { _, _, position, _ ->
                 productos.firstOrNull { it.nombre == adapter.getItem(position) }?.let { p ->
                     productoSeleccionado = p

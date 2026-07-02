@@ -10,8 +10,7 @@ import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.appcompat.app.ActionBarDrawerToggle
-import androidx.appcompat.app.AppCompatActivity
+import com.tuapp.ventas.ui.base.BaseActivity
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -36,7 +35,7 @@ import com.tuapp.ventas.utils.DateUtils
 import com.tuapp.ventas.utils.PreferencesManager
 import com.tuapp.ventas.utils.SoundUtils
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : BaseActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var prefs: PreferencesManager
     private var modo = ModoOperacion.SIMPLE
@@ -60,8 +59,9 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        setSupportActionBar(binding.toolbar)
-        configurarDrawer()
+        binding.toolbar.visibility = View.GONE
+        binding.navView.visibility = View.GONE
+        binding.bottomNavigation.visibility = View.GONE
         prefs = PreferencesManager(this)
         modo = when (prefs.modoPredeterminado) {
             "SIMPLE" -> ModoOperacion.SIMPLE
@@ -72,16 +72,6 @@ class MainActivity : AppCompatActivity() {
         viewModel.seleccionarCuenta(prefs.cuentaSeleccionadaId)
         configurarListas(); configurarClicks(); observarDatos(); renderModo()
         if (!prefs.tooltipModoMostrado) { Toast.makeText(this, "Cambia entre venta directa y cuentas sin perder datos", Toast.LENGTH_LONG).show(); prefs.tooltipModoMostrado = true }
-    }
-
-    private fun configurarDrawer() {
-        val toggle = ActionBarDrawerToggle(this, binding.drawerLayout, binding.toolbar, R.string.app_name, R.string.app_name)
-        binding.drawerLayout.addDrawerListener(toggle)
-        toggle.syncState()
-        binding.navView.setNavigationItemSelectedListener { item ->
-            binding.drawerLayout.closeDrawers()
-            manejarNavegacionPrincipal(item.itemId)
-        }
     }
 
     private fun manejarNavegacionPrincipal(itemId: Int): Boolean = when (itemId) {

@@ -6,7 +6,7 @@ import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
+import com.tuapp.ventas.ui.base.BaseActivity
 import androidx.lifecycle.lifecycleScope
 import com.google.gson.GsonBuilder
 import com.tuapp.ventas.VentasApplication
@@ -17,7 +17,7 @@ import com.tuapp.ventas.utils.DateUtils
 import kotlinx.coroutines.launch
 import java.io.File
 
-class ExportarIPBActivity : AppCompatActivity() {
+class ExportarIPBActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         exportar()

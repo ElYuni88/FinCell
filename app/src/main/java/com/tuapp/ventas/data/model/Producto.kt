@@ -14,6 +14,7 @@ data class Producto(
     @ColumnInfo(name = "tipo_producto") val tipoProducto: String = TIPO_CODIGO_BARRAS,
     val inventario: Int = 0,
     val vendidos: Int = 0,
+    @ColumnInfo(name = "esManual") val esManual: Boolean = false,
     @ColumnInfo(name = "fecha_creacion") val fechaCreacion: Long = System.currentTimeMillis()
 ) {
     companion object {
