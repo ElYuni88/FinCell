@@ -14,6 +14,7 @@ interface CuentaDao {
     @Query("UPDATE cuentas SET total = :total WHERE id = :cuentaId") suspend fun actualizarTotal(cuentaId: Long, total: Double)
     @Query("SELECT * FROM cuentas WHERE estado = 'ABIERTA' ORDER BY fecha_apertura DESC") fun observarAbiertas(): Flow<List<Cuenta>>
     @Query("SELECT COUNT(*) FROM cuentas WHERE estado = 'ABIERTA'") fun observarCantidadAbiertas(): Flow<Int>
+    @Query("SELECT COUNT(*) FROM cuentas WHERE estado = 'ABIERTA'") suspend fun contarAbiertas(): Int
     @Query("""
         SELECT c.id AS id, c.cliente_id AS clienteId,
                CASE WHEN c.esClienteTemporal = 1 THEN COALESCE(c.nombre_cliente_temporal, 'Cliente temporal') ELSE COALESCE(cl.nombre, 'Cliente') END AS nombreCliente,
@@ -28,6 +29,23 @@ interface CuentaDao {
         GROUP BY c.id
         ORDER BY CASE WHEN c.estado = 'ABIERTA' THEN 0 ELSE 1 END, c.fecha_apertura DESC
     """) fun observarResumenCuentas(): Flow<List<CuentaResumen>>
+
+    @Query("""
+        SELECT c.id AS id, c.cliente_id AS clienteId,
+               CASE WHEN c.esClienteTemporal = 1 THEN COALESCE(c.nombre_cliente_temporal, 'Cliente temporal') ELSE COALESCE(cl.nombre, 'Cliente') END AS nombreCliente,
+               CASE WHEN c.esClienteTemporal = 1 THEN c.mesa_temporal ELSE cl.mesa END AS mesa,
+               c.fecha_apertura AS fechaApertura, c.fecha_cierre AS fechaCierre,
+               c.estado AS estado, c.total AS total,
+               COALESCE(SUM(d.cantidad), 0) AS cantidadProductos,
+               c.esClienteTemporal AS esClienteTemporal
+        FROM cuentas c
+        LEFT JOIN clientes cl ON cl.id = c.cliente_id
+        LEFT JOIN detalle_cuenta d ON d.cuenta_id = c.id
+        WHERE (c.estado = 'ABIERTA' AND c.fecha_apertura BETWEEN :inicio AND :fin)
+           OR (c.estado = 'CERRADA' AND c.fecha_cierre BETWEEN :inicio AND :fin)
+        GROUP BY c.id
+        ORDER BY CASE WHEN c.estado = 'ABIERTA' THEN 0 ELSE 1 END, c.fecha_apertura DESC
+    """) fun observarResumenCuentasPorDia(inicio: Long, fin: Long): Flow<List<CuentaResumen>>
     @Query("SELECT * FROM cuentas WHERE id = :id") suspend fun obtener(id: Long): Cuenta?
     @Transaction @Query("SELECT * FROM cuentas WHERE id = :id") fun observarCuentaConDetalles(id: Long): Flow<CuentaConDetalles?>
     @Transaction @Query("SELECT * FROM cuentas WHERE id = :id") suspend fun obtenerCuentaConDetalles(id: Long): CuentaConDetalles?

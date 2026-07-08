@@ -86,13 +86,39 @@
                     android:background="@drawable/modo_simple_bg"
                     android:orientation="vertical">
 
-                    <TextView
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="● MODO VENTA DIRECTA"
-                        android:textColor="@color/pos_green"
-                        android:textSize="14sp"
-                        android:textStyle="bold" />
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="● MODO VENTA DIRECTA"
+                            android:textColor="@color/pos_green"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+
+                        <ImageView
+                            android:id="@+id/imgCalendarioSimple"
+                            android:layout_width="32dp"
+                            android:layout_height="32dp"
+                            android:contentDescription="Seleccionar fecha"
+                            android:padding="4dp"
+                            android:src="@drawable/ic_calendar" />
+
+                        <TextView
+                            android:id="@+id/txtFechaSimple"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:background="?attr/selectableItemBackground"
+                            android:padding="4dp"
+                            android:text="Fecha: --/--/----"
+                            android:textAppearance="@style/TextAppearance.FinSell.Secondary"
+                            android:textStyle="bold" />
+                    </LinearLayout>
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnEscanearSimple"
@@ -211,13 +237,39 @@
                     android:background="@drawable/modo_cuenta_bg"
                     android:orientation="vertical">
 
-                    <TextView
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="● MODO CUENTAS POR CLIENTE"
-                        android:textColor="@color/pos_blue"
-                        android:textSize="14sp"
-                        android:textStyle="bold" />
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="● MODO CUENTAS POR CLIENTE"
+                            android:textColor="@color/pos_blue"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+
+                        <ImageView
+                            android:id="@+id/imgCalendarioCuenta"
+                            android:layout_width="32dp"
+                            android:layout_height="32dp"
+                            android:contentDescription="Seleccionar fecha"
+                            android:padding="4dp"
+                            android:src="@drawable/ic_calendar" />
+
+                        <TextView
+                            android:id="@+id/txtFechaCuenta"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:background="?attr/selectableItemBackground"
+                            android:padding="4dp"
+                            android:text="Fecha: --/--/----"
+                            android:textAppearance="@style/TextAppearance.FinSell.Secondary"
+                            android:textStyle="bold" />
+                    </LinearLayout>
 
                     <TextView
                         android:id="@+id/txtCuentasAbiertasInfo"

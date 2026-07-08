@@ -12,8 +12,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 @Database(
-    entities = [Producto::class, VentaDirecta::class, Cliente::class, Cuenta::class, DetalleCuenta::class, VentaFinal::class],
-    version = 4,
+    entities = [Producto::class, VentaDirecta::class, Cliente::class, Cuenta::class, DetalleCuenta::class, VentaFinal::class, Notificacion::class],
+    version = 5,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -23,6 +23,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun cuentaDao(): CuentaDao
     abstract fun detalleCuentaDao(): DetalleCuentaDao
     abstract fun ventaFinalDao(): VentaFinalDao
+    abstract fun notificacionDao(): NotificacionDao
 
     companion object {
         private val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -115,10 +116,26 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS notificaciones (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        tipo TEXT NOT NULL,
+                        mensaje TEXT NOT NULL,
+                        fecha_generacion INTEGER NOT NULL,
+                        leida INTEGER NOT NULL DEFAULT 0,
+                        eliminada INTEGER NOT NULL DEFAULT 0
+                    )
+                """.trimIndent())
+            }
+        }
+
         @Volatile private var INSTANCE: AppDatabase? = null
         fun getDatabase(context: Context): AppDatabase = INSTANCE ?: synchronized(this) {
             Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, "ventas_seguras.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                 .addCallback(object : Callback() {
                     override fun onCreate(db: SupportSQLiteDatabase) {
                         super.onCreate(db)
