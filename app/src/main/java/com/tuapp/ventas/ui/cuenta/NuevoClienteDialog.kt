@@ -97,6 +97,7 @@ class NuevoClienteDialog : DialogFragment() {
             binding.inputTelefono.setText(cliente.telefono.orEmpty())
             binding.inputMesa.setText(cliente.mesa.orEmpty())
             binding.checkRecordarCuenta.isChecked = cliente.recordarCuenta
+            binding.inputNombre.dismissDropDown()
         }
     }
 }
