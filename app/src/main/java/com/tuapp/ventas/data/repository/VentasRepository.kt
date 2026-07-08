@@ -7,6 +7,8 @@ import com.tuapp.ventas.data.model.relaciones.CuentaResumen
 import com.tuapp.ventas.utils.DateUtils
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import java.text.Normalizer
+import java.util.Calendar
 
 class VentasRepository(private val db: AppDatabase) {
     private val productos = db.productoDao()
@@ -15,20 +17,31 @@ class VentasRepository(private val db: AppDatabase) {
     private val cuentas = db.cuentaDao()
     private val detalles = db.detalleCuentaDao()
     private val finales = db.ventaFinalDao()
+    private val notificaciones = db.notificacionDao()
 
-    fun ventasDirectasHoy(): Flow<List<VentaDirecta>> = ventas.observarDelDia(DateUtils.inicioDia(), DateUtils.finDia())
-    fun totalVentasDirectasHoy(): Flow<Double> = ventas.observarTotalDia(DateUtils.inicioDia(), DateUtils.finDia())
-    fun cantidadVentasDirectasHoy(): Flow<Int> = ventas.observarCantidadDia(DateUtils.inicioDia(), DateUtils.finDia())
+    fun ventasDirectasHoy(): Flow<List<VentaDirecta>> = ventasDirectasPorFecha(System.currentTimeMillis())
+    fun ventasDirectasPorFecha(fecha: Long): Flow<List<VentaDirecta>> = ventas.observarDelDia(inicioDia(fecha), finDia(fecha))
+    fun totalVentasDirectasHoy(): Flow<Double> = totalVentasDirectasPorFecha(System.currentTimeMillis())
+    fun totalVentasDirectasPorFecha(fecha: Long): Flow<Double> = ventas.observarTotalDia(inicioDia(fecha), finDia(fecha))
+    fun cantidadVentasDirectasHoy(): Flow<Int> = cantidadVentasDirectasPorFecha(System.currentTimeMillis())
+    fun cantidadVentasDirectasPorFecha(fecha: Long): Flow<Int> = ventas.observarCantidadDia(inicioDia(fecha), finDia(fecha))
     fun cuentasActivas(): Flow<List<Cuenta>> = cuentas.observarAbiertas()
     fun cantidadCuentasAbiertas(): Flow<Int> = cuentas.observarCantidadAbiertas()
     fun resumenCuentas(): Flow<List<CuentaResumen>> = cuentas.observarResumenCuentas()
-    fun totalCuentasCerradasHoy(): Flow<Double> = cuentas.observarTotalCerradasDia(DateUtils.inicioDia(), DateUtils.finDia())
-    fun cantidadCuentasCerradasHoy(): Flow<Int> = cuentas.observarCantidadCerradasDia(DateUtils.inicioDia(), DateUtils.finDia())
+    fun resumenCuentasPorFecha(fecha: Long): Flow<List<CuentaResumen>> = cuentas.observarResumenCuentasPorDia(inicioDia(fecha), finDia(fecha))
+    fun totalCuentasCerradasHoy(): Flow<Double> = totalCuentasCerradasPorFecha(System.currentTimeMillis())
+    fun totalCuentasCerradasPorFecha(fecha: Long): Flow<Double> = cuentas.observarTotalCerradasDia(inicioDia(fecha), finDia(fecha))
+    fun cantidadCuentasCerradasHoy(): Flow<Int> = cantidadCuentasCerradasPorFecha(System.currentTimeMillis())
+    fun cantidadCuentasCerradasPorFecha(fecha: Long): Flow<Int> = cuentas.observarCantidadCerradasDia(inicioDia(fecha), finDia(fecha))
     fun observarCuenta(cuentaId: Long): Flow<CuentaConDetalles?> = cuentas.observarCuentaConDetalles(cuentaId)
 
     suspend fun buscarProducto(codigo: String): Producto? = productos.buscarPorCodigo(codigo)
     suspend fun buscarProductoPorId(id: Long): Producto? = productos.buscarPorId(id)
-    suspend fun buscarProductosManualesPorNombre(query: String): List<Producto> = if (query.length < 2) emptyList() else productos.buscarManualesPorNombre(query)
+    suspend fun buscarProductosManualesPorNombre(query: String): List<Producto> {
+        val normalizada = normalizar(query)
+        if (normalizada.length < 2) return emptyList()
+        return productos.listarManuales().filter { normalizar(it.nombre).contains(normalizada) }.sortedBy { it.nombre }.take(10)
+    }
     suspend fun buscarClientesPorNombre(query: String): List<Cliente> = clientes.buscarPorNombre(query)
     suspend fun crearProducto(codigo: String, nombre: String, precio: Double, inventario: Int = 0): Producto {
         val codigoNormalizado = codigo.ifBlank { generarCodigoManual() }
@@ -70,11 +83,30 @@ class VentasRepository(private val db: AppDatabase) {
     fun productosSinCodigo(): Flow<List<Producto>> = productos.obtenerProductosSinCodigo()
     fun productosBajoInventario(limite: Int = 5): Flow<List<Producto>> = productos.observarProductosBajoInventario(limite)
     fun cantidadTransferenciasHoy(): Flow<Int> = finales.observarCantidadPorMetodoDia("TRANSFERENCIA", DateUtils.inicioDia(), DateUtils.finDia())
-    fun hayNotificaciones(): Flow<Boolean> = combine(productosBajoInventario(), cantidadCuentasAbiertas(), cantidadTransferenciasHoy()) { bajoStock, cuentasAbiertas, transferenciasHoy ->
-        bajoStock.isNotEmpty() || cuentasAbiertas > 6 || transferenciasHoy > 6
+    fun hayNotificaciones(): Flow<Boolean> = combine(notificaciones.observarCantidadNoLeidas(), notificaciones.observarCantidadNoEliminadas()) { noLeidas, noEliminadas -> noLeidas > 0 || noEliminadas > 0 }
+    fun observarNotificaciones(): Flow<List<Notificacion>> = notificaciones.observarNoEliminadas()
+    suspend fun marcarNotificacionesLeidas(ids: List<Long>) = notificaciones.marcarLeidas(ids)
+    suspend fun eliminarNotificacion(id: Long) = notificaciones.eliminar(id)
+    suspend fun eliminarNotificaciones(ids: List<Long>) = notificaciones.eliminar(ids)
+    suspend fun generarNotificacionesSistema() {
+        val bajoStock = productos.listarTodos().filter { it.inventario < 5 }
+        if (bajoStock.isNotEmpty()) crearNotificacionSiNoExiste(Notificacion.TIPO_BAJO_INVENTARIO, "Productos con inventario menor a 5 unidades: ${bajoStock.joinToString { it.nombre }}")
+        val abiertas = cuentas.contarAbiertas()
+        if (abiertas > 6) crearNotificacionSiNoExiste(Notificacion.TIPO_CUENTAS_ABIERTAS, "Hay $abiertas cuentas abiertas simultáneamente")
+        val transferencias = finales.contarPorMetodoDia("TRANSFERENCIA", DateUtils.inicioDia(), DateUtils.finDia())
+        if (transferencias > 6) crearNotificacionSiNoExiste(Notificacion.TIPO_TRANSFERENCIAS_DIA, "Hay $transferencias cuentas pagadas por transferencia hoy")
     }
     fun productosAgotados(): Flow<Int> = productos.observarProductosAgotados()
     suspend fun listarProductos(): List<Producto> = productos.listarTodos()
+
+    private suspend fun crearNotificacionSiNoExiste(tipo: String, mensaje: String) {
+        if (notificaciones.buscarActivaPorTipo(tipo) == null) notificaciones.insertar(Notificacion(tipo = tipo, mensaje = mensaje))
+    }
+
+    private fun normalizar(texto: String): String = Normalizer.normalize(texto.trim(), Normalizer.Form.NFD).replace("\\p{Mn}+".toRegex(), "").lowercase()
+
+    private fun inicioDia(fecha: Long): Long = Calendar.getInstance().apply { timeInMillis = fecha; set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
+    private fun finDia(fecha: Long): Long = Calendar.getInstance().apply { timeInMillis = fecha; set(Calendar.HOUR_OF_DAY, 23); set(Calendar.MINUTE, 59); set(Calendar.SECOND, 59); set(Calendar.MILLISECOND, 999) }.timeInMillis
 
     private suspend fun generarCodigoManual(): String {
         var consecutivo = productos.listarTodos().count { it.esManual || it.tipoProducto == Producto.TIPO_MANUAL } + 1

@@ -14,6 +14,7 @@ interface ProductoDao {
     @Query("SELECT * FROM productos WHERE esManual = 1 ORDER BY nombre ASC") fun obtenerProductosManuales(): Flow<List<Producto>>
     @Query("SELECT * FROM productos WHERE esManual = 1 ORDER BY nombre ASC") fun obtenerProductosSinCodigo(): Flow<List<Producto>>
     @Query("SELECT * FROM productos WHERE esManual = 1 ORDER BY nombre ASC") suspend fun listarProductosSinCodigo(): List<Producto>
+    @Query("SELECT * FROM productos WHERE esManual = 1 ORDER BY nombre ASC") suspend fun listarManuales(): List<Producto>
     @Query("SELECT * FROM productos WHERE esManual = 1 AND LOWER(nombre) LIKE '%' || LOWER(:query) || '%' ORDER BY nombre ASC LIMIT 10") suspend fun buscarManualesPorNombre(query: String): List<Producto>
     @Query("SELECT * FROM productos WHERE inventario < :limite ORDER BY inventario ASC, nombre ASC") fun observarProductosBajoInventario(limite: Int = 5): Flow<List<Producto>>
     @Query("SELECT COUNT(*) FROM productos WHERE inventario = 0") fun observarProductosAgotados(): Flow<Int>

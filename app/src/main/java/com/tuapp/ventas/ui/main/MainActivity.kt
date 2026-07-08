@@ -1,6 +1,7 @@
 package com.tuapp.ventas.ui.main
 
 import android.Manifest
+import android.app.DatePickerDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
@@ -34,6 +35,9 @@ import com.tuapp.ventas.ui.simple.VentaDirectaDialog
 import com.tuapp.ventas.utils.DateUtils
 import com.tuapp.ventas.utils.PreferencesManager
 import com.tuapp.ventas.utils.SoundUtils
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 
 class MainActivity : BaseActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -70,7 +74,7 @@ class MainActivity : BaseActivity() {
         }
         prefs.modoActual = modo
         viewModel.seleccionarCuenta(prefs.cuentaSeleccionadaId)
-        configurarListas(); configurarClicks(); observarDatos(); renderModo()
+        configurarListas(); configurarClicks(); observarDatos(); renderModo(); viewModel.generarNotificaciones()
         if (!prefs.tooltipModoMostrado) { Toast.makeText(this, "Cambia entre venta directa y cuentas sin perder datos", Toast.LENGTH_LONG).show(); prefs.tooltipModoMostrado = true }
     }
 
@@ -116,6 +120,10 @@ class MainActivity : BaseActivity() {
         btnNuevaCuenta.setOnClickListener { NuevoClienteDialog().apply { onCrear = { n, t, m, r -> viewModel.crearCuenta(n, t, m, r) } }.show(supportFragmentManager, "nuevo") }
         btnAgregarManualSimple.setOnClickListener { mostrarDialogoAgregarManual() }
         fabAltaProducto.setOnClickListener { scanFlow = ScanFlow.ALTA_PRODUCTO; solicitarCamara() }
+        imgCalendarioSimple.setOnClickListener { mostrarSelectorFecha() }
+        txtFechaSimple.setOnClickListener { mostrarSelectorFecha() }
+        imgCalendarioCuenta.setOnClickListener { mostrarSelectorFecha() }
+        txtFechaCuenta.setOnClickListener { mostrarSelectorFecha() }
         bottomNavigation.setOnItemSelectedListener { item -> manejarNavegacionPrincipal(item.itemId) }
     }
     private fun observarDatos() {
@@ -126,6 +134,7 @@ class MainActivity : BaseActivity() {
         viewModel.cantidadCuentasAbiertas.observe(this) { cantidad ->
             binding.txtCuentasAbiertasInfo.text = "Cuentas abiertas: $cantidad"
         }
+        viewModel.fechaSeleccionada.observe(this) { fecha -> actualizarFechaSeleccionada(fecha) }
         viewModel.cuentaActual.observe(this) { cuenta ->
             binding.txtCuentaSeleccionada.text = cuenta?.let { c ->
                 val nombre = c.cliente?.nombre ?: c.cuenta.nombreClienteTemporal ?: "Cliente temporal"
@@ -143,6 +152,33 @@ class MainActivity : BaseActivity() {
         viewModel.productoCreadoParaVenta.observe(this) { it?.let(::mostrarDialogoProducto) }
     }
     private fun cambiarModo(nuevo: ModoOperacion) { modo = nuevo; prefs.modoActual = nuevo; renderModo() }
+    private fun mostrarSelectorFecha() {
+        val cal = Calendar.getInstance().apply { timeInMillis = viewModel.fechaSeleccionada.value ?: System.currentTimeMillis() }
+        DatePickerDialog(this, { _, y, m, d ->
+            val seleccion = Calendar.getInstance().apply { set(y, m, d, 0, 0, 0); set(Calendar.MILLISECOND, 0) }
+            viewModel.seleccionarFecha(seleccion.timeInMillis)
+        }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show()
+    }
+
+    private fun actualizarFechaSeleccionada(fecha: Long) = with(binding) {
+        val texto = "Fecha: ${SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(fecha)}"
+        txtFechaSimple.text = texto
+        txtFechaCuenta.text = texto
+        val esHoy = esMismoDia(fecha, System.currentTimeMillis())
+        btnEscanearSimple.isEnabled = esHoy
+        btnAgregarManualSimple.isEnabled = esHoy
+        btnNuevaCuenta.isEnabled = esHoy
+        val alpha = if (esHoy) 1f else 0.45f
+        btnEscanearSimple.alpha = alpha
+        btnAgregarManualSimple.alpha = alpha
+        btnNuevaCuenta.alpha = alpha
+    }
+
+    private fun esMismoDia(a: Long, b: Long): Boolean {
+        val ca = Calendar.getInstance().apply { timeInMillis = a }
+        val cb = Calendar.getInstance().apply { timeInMillis = b }
+        return ca.get(Calendar.YEAR) == cb.get(Calendar.YEAR) && ca.get(Calendar.DAY_OF_YEAR) == cb.get(Calendar.DAY_OF_YEAR)
+    }
     private fun renderModo() = with(binding) {
         chipSimple.isChecked = modo == ModoOperacion.SIMPLE; chipCuenta.isChecked = modo == ModoOperacion.CUENTA
         panelSimple.visibility = if (modo == ModoOperacion.SIMPLE) View.VISIBLE else View.GONE

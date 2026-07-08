@@ -16,6 +16,7 @@ import com.tuapp.ventas.databinding.ActivityBaseBinding
 import com.tuapp.ventas.ui.estadisticas.EstadisticasActivity
 import com.tuapp.ventas.ui.exportar.ExportarIPBActivity
 import com.tuapp.ventas.ui.main.MainActivity
+import com.tuapp.ventas.ui.notificaciones.NotificacionesActivity
 import com.tuapp.ventas.ui.productos.ProductosActivity
 import com.tuapp.ventas.ui.settings.SettingsActivity
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -82,7 +83,7 @@ abstract class BaseActivity : AppCompatActivity() {
     private fun configurarNotificaciones() {
         val blink = AnimationUtils.loadAnimation(this, R.anim.blink)
         baseBinding.imgNotifications.setOnClickListener {
-            Toast.makeText(this, "Tienes nuevas notificaciones", Toast.LENGTH_SHORT).show()
+            startActivity(Intent(this, NotificacionesActivity::class.java))
         }
         lifecycleScope.launch {
             (application as VentasApplication).repository.hayNotificaciones()

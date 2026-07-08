@@ -7,13 +7,16 @@ import com.tuapp.ventas.data.repository.VentasRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import java.util.Calendar
 import kotlinx.coroutines.launch
 
 class MainViewModel(private val repo: VentasRepository) : ViewModel() {
-    val ventasHoy = repo.ventasDirectasHoy().asLiveData()
-    val totalSimple = repo.totalVentasDirectasHoy().asLiveData()
-    val cantidadSimple = repo.cantidadVentasDirectasHoy().asLiveData()
-    val cuentasActivas = repo.resumenCuentas().asLiveData()
+    private val fechaSeleccionadaFlow = MutableStateFlow(inicioDia(System.currentTimeMillis()))
+    val fechaSeleccionada: LiveData<Long> = fechaSeleccionadaFlow.asLiveData()
+    val ventasHoy = fechaSeleccionadaFlow.flatMapLatest { repo.ventasDirectasPorFecha(it) }.asLiveData()
+    val totalSimple = fechaSeleccionadaFlow.flatMapLatest { repo.totalVentasDirectasPorFecha(it) }.asLiveData()
+    val cantidadSimple = fechaSeleccionadaFlow.flatMapLatest { repo.cantidadVentasDirectasPorFecha(it) }.asLiveData()
+    val cuentasActivas = fechaSeleccionadaFlow.flatMapLatest { repo.resumenCuentasPorFecha(it) }.asLiveData()
     val cantidadCuentasAbiertas = repo.cantidadCuentasAbiertas().asLiveData()
     private val cuentaSeleccionada = MutableStateFlow(-1L)
     val cuentaActual: LiveData<CuentaConDetalles?> = cuentaSeleccionada.flatMapLatest { if (it > 0) repo.observarCuenta(it) else flowOf(null) }.asLiveData()
@@ -23,6 +26,9 @@ class MainViewModel(private val repo: VentasRepository) : ViewModel() {
     val productoCreadoParaVenta = MutableLiveData<Producto?>()
 
     fun seleccionarCuenta(id: Long) { cuentaSeleccionada.value = id }
+    fun seleccionarFecha(fecha: Long) { fechaSeleccionadaFlow.value = inicioDia(fecha) }
+    fun esFechaActual(): Boolean = inicioDia(fechaSeleccionadaFlow.value) == inicioDia(System.currentTimeMillis())
+    fun generarNotificaciones() = viewModelScope.launch { repo.generarNotificacionesSistema() }
     suspend fun verificarCodigoDuplicado(codigo: String): Boolean = repo.verificarCodigoDuplicado(codigo)
     fun procesarEscaneo(codigoBarras: String, modo: ModoOperacion) = viewModelScope.launch {
         val producto = repo.buscarProducto(codigoBarras)
@@ -88,6 +94,10 @@ class MainViewModel(private val repo: VentasRepository) : ViewModel() {
     fun agregarACuenta(producto: Producto, cantidad: Int) = viewModelScope.launch {
         val id = cuentaSeleccionada.value
         if (id <= 0) mensaje.value = "Primero selecciona o crea una cuenta" else runCatching { repo.agregarProductoACuenta(id, producto, cantidad) }.onSuccess { mensaje.value = "${producto.nombre} agregado a la cuenta" }.onFailure { mensaje.value = it.message ?: "No se pudo agregar a la cuenta" }
+    }
+
+    companion object {
+        private fun inicioDia(fecha: Long): Long = Calendar.getInstance().apply { timeInMillis = fecha; set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
     }
 }
 class MainViewModelFactory(private val repo: VentasRepository) : ViewModelProvider.Factory {
