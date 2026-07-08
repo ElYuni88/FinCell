@@ -6,6 +6,7 @@ import com.tuapp.ventas.data.model.relaciones.CuentaConDetalles
 import com.tuapp.ventas.data.model.relaciones.CuentaResumen
 import com.tuapp.ventas.utils.DateUtils
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 
 class VentasRepository(private val db: AppDatabase) {
     private val productos = db.productoDao()
@@ -26,6 +27,8 @@ class VentasRepository(private val db: AppDatabase) {
     fun observarCuenta(cuentaId: Long): Flow<CuentaConDetalles?> = cuentas.observarCuentaConDetalles(cuentaId)
 
     suspend fun buscarProducto(codigo: String): Producto? = productos.buscarPorCodigo(codigo)
+    suspend fun buscarProductoPorId(id: Long): Producto? = productos.buscarPorId(id)
+    suspend fun buscarProductosManualesPorNombre(query: String): List<Producto> = if (query.length < 2) emptyList() else productos.buscarManualesPorNombre(query)
     suspend fun buscarClientesPorNombre(query: String): List<Cliente> = clientes.buscarPorNombre(query)
     suspend fun crearProducto(codigo: String, nombre: String, precio: Double, inventario: Int = 0): Producto {
         val codigoNormalizado = codigo.ifBlank { generarCodigoManual() }
@@ -65,6 +68,11 @@ class VentasRepository(private val db: AppDatabase) {
     suspend fun verificarCodigoDuplicado(codigo: String): Boolean = codigo.isNotBlank() && productos.existeCodigo(codigo) > 0
     fun obtenerProductosAgotados(): Flow<List<Producto>> = productos.obtenerAgotados()
     fun productosSinCodigo(): Flow<List<Producto>> = productos.obtenerProductosSinCodigo()
+    fun productosBajoInventario(limite: Int = 5): Flow<List<Producto>> = productos.observarProductosBajoInventario(limite)
+    fun cantidadTransferenciasHoy(): Flow<Int> = finales.observarCantidadPorMetodoDia("TRANSFERENCIA", DateUtils.inicioDia(), DateUtils.finDia())
+    fun hayNotificaciones(): Flow<Boolean> = combine(productosBajoInventario(), cantidadCuentasAbiertas(), cantidadTransferenciasHoy()) { bajoStock, cuentasAbiertas, transferenciasHoy ->
+        bajoStock.isNotEmpty() || cuentasAbiertas > 6 || transferenciasHoy > 6
+    }
     fun productosAgotados(): Flow<Int> = productos.observarProductosAgotados()
     suspend fun listarProductos(): List<Producto> = productos.listarTodos()
 
@@ -127,7 +135,15 @@ class VentasRepository(private val db: AppDatabase) {
         val detalle = detalles.obtener(detalleId) ?: error("Producto no encontrado en la cuenta")
         val cuenta = cuentas.obtener(detalle.cuentaId) ?: error("Cuenta no encontrada")
         require(cuenta.estado == Cuenta.ESTADO_ABIERTA) { "No se puede modificar una cuenta cerrada" }
+        val producto = productos.buscarPorId(detalle.productoId) ?: error("Producto no encontrado")
+        val stockDisponibleParaDetalle = producto.inventario + detalle.cantidad
+        require(nuevaCantidad <= stockDisponibleParaDetalle) { "No hay suficiente inventario. Stock disponible: $stockDisponibleParaDetalle" }
+        val diferencia = nuevaCantidad - detalle.cantidad
         detalles.actualizarCantidad(detalleId, nuevaCantidad)
+        if (diferencia > 0) {
+            productos.descontarInventario(detalle.productoId, diferencia)
+            productos.incrementarVendidos(detalle.productoId, diferencia)
+        }
         recalcularTotal(detalle.cuentaId)
     }
 

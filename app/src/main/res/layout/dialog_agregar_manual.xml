@@ -2,7 +2,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="20dp">
     <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="✏️ Agregar producto manual" android:textSize="20sp" android:textStyle="bold" />
     <AutoCompleteTextView android:id="@+id/inputNombre" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:hint="Nombre" android:inputType="textCapWords" />
-    <EditText android:id="@+id/inputCodigoManual" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Código manual (opcional)" android:inputType="text" />
+    <EditText android:id="@+id/inputCodigoManual" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Código" android:focusable="false" android:clickable="false" android:inputType="none" />
     <TextView android:id="@+id/txtSinResultados" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Sin resultados" android:textColor="#FF0000" android:textStyle="bold" android:visibility="gone"/>
     <TextView android:id="@+id/txtInventario" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Inventario disponible: 0" android:textStyle="bold" android:visibility="gone"/>
     <EditText android:id="@+id/inputPrecio" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Precio" android:inputType="numberDecimal" />

@@ -3,17 +3,23 @@ package com.tuapp.ventas.ui.base
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
+import android.view.animation.AnimationUtils
+import android.widget.Toast
 import androidx.annotation.IdRes
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.GravityCompat
+import androidx.lifecycle.lifecycleScope
 import com.tuapp.ventas.R
+import com.tuapp.ventas.VentasApplication
 import com.tuapp.ventas.databinding.ActivityBaseBinding
 import com.tuapp.ventas.ui.estadisticas.EstadisticasActivity
 import com.tuapp.ventas.ui.exportar.ExportarIPBActivity
 import com.tuapp.ventas.ui.main.MainActivity
 import com.tuapp.ventas.ui.productos.ProductosActivity
 import com.tuapp.ventas.ui.settings.SettingsActivity
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
 
 /**
  * Actividad base de CafePos.
@@ -30,6 +36,7 @@ abstract class BaseActivity : AppCompatActivity() {
         super.setContentView(baseBinding.root)
         configurarToolbarYDrawer()
         configurarBottomNavigation()
+        configurarNotificaciones()
     }
 
     /** Redirige el contenido de las hijas al FrameLayout común. */
@@ -60,10 +67,35 @@ abstract class BaseActivity : AppCompatActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        if (::baseBinding.isInitialized) seleccionarItemActual()
+    }
+
     private fun configurarBottomNavigation() {
         baseBinding.bottomNavigation.setOnItemSelectedListener { item ->
             navegar(item.itemId)
             true
+        }
+    }
+
+    private fun configurarNotificaciones() {
+        val blink = AnimationUtils.loadAnimation(this, R.anim.blink)
+        baseBinding.imgNotifications.setOnClickListener {
+            Toast.makeText(this, "Tienes nuevas notificaciones", Toast.LENGTH_SHORT).show()
+        }
+        lifecycleScope.launch {
+            (application as VentasApplication).repository.hayNotificaciones()
+                .distinctUntilChanged()
+                .collect { hayNotificaciones ->
+                    if (hayNotificaciones) {
+                        baseBinding.imgNotifications.setImageResource(R.drawable.ic_notifications_with_dot)
+                        baseBinding.imgNotifications.startAnimation(blink)
+                    } else {
+                        baseBinding.imgNotifications.setImageResource(R.drawable.ic_notifications)
+                        baseBinding.imgNotifications.clearAnimation()
+                    }
+                }
         }
     }
 

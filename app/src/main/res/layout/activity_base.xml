@@ -12,14 +12,29 @@
         android:layout_height="match_parent"
         android:orientation="vertical">
 
-        <com.google.android.material.appbar.MaterialToolbar
-            android:id="@+id/toolbar"
+        <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
-            android:background="@color/pos_green"
-            android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
-            app:title="CafePos"
-            app:titleTextColor="@android:color/white" />
+            android:layout_height="?attr/actionBarSize">
+
+            <com.google.android.material.appbar.MaterialToolbar
+                android:id="@+id/toolbar"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@color/pos_green"
+                android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+                app:title="CafePos"
+                app:titleTextColor="@android:color/white" />
+
+            <ImageView
+                android:id="@+id/imgNotifications"
+                android:layout_width="48dp"
+                android:layout_height="match_parent"
+                android:layout_gravity="end|center_vertical"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Notificaciones"
+                android:padding="12dp"
+                android:src="@drawable/ic_notifications" />
+        </FrameLayout>
 
         <FrameLayout
             android:id="@+id/content_frame"
