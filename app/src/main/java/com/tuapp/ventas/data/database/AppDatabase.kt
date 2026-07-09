@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
 
 @Database(
     entities = [Producto::class, VentaDirecta::class, Cliente::class, Cuenta::class, DetalleCuenta::class, VentaFinal::class, Notificacion::class],
-    version = 5,
+    version = 6,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -111,31 +111,60 @@ abstract class AppDatabase : RoomDatabase() {
 
         private val MIGRATION_3_4 = object : Migration(3, 4) {
             override fun migrate(database: SupportSQLiteDatabase) {
-                database.execSQL("ALTER TABLE productos ADD COLUMN esManual INTEGER NOT NULL DEFAULT 0")
-                database.execSQL("UPDATE productos SET esManual = 1 WHERE tipo_producto = 'MANUAL' OR codigo_barras LIKE 'MANUAL_%'")
+                asegurarColumnaEsManual(database)
+                marcarProductosManuales(database)
             }
         }
 
 
         private val MIGRATION_4_5 = object : Migration(4, 5) {
             override fun migrate(database: SupportSQLiteDatabase) {
-                database.execSQL("""
-                    CREATE TABLE IF NOT EXISTS notificaciones (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-                        tipo TEXT NOT NULL,
-                        mensaje TEXT NOT NULL,
-                        fecha_generacion INTEGER NOT NULL,
-                        leida INTEGER NOT NULL DEFAULT 0,
-                        eliminada INTEGER NOT NULL DEFAULT 0
-                    )
-                """.trimIndent())
+                crearTablaNotificaciones(database)
             }
+        }
+
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                asegurarColumnaEsManual(database)
+                marcarProductosManuales(database)
+            }
+        }
+
+        private fun crearTablaNotificaciones(database: SupportSQLiteDatabase) {
+            database.execSQL("""
+                CREATE TABLE IF NOT EXISTS notificaciones (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    tipo TEXT NOT NULL,
+                    mensaje TEXT NOT NULL,
+                    fecha_generacion INTEGER NOT NULL,
+                    leida INTEGER NOT NULL DEFAULT 0,
+                    eliminada INTEGER NOT NULL DEFAULT 0
+                )
+            """.trimIndent())
+        }
+
+        private fun asegurarColumnaEsManual(database: SupportSQLiteDatabase) {
+            val existe = database.query("PRAGMA table_info(productos)").use { cursor ->
+                val nameIndex = cursor.getColumnIndex("name")
+                var encontrada = false
+                while (cursor.moveToNext() && !encontrada) {
+                    encontrada = cursor.getString(nameIndex) == "esManual"
+                }
+                encontrada
+            }
+            if (!existe) {
+                database.execSQL("ALTER TABLE productos ADD COLUMN esManual INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        private fun marcarProductosManuales(database: SupportSQLiteDatabase) {
+            database.execSQL("UPDATE productos SET esManual = 1 WHERE tipo_producto = 'MANUAL' OR codigo_barras LIKE 'MANUAL_%'")
         }
 
         @Volatile private var INSTANCE: AppDatabase? = null
         fun getDatabase(context: Context): AppDatabase = INSTANCE ?: synchronized(this) {
             Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, "ventas_seguras.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                 .addCallback(object : Callback() {
                     override fun onCreate(db: SupportSQLiteDatabase) {
                         super.onCreate(db)
