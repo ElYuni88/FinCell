@@ -1,5 +1,6 @@
 package com.tuapp.ventas.data.repository
 
+import android.util.Log
 import com.tuapp.ventas.data.database.AppDatabase
 import com.tuapp.ventas.data.model.*
 import com.tuapp.ventas.data.model.relaciones.CuentaConDetalles
@@ -58,8 +59,18 @@ class VentasRepository(private val db: AppDatabase) {
     }
 
     suspend fun guardarProducto(producto: Producto): Producto {
-        val codigoFinal = producto.codigoBarras.ifBlank { generarCodigoManual() }
-        val normalizado = producto.copy(codigoBarras = codigoFinal, tipoProducto = if (producto.codigoBarras.isBlank()) Producto.TIPO_MANUAL else producto.tipoProducto, esManual = producto.esManual || producto.tipoProducto == Producto.TIPO_MANUAL || producto.codigoBarras.startsWith("MANUAL_", true))
+        Log.d(TAG, "guardarProducto: esManual recibido=${producto.esManual}, tipo=${producto.tipoProducto}, codigo=${producto.codigoBarras}")
+        val codigoOriginal = producto.codigoBarras.trim()
+        val codigoFinal = codigoOriginal.ifBlank { generarCodigoManual() }
+        val esManualFinal = producto.esManual ||
+            producto.tipoProducto == Producto.TIPO_MANUAL ||
+            codigoFinal.startsWith("MANUAL_", ignoreCase = true)
+        val normalizado = producto.copy(
+            codigoBarras = codigoFinal,
+            tipoProducto = if (esManualFinal) Producto.TIPO_MANUAL else producto.tipoProducto,
+            esManual = esManualFinal
+        )
+        Log.d(TAG, "guardarProducto: esManual final=${normalizado.esManual}, tipo=${normalizado.tipoProducto}, codigo=${normalizado.codigoBarras}")
         val existente = productos.buscarPorCodigo(codigoFinal)
         require(existente == null || existente.id == producto.id) { "Ya existe un producto con ese código" }
         return if (normalizado.id == 0L) {
@@ -74,8 +85,10 @@ class VentasRepository(private val db: AppDatabase) {
     suspend fun eliminarProducto(producto: Producto) = productos.eliminar(producto)
     fun observarProductos(): Flow<List<Producto>> = productos.observarTodos()
     fun obtenerTodosLosProductos(): Flow<List<Producto>> = productos.obtenerTodos()
-    suspend fun insertarProducto(producto: Producto): Long = productos.insertar(producto)
-    suspend fun actualizarProducto(producto: Producto) = productos.actualizar(producto)
+    suspend fun insertarProducto(producto: Producto): Long = guardarProducto(producto).id
+    suspend fun actualizarProducto(producto: Producto) {
+        guardarProducto(producto)
+    }
     suspend fun buscarProductoPorCodigo(codigo: String): Producto? = productos.buscarPorCodigo(codigo)
     suspend fun existeCodigoDuplicado(codigo: String, id: Long): Boolean = codigo.isNotBlank() && productos.existeCodigoDuplicado(codigo, id) > 0
     suspend fun verificarCodigoDuplicado(codigo: String): Boolean = codigo.isNotBlank() && productos.existeCodigo(codigo) > 0
@@ -107,6 +120,10 @@ class VentasRepository(private val db: AppDatabase) {
 
     private fun inicioDia(fecha: Long): Long = Calendar.getInstance().apply { timeInMillis = fecha; set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
     private fun finDia(fecha: Long): Long = Calendar.getInstance().apply { timeInMillis = fecha; set(Calendar.HOUR_OF_DAY, 23); set(Calendar.MINUTE, 59); set(Calendar.SECOND, 59); set(Calendar.MILLISECOND, 999) }.timeInMillis
+
+    companion object {
+        private const val TAG = "VentasRepository"
+    }
 
     private suspend fun generarCodigoManual(): String {
         var consecutivo = productos.listarTodos().count { it.esManual || it.tipoProducto == Producto.TIPO_MANUAL } + 1

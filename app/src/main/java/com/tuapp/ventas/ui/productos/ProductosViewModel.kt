@@ -1,6 +1,7 @@
 package com.tuapp.ventas.ui.productos
 
 import androidx.lifecycle.MutableLiveData
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.asLiveData
@@ -23,7 +24,8 @@ class ProductosViewModel(private val repo: VentasRepository) : ViewModel() {
                 error("Ya existe un producto con ese código")
             }
             val normalizado = producto.copy(codigoBarras = codigo)
-            if (normalizado.id == 0L) repo.insertarProducto(normalizado) else repo.actualizarProducto(normalizado)
+            Log.d(TAG, "Guardando producto: esManual=${normalizado.esManual}, tipo=${normalizado.tipoProducto}, codigo=${normalizado.codigoBarras}")
+            repo.guardarProducto(normalizado)
         }.onSuccess {
             mensaje.value = "Producto guardado"
         }.onFailure {
@@ -35,6 +37,10 @@ class ProductosViewModel(private val repo: VentasRepository) : ViewModel() {
         runCatching { repo.eliminarProducto(producto) }
             .onSuccess { mensaje.value = "Producto eliminado" }
             .onFailure { mensaje.value = it.message ?: "No se pudo eliminar el producto" }
+    }
+
+    companion object {
+        private const val TAG = "ProductosViewModel"
     }
 
     fun generarCodigoManualSugerido(): String {
