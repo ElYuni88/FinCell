@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.View
 import android.text.Editable
+import android.text.InputFilter
 import android.text.TextWatcher
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -90,12 +91,13 @@ class ProductosActivity : BaseActivity() {
 
     private fun abrirScanner() = scanLauncher.launch(Intent(this, BarcodeScannerActivity::class.java))
 
-    private fun mostrarDialogoAgregar(codigoEscaneado: String?) {
+    private fun mostrarDialogoAgregar(codigoEscaneado: String?, esManual: Boolean = true) {
         mostrarDialogoProducto(
             titulo = if (codigoEscaneado == null) "Agregar producto manual" else "Agregar producto escaneado",
             producto = null,
             codigoInicial = codigoEscaneado.orEmpty(),
-            codigoEditable = codigoEscaneado == null
+            codigoEditable = codigoEscaneado == null,
+            esManualForzado = esManual
         )
     }
 
@@ -108,10 +110,34 @@ class ProductosActivity : BaseActivity() {
         )
     }
 
-    private fun mostrarDialogoProducto(titulo: String, producto: Producto?, codigoInicial: String, codigoEditable: Boolean) {
+    private fun mostrarDialogoProducto(
+        titulo: String,
+        producto: Producto?,
+        codigoInicial: String,
+        codigoEditable: Boolean,
+        esManualForzado: Boolean = false
+    ) {
         val dialogBinding = DialogAgregarProductoBinding.inflate(layoutInflater)
         dialogBinding.inputCodigo.setText(codigoInicial)
         dialogBinding.inputCodigo.isEnabled = codigoEditable
+
+        // Restringir entrada a solo números (solo si es editable)
+        if (codigoEditable) {
+            dialogBinding.inputCodigo.filters = arrayOf(
+                InputFilter { source, start, end, dest, dstart, dend ->
+                    for (i in start until end) {
+                        if (!Character.isDigit(source[i])) {
+                            return@InputFilter ""
+                        }
+                    }
+                    null
+                }
+            )
+        } else {
+            // Si no es editable (edición de producto existente), no aplicar filtro numérico
+            dialogBinding.inputCodigo.filters = arrayOf()
+        }
+
         dialogBinding.inputNombre.setText(producto?.nombre.orEmpty())
         dialogBinding.inputPrecio.setText(producto?.precio?.toString().orEmpty())
         dialogBinding.inputInventario.setText((producto?.inventario ?: 0).toString())
@@ -125,16 +151,55 @@ class ProductosActivity : BaseActivity() {
                 val precio = dialogBinding.inputPrecio.text?.toString()?.toDoubleOrNull()
                 val inventario = dialogBinding.inputInventario.text?.toString()?.toIntOrNull() ?: 0
                 val codigo = dialogBinding.inputCodigo.text?.toString()?.trim().orEmpty()
-                    .ifBlank { if (producto == null) viewModel.generarCodigoManualSugerido() else producto.codigoBarras }
 
+                // Validaciones
                 if (nombre.isBlank() || precio == null || precio < 0.0 || inventario < 0) {
                     toast("Nombre, precio e inventario válidos son requeridos")
                     return@setPositiveButton
                 }
 
-                val tipo = if (codigo.startsWith("MANUAL_", ignoreCase = true)) Producto.TIPO_MANUAL else Producto.TIPO_CODIGO_BARRAS
+                // NUEVA VALIDACIÓN: si es manual forzado (nuevo producto manual), el código no puede estar vacío
+                if (esManualForzado && codigo.isBlank()) {
+                    toast("El código no puede estar vacío")
+                    return@setPositiveButton
+                }
+
+                // Para productos existentes, si dejan el código vacío, mantener el anterior
+                val codigoFinal = if (codigo.isBlank() && producto != null) {
+                    producto.codigoBarras
+                } else if (codigo.isBlank() && producto == null && !esManualForzado) {
+                    // Si es un producto nuevo pero no forzado (ej. desde escáner), generar automático
+                    viewModel.generarCodigoManualSugerido()
+                } else {
+                    codigo
+                }
+
+                // Si se aplicó el filtro numérico, el código solo tiene dígitos, pero por si acaso
+                if (esManualForzado && !codigoFinal.all { it.isDigit() }) {
+                    toast("El código solo debe contener números")
+                    return@setPositiveButton
+                }
+
+                val tipo = if (codigoFinal.startsWith("MANUAL_", ignoreCase = true)) Producto.TIPO_MANUAL else Producto.TIPO_CODIGO_BARRAS
                 val base = producto ?: Producto(nombre = nombre, precio = precio)
-                viewModel.guardar(base.copy(nombre = nombre, codigoBarras = codigo, precio = precio, inventario = inventario, tipoProducto = producto?.tipoProducto ?: tipo, esManual = producto?.esManual ?: (tipo == Producto.TIPO_MANUAL)))
+
+                // Calcular esManualFinal
+                val esManualFinal = if (esManualForzado) {
+                    true
+                } else {
+                    producto?.esManual ?: (tipo == Producto.TIPO_MANUAL)
+                }
+
+                viewModel.guardar(
+                    base.copy(
+                        nombre = nombre,
+                        codigoBarras = codigoFinal,
+                        precio = precio,
+                        inventario = inventario,
+                        tipoProducto = producto?.tipoProducto ?: tipo,
+                        esManual = esManualFinal
+                    )
+                )
             }
             .show()
     }

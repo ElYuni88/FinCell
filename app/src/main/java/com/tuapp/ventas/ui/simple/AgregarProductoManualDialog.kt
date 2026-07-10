@@ -100,10 +100,10 @@ class AgregarProductoManualDialog : DialogFragment() {
                 binding.inputNombre.dismissDropDown()
                 binding.inputCodigoManual.setText(p.codigoBarras)
                 binding.inputPrecio.setText(p.precio.toString())
-                binding.txtInventario.text = "Stock disponible: ${p.inventario}"
                 binding.txtInventario.visibility = View.VISIBLE
                 binding.txtSinResultados.visibility = View.GONE
                 binding.inputCantidad.setText(if (p.inventario > 0) "1" else "0")
+                binding.txtInventario.text = "Stock disponible: ${p.inventario}"
                 (dialog as? AlertDialog)?.getButton(AlertDialog.BUTTON_POSITIVE)?.isEnabled = p.inventario > 0
             }
         }

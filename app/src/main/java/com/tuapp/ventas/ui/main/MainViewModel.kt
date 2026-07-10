@@ -46,6 +46,12 @@ class MainViewModel(private val repo: VentasRepository) : ViewModel() {
             .onSuccess { mensaje.value = "Venta registrada: ${producto.nombre} x$cantidadFinal" }
             .onFailure { mensaje.value = it.message ?: "Error al registrar" }
     }
+    /*fun buscarProductosManuales(query: String, callback: (List<Producto>) -> Unit) {
+        viewModelScope.launch {
+            val resultados = repository.buscarProductosManualesPorNombre(query)
+            callback(resultados)
+        }
+    }*/
     fun crearProductoEscaneado(codigo: String, nombre: String, precio: Double, inventario: Int = 0, abrirVenta: Boolean = false) = viewModelScope.launch {
         runCatching { repo.crearProducto(codigo, nombre, precio, inventario) }
             .onSuccess { producto ->
