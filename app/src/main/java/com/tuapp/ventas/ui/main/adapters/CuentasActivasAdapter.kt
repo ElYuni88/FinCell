@@ -42,7 +42,13 @@ class CuentasActivasAdapter(
 
             cardCuenta.setCardBackgroundColor(ContextCompat.getColor(context, fondo))
             viewEstadoStripe.setBackgroundColor(ContextCompat.getColor(context, if (abierta) R.color.pos_red else R.color.pos_green))
-            txtEstadoIcono.text = if (abierta) "🔴" else "🟢"
+            //txtEstadoIcono.text = if (abierta) "🔴" else "🟢"
+            val colorTint = if (abierta) {
+                ContextCompat.getColor(context, R.color.cuenta_abierta_text) // Rojo
+            } else {
+                ContextCompat.getColor(context, R.color.cuenta_cerrada_text) // Verde
+            }
+            binding.ivIconoPersona.setColorFilter(colorTint, android.graphics.PorterDuff.Mode.SRC_IN)
             txtNombreCliente.text = nombre
             txtNombreCliente.setTextColor(ContextCompat.getColor(context, texto))
             txtTotalCuenta.text = DateUtils.moneda(cuenta.total)
