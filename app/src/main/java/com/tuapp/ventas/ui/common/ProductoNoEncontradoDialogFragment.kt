@@ -5,10 +5,12 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import androidx.fragment.app.DialogFragment
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.tuapp.ventas.data.model.Producto
 import com.tuapp.ventas.databinding.DialogProductoNoEncontradoBinding
 
 class ProductoNoEncontradoDialogFragment : DialogFragment() {
     var onDarEntrada: ((String) -> Unit)? = null
+    var onProductoCreado: ((Producto) -> Unit)? = null
     private val codigo: String by lazy { requireArguments().getString(ARG_CODIGO).orEmpty() }
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
