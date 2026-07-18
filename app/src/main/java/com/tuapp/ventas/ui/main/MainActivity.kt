@@ -33,6 +33,7 @@ import com.tuapp.ventas.ui.scanner.BarcodeScannerActivity
 import com.tuapp.ventas.ui.settings.SettingsActivity
 import com.tuapp.ventas.ui.simple.AgregarProductoManualDialog
 import com.tuapp.ventas.ui.simple.VentaDirectaDialog
+import com.tuapp.ventas.ui.venta.VentaMultipleActivity
 import com.tuapp.ventas.utils.DateUtils
 import com.tuapp.ventas.utils.PreferencesManager
 import com.tuapp.ventas.utils.SoundUtils
@@ -81,7 +82,7 @@ class MainActivity : BaseActivity() {
     }
 
     private fun manejarNavegacionPrincipal(itemId: Int): Boolean = when (itemId) {
-        R.id.nav_scan -> { solicitarCamara(); true }
+        R.id.nav_scan -> { if (modo == ModoOperacion.SIMPLE) startActivity(Intent(this, VentaMultipleActivity::class.java)) else solicitarCamara(); true }
         R.id.nav_productos, R.id.menu_productos -> { startActivity(Intent(this, ProductosActivity::class.java)); true }
         R.id.nav_estadisticas, R.id.menu_estadisticas -> { startActivity(Intent(this, EstadisticasActivity::class.java)); true }
         R.id.nav_exportar_ipb, R.id.menu_exportar_ipb -> { confirmarExportarIPB(); true }
@@ -115,7 +116,7 @@ class MainActivity : BaseActivity() {
     private fun configurarClicks() = with(binding) {
         chipSimple.setOnClickListener { cambiarModo(ModoOperacion.SIMPLE) }
         chipCuenta.setOnClickListener { cambiarModo(ModoOperacion.CUENTA) }
-        btnEscanearSimple.setOnClickListener { solicitarCamara() }
+        btnEscanearSimple.setOnClickListener { startActivity(Intent(this@MainActivity, VentaMultipleActivity::class.java)) }
         btnEscanearCuenta.visibility = View.GONE
         btnVerCuenta.visibility = View.GONE
         txtCuentaSeleccionada.visibility = View.GONE

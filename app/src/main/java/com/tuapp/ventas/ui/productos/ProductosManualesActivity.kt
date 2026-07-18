@@ -1,5 +1,6 @@
 package com.tuapp.ventas.ui.productosmanuales
 
+import android.content.Intent
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -34,6 +35,9 @@ class ProductosManualesActivity : AppCompatActivity() {
     private val cuentaId: Long by lazy {
         intent.getLongExtra(EXTRA_CUENTA_ID, -1L)
     }
+    private val modoSeleccion: Boolean by lazy {
+        intent.getBooleanExtra(EXTRA_SELECCION, false)
+    }
 
     // Scope para operaciones largas que no se cancelan al destruir la actividad
     private val job = SupervisorJob()
@@ -42,6 +46,8 @@ class ProductosManualesActivity : AppCompatActivity() {
     companion object {
         const val EXTRA_MODO = "modo"
         const val EXTRA_CUENTA_ID = "cuenta_id"
+        const val EXTRA_SELECCION = "seleccion"
+        const val EXTRA_PRODUCTO_ID = "producto_id"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -51,7 +57,9 @@ class ProductosManualesActivity : AppCompatActivity() {
 
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        supportActionBar?.title = if (modo == ModoOperacion.SIMPLE) {
+        supportActionBar?.title = if (modoSeleccion) {
+            "Seleccionar producto"
+        } else if (modo == ModoOperacion.SIMPLE) {
             "Seleccionar producto manual"
         } else {
             "Agregar a cuenta"
@@ -64,7 +72,7 @@ class ProductosManualesActivity : AppCompatActivity() {
 
     private fun configurarRecycler() {
         adapter = ProductosManualesAdapter { producto ->
-            mostrarDialogoCantidad(producto)
+            if (modoSeleccion) devolverProductoSeleccionado(producto) else mostrarDialogoCantidad(producto)
         }
         binding.recyclerProductos.layoutManager = LinearLayoutManager(this)
         binding.recyclerProductos.adapter = adapter
@@ -85,6 +93,11 @@ class ProductosManualesActivity : AppCompatActivity() {
             adapter.submitList(productos)
             binding.tvEmpty.visibility = if (productos.isEmpty()) android.view.View.VISIBLE else android.view.View.GONE
         }
+    }
+
+    private fun devolverProductoSeleccionado(producto: Producto) {
+        setResult(RESULT_OK, Intent().putExtra(EXTRA_PRODUCTO_ID, producto.id))
+        finish()
     }
 
     private fun mostrarDialogoCantidad(producto: Producto) {

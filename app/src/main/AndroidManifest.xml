@@ -11,6 +11,7 @@
         <activity android:name=".ui.productos.ProductosActivity" />
         <activity android:name=".ui.exportar.ExportarIPBActivity" />
         <activity android:name=".ui.estadisticas.EstadisticasActivity" />
+        <activity android:name=".ui.venta.VentaMultipleActivity" android:exported="false" />
         <activity android:name=".ui.productosmanuales.ProductosManualesActivity" android:exported="false" />
         <activity android:name=".ui.scanner.BarcodeScannerActivity" android:screenOrientation="portrait" />
         <activity android:name=".ui.cuenta.AccountDetailActivity" />
