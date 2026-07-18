@@ -1,6 +1,7 @@
 package com.tuapp.ventas.data.repository
 
 import android.util.Log
+import androidx.room.withTransaction
 import com.tuapp.ventas.data.database.AppDatabase
 import com.tuapp.ventas.data.model.*
 import com.tuapp.ventas.data.model.relaciones.CuentaConDetalles
@@ -136,11 +137,13 @@ class VentasRepository(private val db: AppDatabase) {
     suspend fun registrarVentaDirecta(producto: Producto, cantidad: Int = 1) {
         require(cantidad in 1..99) { "La cantidad debe estar entre 1 y 99" }
         val actualizado = productos.buscarPorId(producto.id) ?: producto
-        require(cantidad <= actualizado.inventario) { "Inventario insuficiente. Disponible: ${actualizado.inventario}" }
+        val stockDisponible = actualizado.inventario - actualizado.vendidos
+        require(cantidad <= stockDisponible) { "Stock insuficiente. Disponible: $stockDisponible" }
         repeat(cantidad) {
             ventas.insertar(VentaDirecta(productoId = producto.id, codigoBarras = producto.codigoBarras, nombreProducto = producto.nombre, precio = producto.precio))
-            productos.descontarInventario(producto.id, 1)
+            // solo incrementamos vendidos
             productos.incrementarVendidos(producto.id, 1)
+            // NO descontamos inventario
         }
     }
     suspend fun crearCuenta(nombreCliente: String, telefono: String?, mesa: String? = null, recordarCuenta: Boolean = true): Long {
@@ -169,13 +172,15 @@ class VentasRepository(private val db: AppDatabase) {
     suspend fun agregarProductoACuenta(cuentaId: Long, producto: Producto, cantidad: Int) {
         require(cantidad in 1..99) { "La cantidad debe estar entre 1 y 99" }
         val actualizado = productos.buscarPorId(producto.id) ?: producto
-        require(cantidad <= actualizado.inventario) { "Inventario insuficiente. Disponible: ${actualizado.inventario}" }
+        val stockDisponible = actualizado.inventario - actualizado.vendidos
+        require(cantidad <= stockDisponible) { "Stock insuficiente. Disponible: $stockDisponible" }
         val cuenta = cuentas.obtener(cuentaId) ?: error("Cuenta no encontrada")
         require(cuenta.estado == Cuenta.ESTADO_ABIERTA) { "No se puede modificar una cuenta cerrada" }
         val subtotal = producto.precio * cantidad
         detalles.insertar(DetalleCuenta(cuentaId = cuentaId, productoId = producto.id, cantidad = cantidad, precioUnitario = producto.precio, subtotal = subtotal))
-        productos.descontarInventario(producto.id, cantidad)
+        // solo incrementamos vendidos
         productos.incrementarVendidos(producto.id, cantidad)
+        // NO descontamos inventario
         recalcularTotal(cuentaId)
     }
 
@@ -185,23 +190,36 @@ class VentasRepository(private val db: AppDatabase) {
         val cuenta = cuentas.obtener(detalle.cuentaId) ?: error("Cuenta no encontrada")
         require(cuenta.estado == Cuenta.ESTADO_ABIERTA) { "No se puede modificar una cuenta cerrada" }
         val producto = productos.buscarPorId(detalle.productoId) ?: error("Producto no encontrado")
-        val stockDisponibleParaDetalle = producto.inventario + detalle.cantidad
-        require(nuevaCantidad <= stockDisponibleParaDetalle) { "No hay suficiente inventario. Stock disponible: $stockDisponibleParaDetalle" }
-        val diferencia = nuevaCantidad - detalle.cantidad
-        detalles.actualizarCantidad(detalleId, nuevaCantidad)
-        if (diferencia > 0) {
-            productos.descontarInventario(detalle.productoId, diferencia)
-            productos.incrementarVendidos(detalle.productoId, diferencia)
+
+        if (nuevaCantidad > detalle.cantidad) {
+            val incremento = nuevaCantidad - detalle.cantidad
+            val stockDisponible = producto.inventario - producto.vendidos
+            require(incremento <= stockDisponible) { "No hay suficiente stock. Disponible: $stockDisponible" }
+        } else {
+            val decremento = detalle.cantidad - nuevaCantidad
+            require(decremento <= producto.vendidos) { "No se puede devolver más de lo vendido (${producto.vendidos})" }
         }
-        recalcularTotal(detalle.cuentaId)
+
+        db.withTransaction {
+            val diferencia = nuevaCantidad - detalle.cantidad
+            detalles.actualizarCantidad(detalleId, nuevaCantidad)
+            if (diferencia != 0) {
+                productos.incrementarVendidos(detalle.productoId, diferencia)
+            }
+            recalcularTotal(detalle.cuentaId)
+        }
     }
 
     suspend fun eliminarDetalle(detalleId: Long) {
         val detalle = detalles.obtener(detalleId) ?: error("Producto no encontrado en la cuenta")
         val cuenta = cuentas.obtener(detalle.cuentaId) ?: error("Cuenta no encontrada")
         require(cuenta.estado == Cuenta.ESTADO_ABIERTA) { "No se puede modificar una cuenta cerrada" }
-        detalles.eliminar(detalleId)
-        recalcularTotal(detalle.cuentaId)
+
+        db.withTransaction {
+            detalles.eliminar(detalleId)
+            productos.incrementarVendidos(detalle.productoId, -detalle.cantidad)
+            recalcularTotal(detalle.cuentaId)
+        }
     }
 
     private suspend fun recalcularTotal(cuentaId: Long) {

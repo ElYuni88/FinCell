@@ -80,6 +80,7 @@ class AgregarProductoManualDialog : DialogFragment() {
                     binding.inputNombre.showDropDown()
                 }
             }
+
         })
 
         binding.inputNombre.setOnItemClickListener { _, _, position, _ ->
@@ -103,7 +104,10 @@ class AgregarProductoManualDialog : DialogFragment() {
                 binding.txtInventario.visibility = View.VISIBLE
                 binding.txtSinResultados.visibility = View.GONE
                 binding.inputCantidad.setText(if (p.inventario > 0) "1" else "0")
-                binding.txtInventario.text = "Stock disponible: ${p.inventario}"
+                val stockDisponible = p.inventario - p.vendidos
+                binding.txtInventario.text = "Stock disponible: $stockDisponible"
+                binding.inputCantidad.setText(if (stockDisponible > 0) "1" else "0")
+                (dialog as? AlertDialog)?.getButton(AlertDialog.BUTTON_POSITIVE)?.isEnabled = stockDisponible > 0
                 (dialog as? AlertDialog)?.getButton(AlertDialog.BUTTON_POSITIVE)?.isEnabled = p.inventario > 0
             }
         }
@@ -123,9 +127,10 @@ class AgregarProductoManualDialog : DialogFragment() {
             return
         }
         val cantidad = binding.inputCantidad.text?.toString()?.toIntOrNull() ?: 1
-        if (producto.inventario <= 0 || cantidad !in 1..producto.inventario) {
-            Toast.makeText(requireContext(), "La cantidad supera el inventario disponible (Stock: ${producto.inventario})", Toast.LENGTH_SHORT).show()
-            binding.inputCantidad.error = "Máximo disponible: ${producto.inventario}"
+        val stockDisponible = producto.inventario - producto.vendidos
+        if (stockDisponible <= 0 || cantidad !in 1..stockDisponible) {
+            Toast.makeText(requireContext(), "La cantidad supera el stock disponible ($stockDisponible)", Toast.LENGTH_SHORT).show()
+            binding.inputCantidad.error = "Máximo disponible: $stockDisponible"
             return
         }
         onConfirmar?.invoke(producto, cantidad)

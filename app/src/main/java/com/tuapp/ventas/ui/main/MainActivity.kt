@@ -28,6 +28,7 @@ import com.tuapp.ventas.ui.main.adapters.CuentasActivasAdapter
 import com.tuapp.ventas.ui.main.adapters.VentasRecientesAdapter
 import com.tuapp.ventas.ui.productos.ProductosActivity
 import com.tuapp.ventas.ui.exportar.ExportarIPBActivity
+import com.tuapp.ventas.ui.productosmanuales.ProductosManualesActivity
 import com.tuapp.ventas.ui.scanner.BarcodeScannerActivity
 import com.tuapp.ventas.ui.settings.SettingsActivity
 import com.tuapp.ventas.ui.simple.AgregarProductoManualDialog
@@ -40,6 +41,7 @@ import java.util.Calendar
 import java.util.Locale
 
 class MainActivity : BaseActivity() {
+
     private lateinit var binding: ActivityMainBinding
     private lateinit var prefs: PreferencesManager
     private var modo = ModoOperacion.SIMPLE
@@ -197,13 +199,28 @@ class MainActivity : BaseActivity() {
     }
 
     private fun mostrarDialogoAgregarManual() {
-        if (modo == ModoOperacion.CUENTA && prefs.cuentaSeleccionadaId <= 0) {
-            Toast.makeText(this, "Seleccione una cuenta primero", Toast.LENGTH_SHORT).show()
-            return
+        when (modo) {
+            ModoOperacion.SIMPLE -> {
+                // Modo Simple: abrir la actividad sin cuenta
+                val intent = Intent(this, ProductosManualesActivity::class.java).apply {
+                    putExtra(ProductosManualesActivity.EXTRA_MODO, ModoOperacion.SIMPLE)
+                }
+                startActivity(intent)
+            }
+            ModoOperacion.CUENTA -> {
+                // Modo Cuenta: verificar que haya una cuenta seleccionada
+                val cuentaId = prefs.cuentaSeleccionadaId
+                if (cuentaId <= 0) {
+                    Toast.makeText(this, "Seleccione una cuenta primero", Toast.LENGTH_SHORT).show()
+                    return
+                }
+                val intent = Intent(this, ProductosManualesActivity::class.java).apply {
+                    putExtra(ProductosManualesActivity.EXTRA_MODO, ModoOperacion.CUENTA)
+                    putExtra(ProductosManualesActivity.EXTRA_CUENTA_ID, cuentaId)
+                }
+                startActivity(intent)
+            }
         }
-        AgregarProductoManualDialog().apply {
-            onConfirmar = { producto, cantidad -> viewModel.registrarProductoManual(producto, cantidad, modo) }
-        }.show(supportFragmentManager, "agregar_manual")
     }
 
     private fun mostrarDialogoProducto(producto: Producto) { VentaDirectaDialog().apply { this.producto = producto; this.modo = this@MainActivity.modo; onConfirmar = { p,_,_,_,cantidad -> if (modo == ModoOperacion.SIMPLE) viewModel.registrarVentaDirecta(p!!, cantidad) else viewModel.agregarACuenta(p!!, cantidad) }; onVerCuenta = { val id = prefs.cuentaSeleccionadaId; if (id > 0) startActivity(Intent(this@MainActivity, AccountDetailActivity::class.java).putExtra(AccountDetailActivity.EXTRA_CUENTA_ID, id)) } }.show(supportFragmentManager, "venta") }

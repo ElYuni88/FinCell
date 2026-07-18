@@ -31,7 +31,7 @@ class VentaDirectaDialog : DialogFragment() {
     var onCancelar: (() -> Unit)? = null
 
     private var cantidad = 1
-    private val inventarioDisponible: Int get() = producto?.inventario ?: 99
+    private val inventarioDisponible: Int get() = (producto?.inventario ?: 0) - (producto?.vendidos ?: 0)
     private val sinInventario: Boolean get() = producto != null && inventarioDisponible <= 0
     private var _binding: DialogVentaDirectaBinding? = null
     private val binding get() = _binding!!

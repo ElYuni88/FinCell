@@ -19,6 +19,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.tuapp.ventas.VentasApplication
 import com.tuapp.ventas.data.model.Cuenta
+import com.tuapp.ventas.ui.productosmanuales.ProductosManualesActivity
 import com.tuapp.ventas.data.model.ModoOperacion
 import com.tuapp.ventas.data.model.relaciones.DetalleConProducto
 import com.tuapp.ventas.databinding.ActivityAccountDetailBinding
@@ -193,9 +194,11 @@ class AccountDetailActivity : AppCompatActivity() {
     }
 
     private fun mostrarDialogoAgregarManual() {
-        AgregarProductoManualDialog().apply {
-            onConfirmar = { producto, cantidad -> viewModel.agregarProductoManual(producto, cantidad) }
-        }.show(supportFragmentManager, "agregar_manual_cuenta")
+        val intent = Intent(this, ProductosManualesActivity::class.java).apply {
+            putExtra(ProductosManualesActivity.EXTRA_MODO, ModoOperacion.CUENTA)
+            putExtra(ProductosManualesActivity.EXTRA_CUENTA_ID, cuentaId)
+        }
+        startActivity(intent)
     }
 
     private fun mostrarDialogoProductoNuevo(codigo: String) {

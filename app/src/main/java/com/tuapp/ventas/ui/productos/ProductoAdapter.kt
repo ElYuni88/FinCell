@@ -29,8 +29,9 @@ class ProductoAdapter(
         fun bind(producto: Producto) = with(binding) {
             val codigo = producto.codigoBarras.ifBlank { "S/C" }
             val etiquetaCodigo = if (producto.tipoProducto == Producto.TIPO_MANUAL) "$codigo (manual)" else codigo
+            val stockDisponible = producto.inventario - producto.vendidos
             txtNombre.text = producto.nombre
-            txtDetalle.text = "Código: $etiquetaCodigo · Precio: ${DateUtils.moneda(producto.precio)} · Inventario: ${producto.inventario} · Vendidos: ${producto.vendidos}"
+            txtDetalle.text = "Código: $etiquetaCodigo · Precio: ${DateUtils.moneda(producto.precio)} · Stock: $stockDisponible · Vendidos: ${producto.vendidos}"
             btnEditar.setOnClickListener { onEditar(producto) }
             btnEliminar.setOnClickListener { onEliminar(producto) }
         }
