@@ -1,5 +1,6 @@
 package com.tuapp.ventas.data.model
 
+import java.io.Serializable
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
@@ -16,7 +17,7 @@ data class Producto(
     val vendidos: Int = 0,
     @ColumnInfo(name = "esManual") val esManual: Boolean = false,
     @ColumnInfo(name = "fecha_creacion") val fechaCreacion: Long = System.currentTimeMillis()
-) {
+) : Serializable {
     companion object {
         const val TIPO_CODIGO_BARRAS = "CODIGO_BARRAS"
         const val TIPO_MANUAL = "MANUAL"

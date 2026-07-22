@@ -15,7 +15,6 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.cancel
 
 class VentaMultipleViewModel(private val repo: VentasRepository) : ViewModel() {
     private val ioJob = SupervisorJob()

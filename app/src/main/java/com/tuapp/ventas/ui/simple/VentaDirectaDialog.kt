@@ -23,6 +23,8 @@ import android.widget.Toast
  * La cantidad se limita al inventario disponible y el subtotal se recalcula en vivo.
  */
 class VentaDirectaDialog : DialogFragment() {
+    var onSeguirEscaneando: ((Producto?, String?, String?, Double?, Int) -> Unit)? = null
+    var mostrarBotonSeguir: Boolean = false
     var producto: Producto? = null
     var codigoNuevo: String? = null
     var modo: ModoOperacion = ModoOperacion.SIMPLE
@@ -41,10 +43,15 @@ class VentaDirectaDialog : DialogFragment() {
         cantidad = savedInstanceState?.getInt(KEY_CANTIDAD) ?: 1
         configurarVista()
         val builder = AlertDialog.Builder(requireContext()).setView(binding.root)
+        if (mostrarBotonSeguir) {
+            builder.setNeutralButton("SEGUIR ESCANEANDO") { _, _ ->
+                confirmar(seguir = true)
+            }
+        }
         if (modo == ModoOperacion.CUENTA) builder.setNeutralButton("Ver cuenta") { _, _ -> onVerCuenta?.invoke() }
         return builder
             .setNegativeButton("CANCELAR") { _, _ -> onCancelar?.invoke() }
-            .setPositiveButton(if (modo == ModoOperacion.SIMPLE) "REGISTRAR VENTA" else "AGREGAR") { _, _ -> confirmar() }
+            .setPositiveButton(if (modo == ModoOperacion.SIMPLE) "AGREGAR VENTA" else "AGREGAR") { _, _ -> confirmar() }
             .create()
             .also { dialog ->
                 dialog.setOnShowListener {
@@ -100,13 +107,17 @@ class VentaDirectaDialog : DialogFragment() {
         btnMas.isEnabled = !sinInventario && cantidad < maximo
     }
 
-    private fun confirmar() {
+    private fun confirmar(seguir: Boolean = false) {
         val precio = binding.inputPrecio.text?.toString()?.toDoubleOrNull()
         if (sinInventario || cantidad <= 0 || cantidad > inventarioDisponible) {
             Toast.makeText(requireContext(), "Inventario insuficiente. Disponible: $inventarioDisponible", Toast.LENGTH_SHORT).show()
             return
         }
-        onConfirmar?.invoke(producto, codigoNuevo, binding.inputNombre.text?.toString(), precio, cantidad.coerceIn(1, inventarioDisponible.coerceAtMost(99)))
+        if (seguir) {
+            onSeguirEscaneando?.invoke(producto, codigoNuevo, binding.inputNombre.text?.toString(), precio, cantidad.coerceIn(1, inventarioDisponible.coerceAtMost(99)))
+        } else {
+            onConfirmar?.invoke(producto, codigoNuevo, binding.inputNombre.text?.toString(), precio, cantidad.coerceIn(1, inventarioDisponible.coerceAtMost(99)))
+        }
     }
 
     override fun onSaveInstanceState(outState: Bundle) {

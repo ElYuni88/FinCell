@@ -15,7 +15,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.tuapp.ventas.VentasApplication
 import com.tuapp.ventas.data.model.ModoOperacion
 import com.tuapp.ventas.data.model.Producto
-import com.tuapp.ventas.databinding.ActivityVentaMultipleBinding
+import com.tuapp.ventas.databinding.ActivityOperacionesBinding
 import com.tuapp.ventas.databinding.DialogAgregarProductoBinding
 import com.tuapp.ventas.ui.common.ProductoNoEncontradoDialogFragment
 import com.tuapp.ventas.ui.productosmanuales.ProductosManualesActivity
@@ -26,8 +26,8 @@ import com.tuapp.ventas.utils.PreferencesManager
 import com.tuapp.ventas.utils.SoundUtils
 
 /** Pantalla de venta directa con acumulación de múltiples productos. */
-class VentaMultipleActivity : AppCompatActivity() {
-    private lateinit var binding: ActivityVentaMultipleBinding
+class OperacionesActivity : AppCompatActivity() {
+    private lateinit var binding: ActivityOperacionesBinding
     private val viewModel: VentaMultipleViewModel by viewModels { VentaMultipleViewModelFactory((application as VentasApplication).repository) }
     private lateinit var adapter: VentaMultipleAdapter
     private lateinit var prefs: PreferencesManager
@@ -53,11 +53,16 @@ class VentaMultipleActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityVentaMultipleBinding.inflate(layoutInflater)
+        binding = ActivityOperacionesBinding.inflate(layoutInflater)
         setContentView(binding.root)
         prefs = PreferencesManager(this)
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        val productoInicial = intent.getSerializableExtra(EXTRA_PRODUCTO_INICIAL) as? Producto
+        val cantidadInicial = intent.getIntExtra(EXTRA_CANTIDAD_INICIAL, 1)
+        if (productoInicial != null) {
+            viewModel.agregarProducto(productoInicial, cantidadInicial)
+        }
         configurarRecycler()
         configurarClicks()
         observarDatos()
@@ -151,5 +156,7 @@ class VentaMultipleActivity : AppCompatActivity() {
     }
 
     override fun onSupportNavigateUp(): Boolean { finish(); return true }
-    companion object { private const val TAG = "VentaMultipleActivity" }
+    companion object { private const val TAG = "OperacionesActivity"
+        const val EXTRA_PRODUCTO_INICIAL = "producto_inicial"
+        const val EXTRA_CANTIDAD_INICIAL = "cantidad_inicial" }
 }

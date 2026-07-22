@@ -13,7 +13,7 @@
         android:background="@color/pos_green"
         android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
         app:navigationIcon="@drawable/ic_arrow_back"
-        app:title="Venta múltiple"
+        app:title="Operaciones"
         app:titleTextColor="@android:color/white" />
 
     <LinearLayout

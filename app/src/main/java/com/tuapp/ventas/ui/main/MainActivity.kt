@@ -5,6 +5,7 @@ import android.app.DatePickerDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
@@ -13,6 +14,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import com.tuapp.ventas.ui.base.BaseActivity
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.tuapp.ventas.R
@@ -31,12 +33,12 @@ import com.tuapp.ventas.ui.exportar.ExportarIPBActivity
 import com.tuapp.ventas.ui.productosmanuales.ProductosManualesActivity
 import com.tuapp.ventas.ui.scanner.BarcodeScannerActivity
 import com.tuapp.ventas.ui.settings.SettingsActivity
-import com.tuapp.ventas.ui.simple.AgregarProductoManualDialog
 import com.tuapp.ventas.ui.simple.VentaDirectaDialog
-import com.tuapp.ventas.ui.venta.VentaMultipleActivity
+import com.tuapp.ventas.ui.venta.OperacionesActivity
 import com.tuapp.ventas.utils.DateUtils
 import com.tuapp.ventas.utils.PreferencesManager
 import com.tuapp.ventas.utils.SoundUtils
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -56,8 +58,7 @@ class MainActivity : BaseActivity() {
         if (codigo.isNotBlank()) {
             if (prefs.sonidoEscaneo) SoundUtils.beep()
             if (prefs.vibrarEscaneo) SoundUtils.vibrar(this)
-            if (scanFlow == ScanFlow.ALTA_PRODUCTO) viewModel.procesarEscaneoAlta(codigo) else viewModel.procesarEscaneo(codigo, modo)
-            scanFlow = ScanFlow.VENTA
+            manejarEscaneo(codigo)
         }
     }
     private val cameraPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { if (it) abrirScanner() else Toast.makeText(this, "Permiso de cámara requerido", Toast.LENGTH_LONG).show() }
@@ -82,7 +83,9 @@ class MainActivity : BaseActivity() {
     }
 
     private fun manejarNavegacionPrincipal(itemId: Int): Boolean = when (itemId) {
-        R.id.nav_scan -> { if (modo == ModoOperacion.SIMPLE) startActivity(Intent(this, VentaMultipleActivity::class.java)) else solicitarCamara(); true }
+        R.id.nav_scan -> { if (modo == ModoOperacion.SIMPLE)
+                                solicitarCamara()
+                           else solicitarCamara(); true }
         R.id.nav_productos, R.id.menu_productos -> { startActivity(Intent(this, ProductosActivity::class.java)); true }
         R.id.nav_estadisticas, R.id.menu_estadisticas -> { startActivity(Intent(this, EstadisticasActivity::class.java)); true }
         R.id.nav_exportar_ipb, R.id.menu_exportar_ipb -> { confirmarExportarIPB(); true }
@@ -116,7 +119,8 @@ class MainActivity : BaseActivity() {
     private fun configurarClicks() = with(binding) {
         chipSimple.setOnClickListener { cambiarModo(ModoOperacion.SIMPLE) }
         chipCuenta.setOnClickListener { cambiarModo(ModoOperacion.CUENTA) }
-        btnEscanearSimple.setOnClickListener { startActivity(Intent(this@MainActivity, VentaMultipleActivity::class.java)) }
+        //btnEscanearSimple.setOnClickListener { startActivity(Intent(this@MainActivity, OperacionesActivity::class.java)) }
+        btnEscanearSimple.setOnClickListener { solicitarCamara() }
         btnEscanearCuenta.visibility = View.GONE
         btnVerCuenta.visibility = View.GONE
         txtCuentaSeleccionada.visibility = View.GONE
@@ -225,6 +229,49 @@ class MainActivity : BaseActivity() {
     }
 
     private fun mostrarDialogoProducto(producto: Producto) { VentaDirectaDialog().apply { this.producto = producto; this.modo = this@MainActivity.modo; onConfirmar = { p,_,_,_,cantidad -> if (modo == ModoOperacion.SIMPLE) viewModel.registrarVentaDirecta(p!!, cantidad) else viewModel.agregarACuenta(p!!, cantidad) }; onVerCuenta = { val id = prefs.cuentaSeleccionadaId; if (id > 0) startActivity(Intent(this@MainActivity, AccountDetailActivity::class.java).putExtra(AccountDetailActivity.EXTRA_CUENTA_ID, id)) } }.show(supportFragmentManager, "venta") }
+
+    private fun manejarEscaneo(codigo: String) {
+        lifecycleScope.launch {
+            val repo = (application as VentasApplication).repository
+            val producto = repo.buscarProducto(codigo)
+            if (producto == null) {
+                ProductoNoEncontradoDialogFragment.newInstance(codigo).apply {
+                    onDarEntrada = { codigoEscaneado ->
+                        mostrarDialogoAltaProductoEscaneado(codigoEscaneado)
+                    }
+                }.show(supportFragmentManager, "producto_no_encontrado")
+            } else {
+                mostrarDialogoCantidadConSeguir(producto)
+            }
+        }
+    }
+
+
+    private fun mostrarDialogoCantidadConSeguir(producto: Producto) {
+        VentaDirectaDialog().apply {
+            this.producto = producto
+            this.modo = ModoOperacion.SIMPLE
+            this.mostrarBotonSeguir = true
+            onConfirmar = { p, _, _, _, cantidad ->
+                Log.d("MainActivity", "onConfirmar: ${p?.nombre}")
+                viewModel.registrarVentaDirecta(p ?: producto, cantidad)
+            }
+            onSeguirEscaneando = { p, _, _, _, cantidad ->
+                Log.d("MainActivity", "onSeguirEscaneando: ${p?.nombre} x$cantidad")
+                abrirOperacionesConProducto(p ?: producto, cantidad)
+            }
+        }.show(supportFragmentManager, "venta_directa")
+    }
+
+
+    private fun abrirOperacionesConProducto(producto: Producto, cantidad: Int) {
+        Log.d("MainActivity", "abrirOperacionesConProducto: ${producto.nombre}")
+        val intent = Intent(this, OperacionesActivity::class.java).apply {
+            putExtra(OperacionesActivity.EXTRA_PRODUCTO_INICIAL, producto)
+            putExtra(OperacionesActivity.EXTRA_CANTIDAD_INICIAL, cantidad)
+        }
+        startActivity(intent)
+    }
 
     private fun confirmarEliminarCuenta(cuentaId: Long, nombreCliente: String) {
         MaterialAlertDialogBuilder(this)
