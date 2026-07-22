@@ -32,11 +32,20 @@ class VentaMultipleViewModel(private val repo: VentasRepository) : ViewModel() {
 
     fun agregarProducto(producto: Producto, cantidad: Int) {
         Log.d(TAG, "agregarProducto: ${producto.nombre} x$cantidad")
+        val stockDisponible = (producto.inventario - producto.vendidos).coerceAtLeast(0).coerceAtMost(99)
+        if (stockDisponible <= 0) { mensaje.value = "Inventario insuficiente. Disponible: 0"; return }
         val actual = _productosAcumulados.value.orEmpty().toMutableList()
         val index = actual.indexOfFirst { it.producto.id == producto.id }
-        if (index >= 0) actual[index] = actual[index].copy(cantidad = (actual[index].cantidad + cantidad).coerceAtMost(99))
-        else actual.add(VentaItem(producto, cantidad.coerceIn(1, 99)))
+        val cantidadActual = if (index >= 0) actual[index].cantidad else 0
+        val nuevaCantidad = (cantidadActual + cantidad).coerceAtMost(stockDisponible)
+        if (nuevaCantidad <= cantidadActual) { mensaje.value = "Inventario insuficiente. Disponible: ${(stockDisponible - cantidadActual).coerceAtLeast(0)}"; return }
+        if (index >= 0) actual[index] = actual[index].copy(cantidad = nuevaCantidad)
+        else actual.add(VentaItem(producto, nuevaCantidad))
         _productosAcumulados.value = actual
+    }
+
+    fun agregarProductos(items: List<VentaItem>) {
+        items.forEach { agregarProducto(it.producto, it.cantidad) }
     }
 
     fun eliminarProducto(item: VentaItem) {

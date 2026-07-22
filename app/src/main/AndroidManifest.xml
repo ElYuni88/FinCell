@@ -13,6 +13,7 @@
         <activity android:name=".ui.estadisticas.EstadisticasActivity" />
         <activity android:name=".ui.venta.OperacionesActivity" android:exported="false" />
         <activity android:name=".ui.productosmanuales.ProductosManualesActivity" android:exported="false" />
+        <activity android:name=".ui.escaneo.EscaneoContinuoActivity" android:screenOrientation="portrait" android:exported="false" />
         <activity android:name=".ui.scanner.BarcodeScannerActivity" android:screenOrientation="portrait" />
         <activity android:name=".ui.cuenta.AccountDetailActivity" />
         <activity android:name=".ui.cuenta.ActiveAccountActivity" />
