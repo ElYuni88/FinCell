@@ -1,6 +1,7 @@
 package com.tuapp.ventas.ui.escaneo
 
 import android.Manifest
+import android.app.AlertDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
@@ -42,6 +43,7 @@ class EscaneoContinuoActivity : AppCompatActivity() {
     private var pausadoPorDialogo = false
     private var ultimoCodigo: String? = null
     private var ultimoCodigoMs: Long = 0L
+    private var dialogoAltaProducto: AlertDialog? = null
     private val modoAgregar: Boolean get() = intent.getBooleanExtra(EXTRA_MODO_AGREGAR, false)
 
     private val cameraPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -68,9 +70,17 @@ class EscaneoContinuoActivity : AppCompatActivity() {
             codigo?.let { viewModel.consumirCodigoNoEncontrado(); manejarProductoNoEncontrado(it) }
         }
         viewModel.productoCreado.observe(this) { producto ->
-            producto?.let { viewModel.consumirProductoCreado(); mostrarDialogoCantidad(it) }
+            producto?.let {
+                viewModel.consumirProductoCreado()
+                dialogoAltaProducto?.dismiss()
+                dialogoAltaProducto = null
+                mostrarDialogoCantidad(it)
+            }
         }
-        viewModel.mensaje.observe(this) { Toast.makeText(this, it, Toast.LENGTH_SHORT).show() }
+        viewModel.mensaje.observe(this) {
+            dialogoAltaProducto?.getButton(AlertDialog.BUTTON_POSITIVE)?.isEnabled = true
+            Toast.makeText(this, it, Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun mostrarDialogoCantidad(producto: Producto) {
@@ -96,22 +106,40 @@ class EscaneoContinuoActivity : AppCompatActivity() {
     }
 
     private fun mostrarDialogoAltaProducto(codigo: String) {
+        val codigoNormalizado = codigo.trim()
+        if (codigoNormalizado.isBlank()) {
+            Toast.makeText(this, "El código de barras no puede estar vacío", Toast.LENGTH_LONG).show()
+            reanudarEscaneo()
+            return
+        }
+
         val dialogBinding = DialogAgregarProductoBinding.inflate(layoutInflater)
-        dialogBinding.inputCodigo.setText(codigo)
+        dialogBinding.inputCodigo.setText(codigoNormalizado)
         dialogBinding.inputCodigo.isEnabled = false
         dialogBinding.inputInventario.hint = "Cantidad en inventario"
-        MaterialAlertDialogBuilder(this)
+        val dialog = MaterialAlertDialogBuilder(this)
             .setTitle("Agregar producto escaneado")
             .setView(dialogBinding.root)
             .setNegativeButton("Cancelar") { _, _ -> reanudarEscaneo() }
-            .setPositiveButton("Guardar") { _, _ ->
+            .setPositiveButton("Guardar", null)
+            .create()
+
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 val nombre = dialogBinding.inputNombre.text?.toString()?.trim().orEmpty()
                 val precio = dialogBinding.inputPrecio.text?.toString()?.toDoubleOrNull()
                 val inventario = dialogBinding.inputInventario.text?.toString()?.toIntOrNull() ?: 1
                 if (nombre.isBlank() || precio == null || precio < 0.0 || inventario < 0) {
-                    Toast.makeText(this, "Nombre, precio e inventario válidos son requeridos", Toast.LENGTH_SHORT).show(); reanudarEscaneo()
-                } else viewModel.crearProductoEscaneado(codigo, nombre, precio, inventario)
-            }.show()
+                    Toast.makeText(this, "Nombre, precio e inventario válidos son requeridos", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
+                viewModel.crearProductoEscaneado(codigoNormalizado, nombre, precio, inventario)
+            }
+        }
+        dialog.setOnDismissListener { if (dialogoAltaProducto === dialog) dialogoAltaProducto = null }
+        dialogoAltaProducto = dialog
+        dialog.show()
     }
 
     private fun reanudarEscaneo() { pausadoPorDialogo = false }

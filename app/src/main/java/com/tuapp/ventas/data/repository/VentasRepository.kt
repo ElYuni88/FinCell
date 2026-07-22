@@ -1,5 +1,6 @@
 package com.tuapp.ventas.data.repository
 
+import android.database.sqlite.SQLiteConstraintException
 import android.util.Log
 import androidx.room.withTransaction
 import com.tuapp.ventas.data.database.AppDatabase
@@ -46,9 +47,39 @@ class VentasRepository(private val db: AppDatabase) {
     }
     suspend fun buscarClientesPorNombre(query: String): List<Cliente> = clientes.buscarPorNombre(query)
     suspend fun crearProducto(codigo: String, nombre: String, precio: Double, inventario: Int = 0): Producto {
-        val codigoNormalizado = codigo.ifBlank { generarCodigoManual() }
-        val id = productos.insertar(Producto(codigoBarras = codigoNormalizado, nombre = nombre, precio = precio, inventario = inventario.coerceAtLeast(0), tipoProducto = Producto.TIPO_CODIGO_BARRAS, esManual = false))
-        return productos.buscarPorCodigo(codigoNormalizado)!!.copy(id = id)
+        Log.d(TAG, "crearProducto: codigo='$codigo', nombre='$nombre', inventario=$inventario")
+        val codigoNormalizado = codigo.trim().ifBlank { generarCodigoManual() }
+        Log.d(TAG, "crearProducto: codigoNormalizado='$codigoNormalizado'")
+        require(codigoNormalizado.isNotBlank()) { "El código de barras no puede estar vacío" }
+        require(nombre.isNotBlank()) { "El nombre del producto no puede estar vacío" }
+        require(precio >= 0.0) { "El precio debe ser mayor o igual a 0" }
+
+        productos.buscarPorCodigo(codigoNormalizado)?.let {
+            Log.w(TAG, "crearProducto: código duplicado '$codigoNormalizado' para producto id=${it.id}")
+            throw SQLiteConstraintException("Código de barras duplicado")
+        }
+
+        return try {
+            val producto = Producto(
+                codigoBarras = codigoNormalizado,
+                nombre = nombre.trim(),
+                precio = precio,
+                inventario = inventario.coerceAtLeast(0),
+                tipoProducto = Producto.TIPO_CODIGO_BARRAS,
+                esManual = false
+            )
+            val id = productos.insertar(producto)
+            Log.d(TAG, "crearProducto: producto insertado con id=$id, codigo='$codigoNormalizado'")
+            val insertado = productos.buscarPorCodigo(codigoNormalizado)
+                ?: error("El producto se insertó, pero no se pudo recuperar de la base de datos")
+            insertado.copy(id = id)
+        } catch (error: SQLiteConstraintException) {
+            Log.e(TAG, "crearProducto: violación de unicidad para codigo='$codigoNormalizado'", error)
+            throw SQLiteConstraintException(error.message ?: "Código de barras duplicado")
+        } catch (error: Exception) {
+            Log.e(TAG, "crearProducto: error insertando codigo='$codigoNormalizado'", error)
+            throw error
+        }
     }
 
     suspend fun crearProductoManual(codigoManual: String?, nombre: String, precio: Double): Producto {
