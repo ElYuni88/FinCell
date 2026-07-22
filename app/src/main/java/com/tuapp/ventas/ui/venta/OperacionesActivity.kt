@@ -15,11 +15,12 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.tuapp.ventas.VentasApplication
 import com.tuapp.ventas.data.model.ModoOperacion
 import com.tuapp.ventas.data.model.Producto
+import com.tuapp.ventas.data.model.VentaItem
 import com.tuapp.ventas.databinding.ActivityOperacionesBinding
 import com.tuapp.ventas.databinding.DialogAgregarProductoBinding
 import com.tuapp.ventas.ui.common.ProductoNoEncontradoDialogFragment
 import com.tuapp.ventas.ui.productosmanuales.ProductosManualesActivity
-import com.tuapp.ventas.ui.scanner.BarcodeScannerActivity
+import com.tuapp.ventas.ui.escaneo.EscaneoContinuoActivity
 import com.tuapp.ventas.ui.simple.VentaDirectaDialog
 import com.tuapp.ventas.utils.DateUtils
 import com.tuapp.ventas.utils.PreferencesManager
@@ -33,12 +34,9 @@ class OperacionesActivity : AppCompatActivity() {
     private lateinit var prefs: PreferencesManager
 
     private val scanLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        val codigo = result.data?.getStringExtra(BarcodeScannerActivity.EXTRA_BARCODE).orEmpty()
-        if (codigo.isNotBlank()) {
-            Log.d(TAG, "Código escaneado: $codigo")
-            if (prefs.sonidoEscaneo) SoundUtils.beep()
-            if (prefs.vibrarEscaneo) SoundUtils.vibrar(this)
-            viewModel.procesarEscaneo(codigo)
+        if (result.resultCode == RESULT_OK) {
+            val productos = result.data?.getSerializableExtra(EXTRA_PRODUCTOS_ACUMULADOS) as? ArrayList<VentaItem>
+            if (!productos.isNullOrEmpty()) viewModel.agregarProductos(productos)
         }
     }
 
@@ -63,6 +61,8 @@ class OperacionesActivity : AppCompatActivity() {
         if (productoInicial != null) {
             viewModel.agregarProducto(productoInicial, cantidadInicial)
         }
+        val productosIniciales = intent.getSerializableExtra(EXTRA_PRODUCTOS_ACUMULADOS) as? ArrayList<VentaItem>
+        if (!productosIniciales.isNullOrEmpty()) viewModel.agregarProductos(productosIniciales)
         configurarRecycler()
         configurarClicks()
         observarDatos()
@@ -104,7 +104,7 @@ class OperacionesActivity : AppCompatActivity() {
         else cameraPermission.launch(Manifest.permission.CAMERA)
     }
 
-    private fun abrirScanner() = scanLauncher.launch(Intent(this, BarcodeScannerActivity::class.java))
+    private fun abrirScanner() = scanLauncher.launch(Intent(this, EscaneoContinuoActivity::class.java).putExtra(EscaneoContinuoActivity.EXTRA_MODO_AGREGAR, true))
 
     private fun abrirProductosManuales() {
         manualLauncher.launch(Intent(this, ProductosManualesActivity::class.java).apply {
@@ -158,5 +158,6 @@ class OperacionesActivity : AppCompatActivity() {
     override fun onSupportNavigateUp(): Boolean { finish(); return true }
     companion object { private const val TAG = "OperacionesActivity"
         const val EXTRA_PRODUCTO_INICIAL = "producto_inicial"
-        const val EXTRA_CANTIDAD_INICIAL = "cantidad_inicial" }
+        const val EXTRA_CANTIDAD_INICIAL = "cantidad_inicial"
+        const val EXTRA_PRODUCTOS_ACUMULADOS = EscaneoContinuoActivity.EXTRA_PRODUCTOS_ACUMULADOS }
 }

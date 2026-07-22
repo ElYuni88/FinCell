@@ -31,6 +31,7 @@ import com.tuapp.ventas.ui.main.adapters.VentasRecientesAdapter
 import com.tuapp.ventas.ui.productos.ProductosActivity
 import com.tuapp.ventas.ui.exportar.ExportarIPBActivity
 import com.tuapp.ventas.ui.productosmanuales.ProductosManualesActivity
+import com.tuapp.ventas.ui.escaneo.EscaneoContinuoActivity
 import com.tuapp.ventas.ui.scanner.BarcodeScannerActivity
 import com.tuapp.ventas.ui.settings.SettingsActivity
 import com.tuapp.ventas.ui.simple.VentaDirectaDialog
@@ -120,7 +121,7 @@ class MainActivity : BaseActivity() {
         chipSimple.setOnClickListener { cambiarModo(ModoOperacion.SIMPLE) }
         chipCuenta.setOnClickListener { cambiarModo(ModoOperacion.CUENTA) }
         //btnEscanearSimple.setOnClickListener { startActivity(Intent(this@MainActivity, OperacionesActivity::class.java)) }
-        btnEscanearSimple.setOnClickListener { solicitarCamara() }
+        btnEscanearSimple.setOnClickListener { scanFlow = ScanFlow.VENTA; solicitarCamara() }
         btnEscanearCuenta.visibility = View.GONE
         btnVerCuenta.visibility = View.GONE
         txtCuentaSeleccionada.visibility = View.GONE
@@ -192,7 +193,13 @@ class MainActivity : BaseActivity() {
         panelCuenta.visibility = if (modo == ModoOperacion.CUENTA) View.VISIBLE else View.GONE
     }
     private fun solicitarCamara() { if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) abrirScanner() else cameraPermission.launch(Manifest.permission.CAMERA) }
-    private fun abrirScanner() = scanLauncher.launch(Intent(this, BarcodeScannerActivity::class.java))
+    private fun abrirScanner() {
+        if (scanFlow == ScanFlow.VENTA && modo == ModoOperacion.SIMPLE) {
+            startActivity(Intent(this, EscaneoContinuoActivity::class.java))
+        } else {
+            scanLauncher.launch(Intent(this, BarcodeScannerActivity::class.java))
+        }
+    }
     override fun onCreateOptionsMenu(menu: Menu): Boolean = false
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean = when (item.itemId) {
