@@ -263,6 +263,64 @@ class VentasRepository(private val db: AppDatabase) {
         cuentas.actualizar(cuenta.copy(estado = Cuenta.ESTADO_CERRADA, fechaCierre = cierre, total = total))
         finales.insertar(VentaFinal(cuentaId = cuentaId, totalVenta = total, metodoPago = metodoPago, fechaCierre = cierre, observaciones = observaciones))
     }
+    suspend fun obtenerResumenVentasDia(fecha: Long): List<ResumenProducto> {
+        val inicio = inicioDia(fecha)
+        val fin = finDia(fecha)
+        val mapa = mutableMapOf<Long, ResumenProducto>()
+
+        ventas.listarDelDia(inicio, fin).forEach { venta ->
+            val producto = productos.buscarPorId(venta.productoId) ?: return@forEach
+            val actual = mapa[producto.id]
+            mapa[producto.id] = if (actual == null) {
+                ResumenProducto(
+                    nombre = producto.nombre,
+                    cantidadVendida = 1,
+                    stockDisponible = producto.inventario - producto.vendidos,
+                    subtotal = venta.precio
+                )
+            } else {
+                actual.copy(
+                    cantidadVendida = actual.cantidadVendida + 1,
+                    stockDisponible = producto.inventario - producto.vendidos,
+                    subtotal = actual.subtotal + venta.precio
+                )
+            }
+        }
+
+        cuentas.cuentasCerradasDelDia(inicio, fin).forEach { cuenta ->
+            cuenta.detalles.forEach { detalle ->
+                val producto = productos.buscarPorId(detalle.productoId) ?: return@forEach
+                val actual = mapa[producto.id]
+                mapa[producto.id] = if (actual == null) {
+                    ResumenProducto(
+                        nombre = producto.nombre,
+                        cantidadVendida = detalle.cantidad,
+                        stockDisponible = producto.inventario - producto.vendidos,
+                        subtotal = detalle.subtotal
+                    )
+                } else {
+                    actual.copy(
+                        cantidadVendida = actual.cantidadVendida + detalle.cantidad,
+                        stockDisponible = producto.inventario - producto.vendidos,
+                        subtotal = actual.subtotal + detalle.subtotal
+                    )
+                }
+            }
+        }
+
+        return mapa.values.sortedBy { it.nombre }
+    }
+
+    suspend fun obtenerExistenciaDia(): List<ExistenciaProducto> {
+        return productos.listarTodos().map { producto ->
+            ExistenciaProducto(
+                nombre = producto.nombre,
+                stockDisponible = producto.inventario - producto.vendidos,
+                precio = producto.precio
+            )
+        }.sortedBy { it.nombre }
+    }
+
     suspend fun obtenerCuentaConDetalles(cuentaId: Long): CuentaConDetalles? = cuentas.obtenerCuentaConDetalles(cuentaId)
     suspend fun obtenerCuenta(cuentaId: Long): Cuenta? = cuentas.obtener(cuentaId)
     suspend fun eliminarCuentaVacia(cuentaId: Long) {

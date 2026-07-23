@@ -1,26 +1,33 @@
-<?xml version="1.0" ?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:background="@color/background">
-    <com.google.android.material.appbar.MaterialToolbar android:id="@+id/toolbar" android:layout_width="match_parent" android:layout_height="64dp" android:background="@color/surface" app:navigationIcon="@drawable/ic_menu" app:title="CafePos" app:titleTextAppearance="@style/TextAppearance.FinSell.Display"/>
-    <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
-            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Estadísticas Diarias 📅" android:textAppearance="@style/TextAppearance.FinSell.Display"/>
-            <com.google.android.material.card.MaterialCardView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" app:cardCornerRadius="12dp" app:cardElevation="4dp">
-                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="18dp">
-                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Ingresos Totales (Hoy)" android:textAppearance="@style/TextAppearance.FinSell.Secondary"/>
-                    <TextView android:id="@+id/txtTotalSimple" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="$0.00" android:textAppearance="@style/TextAppearance.FinSell.Total"/>
-                    <TextView android:id="@+id/txtCantidadSimple" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="0 ventas" android:textAppearance="@style/TextAppearance.FinSell.Secondary"/>
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-            <TextView android:id="@+id/txtTotalCuentas" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:text="$0.00 cuentas" android:textAppearance="@style/TextAppearance.FinSell.Title"/>
-            <TextView android:id="@+id/txtCantidadCuentas" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="0 cuentas"/>
-            <com.github.mikephil.charting.charts.BarChart android:id="@+id/chart" android:layout_width="match_parent" android:layout_height="220dp" android:layout_marginTop="12dp"/>
-            <TextView android:id="@+id/txtCuentasAbiertas" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="0 abiertas"/>
-            <TextView android:id="@+id/txtProductosAgotados" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="0 agotados"/>
-            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:text="Top Productos" android:textAppearance="@style/TextAppearance.FinSell.Title"/>
-            <TextView android:id="@+id/txtTopProductos" android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@drawable/bg_stitch_card" android:padding="16dp" android:text="Sin ventas"/>
-            <com.google.android.material.button.MaterialButton android:id="@+id/btnExportar" android:layout_width="match_parent" android:layout_height="56dp" android:layout_marginTop="16dp" android:text="Exportar ventas del día" app:backgroundTint="@color/secondary"/>
-            <com.google.android.material.button.MaterialButton android:id="@+id/btnVolver" android:layout_width="match_parent" android:layout_height="52dp" android:text="Volver" android:textColor="@color/text_secondary" app:backgroundTint="@color/surface_variant"/>
-        </LinearLayout>
-    </ScrollView>
-    <com.google.android.material.bottomnavigation.BottomNavigationView android:id="@+id/bottomNavigation" style="@style/Widget.FinSell.BottomNavigation" android:layout_width="match_parent" android:layout_height="72dp" app:menu="@menu/menu_bottom"/>
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background"
+    android:orientation="vertical">
+
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:background="@color/surface"
+        app:menu="@menu/menu_estadisticas"
+        app:navigationIcon="@drawable/ic_arrow_back"
+        app:title="Estadísticas"
+        app:titleTextAppearance="@style/TextAppearance.FinSell.Display" />
+
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/tabLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/surface"
+        app:tabMode="fixed"
+        app:tabGravity="fill" />
+
+    <androidx.viewpager2.widget.ViewPager2
+        android:id="@+id/viewPager"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
 </LinearLayout>
