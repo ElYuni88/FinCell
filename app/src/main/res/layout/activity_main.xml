@@ -368,7 +368,7 @@
             android:background="@color/surface"
             app:menu="@menu/menu_bottom"
             app:itemIconTint="@color/bottom_nav_tint"
-            app:itemTextColor="@color/bottom_nav_tint" />
+            app:itemTextColor="@color/pos_green" />
 
     </LinearLayout>
 

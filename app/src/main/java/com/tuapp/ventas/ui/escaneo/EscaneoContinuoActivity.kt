@@ -1,7 +1,6 @@
 package com.tuapp.ventas.ui.escaneo
 
 import android.Manifest
-import android.app.AlertDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
@@ -25,6 +24,7 @@ import com.tuapp.ventas.VentasApplication
 import com.tuapp.ventas.data.model.ModoOperacion
 import com.tuapp.ventas.data.model.Producto
 import com.tuapp.ventas.data.model.VentaItem
+import androidx.appcompat.app.AlertDialog
 import com.tuapp.ventas.databinding.ActivityEscaneoContinuoBinding
 import com.tuapp.ventas.databinding.DialogAgregarProductoBinding
 import com.tuapp.ventas.ui.common.ProductoNoEncontradoDialogFragment

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:padding="8dp"
+    android:background="?android:attr/selectableItemBackground">
+
+    <TextView
+        android:id="@+id/tvNombre"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="2"
+        android:text="Producto"
+        android:textAppearance="@style/TextAppearance.FinSell.Body" />
+
+    <TextView
+        android:id="@+id/tvCodigo"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="Código"
+        android:textAppearance="@style/TextAppearance.FinSell.Secondary"
+        android:textSize="12sp" />
+
+    <TextView
+        android:id="@+id/tvPrecio"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="$0.00"
+        android:textAppearance="@style/TextAppearance.FinSell.Body"
+        android:gravity="end" />
+
+    <TextView
+        android:id="@+id/tvInventario"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="0"
+        android:textAppearance="@style/TextAppearance.FinSell.Secondary"
+        android:gravity="end" />
+
+    <TextView
+        android:id="@+id/tvVendidos"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="0"
+        android:textAppearance="@style/TextAppearance.FinSell.Secondary"
+        android:gravity="end" />
+</LinearLayout>

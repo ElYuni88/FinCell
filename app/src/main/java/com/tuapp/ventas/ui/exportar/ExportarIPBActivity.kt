@@ -1,6 +1,7 @@
 package com.tuapp.ventas.ui.exportar
 
 import android.content.ContentValues
+import android.content.Context
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
@@ -18,12 +19,14 @@ import kotlinx.coroutines.launch
 import java.io.File
 
 class ExportarIPBActivity : BaseActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        exportar()
+        val sobrescribir = intent.getBooleanExtra(EXTRA_SOBRESCRIBIR, false)
+        exportar(sobrescribir)
     }
 
-    private fun exportar() = lifecycleScope.launch {
+    private fun exportar(sobrescribir: Boolean) = lifecycleScope.launch {
         runCatching {
             val repo = (application as VentasApplication).repository
             val now = System.currentTimeMillis()
@@ -59,7 +62,7 @@ class ExportarIPBActivity : BaseActivity() {
 
             val json = GsonBuilder().setPrettyPrinting().create().toJson(archivo)
             val nombre = "ipb_${archivo.fecha}.json"
-            guardar(nombre, json)
+            guardar(nombre, json, sobrescribir)
         }.onSuccess {
             Toast.makeText(
                 this@ExportarIPBActivity,
@@ -77,8 +80,54 @@ class ExportarIPBActivity : BaseActivity() {
         }
     }
 
-    private fun guardar(nombre: String, json: String) {
+    private fun guardar(nombre: String, json: String, sobrescribir: Boolean) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            // Para Android 10+, usar MediaStore con posibilidad de sobrescritura
+            val collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
+            val projection = arrayOf(MediaStore.MediaColumns._ID)
+            val selection = "${MediaStore.MediaColumns.DISPLAY_NAME} = ?"
+            val selectionArgs = arrayOf(nombre)
+
+            // Buscar si ya existe un archivo con ese nombre
+            val cursor = contentResolver.query(collection, projection, selection, selectionArgs, null)
+            val id = cursor?.use {
+                if (it.moveToFirst()) {
+                    it.getLong(it.getColumnIndexOrThrow(MediaStore.MediaColumns._ID))
+                } else null
+            }
+
+            if (id != null) {
+                if (sobrescribir) {
+                    // Eliminar el existente
+                    val uri = ContentValues().apply {
+                        put(MediaStore.MediaColumns.IS_PENDING, 1)
+                    }.let {
+                        contentResolver.update(
+                            MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                            it,
+                            "${MediaStore.MediaColumns._ID} = ?",
+                            arrayOf(id.toString())
+                        )
+                    }
+                    // Ahora eliminar
+                    contentResolver.delete(
+                        MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                        "${MediaStore.MediaColumns._ID} = ?",
+                        arrayOf(id.toString())
+                    )
+                } else {
+                    // No sobrescribir, mostrar mensaje
+                    Toast.makeText(
+                        this,
+                        "El archivo ya existe. Usa la opción de sobrescritura.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    finish()
+                    return
+                }
+            }
+
+            // Insertar el nuevo archivo
             val values = ContentValues().apply {
                 put(MediaStore.MediaColumns.DISPLAY_NAME, nombre)
                 put(MediaStore.MediaColumns.MIME_TYPE, "application/json")
@@ -89,10 +138,31 @@ class ExportarIPBActivity : BaseActivity() {
             contentResolver.openOutputStream(uri).use { outputStream ->
                 outputStream?.write(json.toByteArray()) ?: error("No se pudo escribir IPB")
             }
+
         } else {
+            // Android 9 o inferior
             val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
             if (!dir.exists()) dir.mkdirs()
-            File(dir, nombre).writeText(json)
+            val archivo = File(dir, nombre)
+
+            if (archivo.exists()) {
+                if (sobrescribir) {
+                    archivo.delete()
+                } else {
+                    Toast.makeText(
+                        this,
+                        "El archivo ya existe. Usa la opción de sobrescritura.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    finish()
+                    return
+                }
+            }
+            archivo.writeText(json)
         }
+    }
+
+    companion object {
+        const val EXTRA_SOBRESCRIBIR = "extra_sobrescribir"
     }
 }

@@ -15,6 +15,7 @@ import com.tuapp.ventas.VentasApplication
 import com.tuapp.ventas.databinding.ActivityBaseBinding
 import com.tuapp.ventas.ui.estadisticas.EstadisticasActivity
 import com.tuapp.ventas.ui.exportar.ExportarIPBActivity
+import com.tuapp.ventas.ui.ipb.IPBResumenActivity
 import com.tuapp.ventas.ui.main.MainActivity
 import com.tuapp.ventas.ui.notificaciones.NotificacionesActivity
 import com.tuapp.ventas.ui.productos.ProductosActivity
@@ -100,6 +101,22 @@ abstract class BaseActivity : AppCompatActivity() {
         }
     }
 
+    private fun navegar(@IdRes itemId: Int) {
+        baseBinding.drawerLayout.closeDrawer(GravityCompat.START)
+        when (itemId) {
+            R.id.nav_scan -> if (this !is MainActivity) {
+                startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP))
+            }
+            R.id.nav_productos, R.id.menu_productos -> if (this !is ProductosActivity) startActivity(Intent(this, ProductosActivity::class.java))
+            R.id.nav_estadisticas, R.id.menu_estadisticas -> if (this !is EstadisticasActivity) startActivity(Intent(this, EstadisticasActivity::class.java))
+            R.id.nav_exportar_ipb, R.id.menu_exportar_ipb -> {
+                // Lanzar directamente IPBResumenActivity (no es subclase de BaseActivity, por eso no usamos verificación)
+                startActivity(Intent(this, IPBResumenActivity::class.java))
+            }
+            R.id.menu_configuraciones -> if (this !is SettingsActivity) startActivity(Intent(this, SettingsActivity::class.java))
+        }
+    }
+
     protected fun seleccionarItemActual() {
         val id = when (this) {
             is MainActivity -> R.id.nav_scan
@@ -110,21 +127,13 @@ abstract class BaseActivity : AppCompatActivity() {
         }
         if (id != 0) {
             baseBinding.bottomNavigation.menu.findItem(id)?.isChecked = true
-            val drawerId = if (id == R.id.nav_productos) R.id.menu_productos else if (id == R.id.nav_estadisticas) R.id.menu_estadisticas else if (id == R.id.nav_exportar_ipb) R.id.menu_exportar_ipb else id
-            baseBinding.navView.menu.findItem(drawerId)?.isChecked = true
-        }
-    }
-
-    private fun navegar(@IdRes itemId: Int) {
-        baseBinding.drawerLayout.closeDrawer(GravityCompat.START)
-        when (itemId) {
-            R.id.nav_scan -> if (this !is MainActivity) {
-                startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP))
+            val drawerId = when (id) {
+                R.id.nav_productos -> R.id.menu_productos
+                R.id.nav_estadisticas -> R.id.menu_estadisticas
+                R.id.nav_exportar_ipb -> R.id.menu_exportar_ipb
+                else -> id
             }
-            R.id.nav_productos, R.id.menu_productos -> if (this !is ProductosActivity) startActivity(Intent(this, ProductosActivity::class.java))
-            R.id.nav_estadisticas, R.id.menu_estadisticas -> if (this !is EstadisticasActivity) startActivity(Intent(this, EstadisticasActivity::class.java))
-            R.id.nav_exportar_ipb, R.id.menu_exportar_ipb -> if (this !is ExportarIPBActivity) startActivity(Intent(this, ExportarIPBActivity::class.java))
-            R.id.menu_configuraciones -> if (this !is SettingsActivity) startActivity(Intent(this, SettingsActivity::class.java))
+            baseBinding.navView.menu.findItem(drawerId)?.isChecked = true
         }
     }
 }

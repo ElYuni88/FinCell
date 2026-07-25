@@ -288,8 +288,9 @@ class VentasRepository(private val db: AppDatabase) {
         }
 
         cuentas.cuentasCerradasDelDia(inicio, fin).forEach { cuenta ->
-            cuenta.detalles.forEach { detalle ->
-                val producto = productos.buscarPorId(detalle.productoId) ?: return@forEach
+            cuenta.detalles.forEach { detalleConProducto ->
+                val detalle = detalleConProducto.detalle
+                val producto = detalleConProducto.producto
                 val actual = mapa[producto.id]
                 mapa[producto.id] = if (actual == null) {
                     ResumenProducto(

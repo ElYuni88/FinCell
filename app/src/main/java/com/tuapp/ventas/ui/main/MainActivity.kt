@@ -32,6 +32,7 @@ import com.tuapp.ventas.ui.productos.ProductosActivity
 import com.tuapp.ventas.ui.exportar.ExportarIPBActivity
 import com.tuapp.ventas.ui.productosmanuales.ProductosManualesActivity
 import com.tuapp.ventas.ui.escaneo.EscaneoContinuoActivity
+import com.tuapp.ventas.ui.ipb.IPBResumenActivity
 import com.tuapp.ventas.ui.scanner.BarcodeScannerActivity
 import com.tuapp.ventas.ui.settings.SettingsActivity
 import com.tuapp.ventas.ui.simple.VentaDirectaDialog
@@ -89,7 +90,7 @@ class MainActivity : BaseActivity() {
                            else solicitarCamara(); true }
         R.id.nav_productos, R.id.menu_productos -> { startActivity(Intent(this, ProductosActivity::class.java)); true }
         R.id.nav_estadisticas, R.id.menu_estadisticas -> { startActivity(Intent(this, EstadisticasActivity::class.java)); true }
-        R.id.nav_exportar_ipb, R.id.menu_exportar_ipb -> { confirmarExportarIPB(); true }
+        R.id.nav_exportar_ipb, R.id.menu_exportar_ipb -> { startActivity(Intent(this, IPBResumenActivity::class.java)); true }
         R.id.menu_configuraciones -> { startActivity(Intent(this, SettingsActivity::class.java)); true }
         else -> false
     }
@@ -205,7 +206,10 @@ class MainActivity : BaseActivity() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean = when (item.itemId) {
         R.id.menu_productos -> { startActivity(Intent(this, ProductosActivity::class.java)); true }
         R.id.menu_estadisticas -> { startActivity(Intent(this, EstadisticasActivity::class.java)); true }
-        R.id.menu_exportar_ipb -> { confirmarExportarIPB(); true }
+        R.id.menu_exportar_ipb -> {
+            startActivity(Intent(this, IPBResumenActivity::class.java))
+            true
+        }
         R.id.menu_configuraciones -> { startActivity(Intent(this, SettingsActivity::class.java)); true }
         else -> super.onOptionsItemSelected(item)
     }
