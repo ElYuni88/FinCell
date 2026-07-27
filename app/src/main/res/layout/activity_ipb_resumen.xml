@@ -3,8 +3,8 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:background="@color/background">
+    android:background="@color/background"
+    android:orientation="vertical">
 
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/toolbar"
@@ -16,37 +16,110 @@
         app:title="IPB - Resumen del día"
         app:titleTextColor="@android:color/white" />
 
-    <TextView
-        android:id="@+id/txtFecha"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:padding="16dp"
-        android:text="Fecha: --"
-        android:textAppearance="@style/TextAppearance.FinSell.Title"
-        android:textSize="18sp" />
-
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recyclerIPB"
+    <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:padding="8dp"
-        android:clipToPadding="false" />
+        android:fillViewport="true"
+        android:layout_weight="1">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:id="@+id/txtFecha"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Fecha: --"
+                android:textAppearance="@style/TextAppearance.FinSell.Title"
+                android:textSize="18sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="Productos vendidos"
+                android:textAppearance="@style/TextAppearance.FinSell.Title" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerIPB"
+                android:layout_width="match_parent"
+                android:layout_height="220dp"
+                android:layout_marginTop="8dp"
+                android:clipToPadding="false" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="Gastos del día"
+                android:textAppearance="@style/TextAppearance.FinSell.Title" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerGastos"
+                android:layout_width="match_parent"
+                android:layout_height="160dp"
+                android:layout_marginTop="8dp"
+                android:clipToPadding="false" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:background="@drawable/bg_card_white"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Totales"
+                    android:textAppearance="@style/TextAppearance.FinSell.Title" />
+
+                <TextView
+                    android:id="@+id/txtTotalVentas"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="$0.00"
+                    android:textAppearance="@style/TextAppearance.FinSell.Body" />
+
+                <TextView
+                    android:id="@+id/txtTotalGastos"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="$0.00"
+                    android:textAppearance="@style/TextAppearance.FinSell.Body" />
+
+                <TextView
+                    android:id="@+id/txtTotalNeto"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="$0.00"
+                    android:textAppearance="@style/TextAppearance.FinSell.Title"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:gravity="center"
         android:orientation="horizontal"
-        android:padding="16dp"
-        android:gravity="center">
+        android:padding="16dp">
 
         <Button
             android:id="@+id/btnAjustarIPB"
             style="@style/Widget.Material3.Button.OutlinedButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:layout_marginEnd="8dp"
+            android:layout_weight="1"
             android:text="Ajustar IPB"
             android:textColor="@color/pos_blue"
             app:strokeColor="@color/pos_blue" />
@@ -55,10 +128,10 @@
             android:id="@+id/btnExportar"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:backgroundTint="@color/pos_red"
             android:text="Exportar"
-            android:textColor="@android:color/white"
-            android:backgroundTint="@color/pos_red" />
+            android:textColor="@android:color/white" />
     </LinearLayout>
 </LinearLayout>

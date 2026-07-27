@@ -1,7 +1,6 @@
 package com.tuapp.ventas.ui.exportar
 
 import android.content.ContentValues
-import android.content.Context
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
@@ -15,6 +14,7 @@ import com.tuapp.ventas.data.model.ArchivoIPB
 import com.tuapp.ventas.data.model.ProductoIPB
 import com.tuapp.ventas.data.model.ResumenIPB
 import com.tuapp.ventas.utils.DateUtils
+import com.tuapp.ventas.utils.PreferencesManager
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -46,17 +46,25 @@ class ExportarIPBActivity : BaseActivity() {
 
             val ventas = repo.ventasDirectasDia(inicio, fin)
             val cuentas = repo.cuentasCerradasDia(inicio, fin)
+            val gastos = PreferencesManager(this@ExportarIPBActivity).obtenerGastos(DateUtils.fechaArchivo(now))
+            val totalVentas = ventas.sumOf { it.precio }
+            val totalCuentas = cuentas.sumOf { it.cuenta.total }
+            val totalGeneral = totalVentas + totalCuentas
+            val totalGastos = gastos.sumOf { it.monto }
 
             val archivo = ArchivoIPB(
                 fecha = DateUtils.fechaArchivo(now),
                 timestamp = now,
                 productos = productos,
+                gastos = gastos,
                 resumen = ResumenIPB(
-                    totalVentas = ventas.sumOf { it.precio },
-                    totalCuentas = cuentas.sumOf { it.cuenta.total },
-                    totalGeneral = ventas.sumOf { it.precio } + cuentas.sumOf { it.cuenta.total },
+                    totalVentas = totalVentas,
+                    totalCuentas = totalCuentas,
+                    totalGeneral = totalGeneral,
                     cantidadVentas = ventas.size,
-                    cantidadCuentas = cuentas.size
+                    cantidadCuentas = cuentas.size,
+                    totalGastos = totalGastos,
+                    totalNeto = totalGeneral - totalGastos
                 )
             )
 
@@ -99,7 +107,7 @@ class ExportarIPBActivity : BaseActivity() {
             if (id != null) {
                 if (sobrescribir) {
                     // Eliminar el existente
-                    val uri = ContentValues().apply {
+                    ContentValues().apply {
                         put(MediaStore.MediaColumns.IS_PENDING, 1)
                     }.let {
                         contentResolver.update(
