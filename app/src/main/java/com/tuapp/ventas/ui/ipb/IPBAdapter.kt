@@ -7,16 +7,14 @@ import com.tuapp.ventas.data.model.ProductoIPB
 import com.tuapp.ventas.databinding.ItemIpbProductoBinding
 import com.tuapp.ventas.utils.DateUtils
 
-class IPBAdapter(private val productos: List<ProductoIPB>) :
+/** Adaptador de la tabla de productos del informe IPB. */
+class IPBAdapter(private var productos: List<ProductoIPB>) :
     RecyclerView.Adapter<IPBAdapter.ViewHolder>() {
 
-    class ViewHolder(val binding: ItemIpbProductoBinding) :
-        RecyclerView.ViewHolder(binding.root)
+    class ViewHolder(val binding: ItemIpbProductoBinding) : RecyclerView.ViewHolder(binding.root)
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-        val binding = ItemIpbProductoBinding.inflate(
-            LayoutInflater.from(parent.context), parent, false
-        )
+        val binding = ItemIpbProductoBinding.inflate(LayoutInflater.from(parent.context), parent, false)
         return ViewHolder(binding)
     }
 
@@ -24,12 +22,16 @@ class IPBAdapter(private val productos: List<ProductoIPB>) :
         val item = productos[position]
         with(holder.binding) {
             tvNombre.text = item.nombre
-            tvCodigo.text = item.codigoBarras?.takeIf { it.isNotBlank() } ?: "S/C"
-            tvPrecio.text = DateUtils.moneda(item.precio)
-            tvInventario.text = item.inventario.toString()
             tvVendidos.text = item.vendidos.toString()
+            tvStock.text = item.stockFinal.toString()
+            tvSubtotal.text = DateUtils.moneda(item.subtotal)
         }
     }
 
     override fun getItemCount() = productos.size
+
+    fun submitList(nuevosProductos: List<ProductoIPB>) {
+        productos = nuevosProductos
+        notifyDataSetChanged()
+    }
 }
