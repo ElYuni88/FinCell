@@ -16,6 +16,7 @@ import com.tuapp.ventas.databinding.ActivityBaseBinding
 import com.tuapp.ventas.ui.estadisticas.EstadisticasActivity
 import com.tuapp.ventas.ui.exportar.ExportarIPBActivity
 import com.tuapp.ventas.ui.ipb.IPBResumenActivity
+import com.tuapp.ventas.ui.ipb.ImportarIPBActivity
 import com.tuapp.ventas.ui.main.MainActivity
 import com.tuapp.ventas.ui.notificaciones.NotificacionesActivity
 import com.tuapp.ventas.ui.productos.ProductosActivity
@@ -109,6 +110,9 @@ abstract class BaseActivity : AppCompatActivity() {
             }
             R.id.nav_productos, R.id.menu_productos -> if (this !is ProductosActivity) startActivity(Intent(this, ProductosActivity::class.java))
             R.id.nav_estadisticas, R.id.menu_estadisticas -> if (this !is EstadisticasActivity) startActivity(Intent(this, EstadisticasActivity::class.java))
+            R.id.nav_importar_ipb, R.id.menu_importar_ipb -> {
+                startActivity(Intent(this, ImportarIPBActivity::class.java))
+            }
             R.id.nav_exportar_ipb, R.id.menu_exportar_ipb -> {
                 // Lanzar directamente IPBResumenActivity (no es subclase de BaseActivity, por eso no usamos verificación)
                 startActivity(Intent(this, IPBResumenActivity::class.java))

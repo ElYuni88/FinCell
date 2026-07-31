@@ -1,5 +1,6 @@
 package com.tuapp.ventas.ui.ipb
 
+import android.app.DatePickerDialog
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
@@ -15,19 +16,22 @@ import com.tuapp.ventas.ui.exportar.ExportarIPBActivity
 import com.tuapp.ventas.utils.DateUtils
 import com.tuapp.ventas.utils.PreferencesManager
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 
 class IPBResumenActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityIpbResumenBinding
     private lateinit var productoAdapter: IPBAdapter
     private lateinit var gastoAdapter: GastoAdapter
-    private val fechaActual: Long get() = System.currentTimeMillis()
     private val viewModel: IPBResumenViewModel by viewModels {
         IPBResumenViewModelFactory(
             (application as VentasApplication).repository,
             PreferencesManager(this)
         )
     }
+    private var fechaSeleccionada: Long = System.currentTimeMillis()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,11 +44,44 @@ class IPBResumenActivity : AppCompatActivity() {
         configurarRecyclers()
         configurarObservadores()
         configurarBotones()
+
+        // Click en la fecha para abrir selector
+        binding.txtFecha.setOnClickListener { mostrarSelectorFecha() }
     }
 
     override fun onResume() {
         super.onResume()
         cargarDatos()
+    }
+
+    private fun mostrarSelectorFecha() {
+        val cal = Calendar.getInstance().apply { timeInMillis = fechaSeleccionada }
+        DatePickerDialog(this, { _, year, month, dayOfMonth ->
+            val fecha = Calendar.getInstance().apply {
+                set(year, month, dayOfMonth, 0, 0, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+
+            // Validar que no sea una fecha futura
+            if (fecha > System.currentTimeMillis()) {
+                Toast.makeText(this, "No se pueden ver fechas futuras", Toast.LENGTH_SHORT).show()
+                return@DatePickerDialog
+            }
+
+            // Actualizar fecha seleccionada
+            fechaSeleccionada = fecha
+            val fechaStr = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(fecha)
+            binding.txtFecha.text = "Fecha: $fechaStr"
+
+            // Cargar datos
+            viewModel.cargarDatos(fecha)
+
+            // Habilitar/deshabilitar botón "Ajustar IPB" según sea hoy o no
+            val esHoy = DateUtils.esMismoDia(fecha, System.currentTimeMillis())
+            binding.btnAjustarIPB.isEnabled = esHoy
+            binding.btnAjustarIPB.alpha = if (esHoy) 1f else 0.5f
+
+        }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show()
     }
 
     private fun configurarRecyclers() {
@@ -76,8 +113,13 @@ class IPBResumenActivity : AppCompatActivity() {
     }
 
     private fun cargarDatos() {
-        binding.txtFecha.text = "Fecha: ${DateUtils.fechaHora(fechaActual)}"
-        viewModel.cargarDatos(fechaActual)
+        viewModel.cargarDatos(fechaSeleccionada)
+        val fechaStr = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(fechaSeleccionada)
+        binding.txtFecha.text = "Fecha: $fechaStr"
+        // Ajustar estado del botón según si es hoy o no
+        val esHoy = DateUtils.esMismoDia(fechaSeleccionada, System.currentTimeMillis())
+        binding.btnAjustarIPB.isEnabled = esHoy
+        binding.btnAjustarIPB.alpha = if (esHoy) 1f else 0.5f
     }
 
     private fun confirmarExportacion() {
@@ -86,8 +128,8 @@ class IPBResumenActivity : AppCompatActivity() {
             Toast.makeText(this, "No hay datos para exportar", Toast.LENGTH_SHORT).show()
             return
         }
-        val fecha = DateUtils.fechaArchivo(fechaActual)
-        val archivoApp = File(getExternalFilesDir(null), "ipb_$fecha.json")
+        val fechaStr = DateUtils.fechaArchivo(fechaSeleccionada)
+        val archivoApp = File(getExternalFilesDir(null), "resumen_ipb_${fechaStr}.json")
         val gastos = viewModel.gastos.value.orEmpty()
         val resumenGastos = if (gastos.isEmpty()) {
             "Gastos registrados: ninguno"
@@ -95,9 +137,9 @@ class IPBResumenActivity : AppCompatActivity() {
             gastos.joinToString(separator = "\n") { "• ${it.categoria}: ${DateUtils.moneda(it.monto)}" }
         }
         val mensajeBase = if (archivoApp.exists()) {
-            "Ya existe un archivo para la fecha $fecha. ¿Desea sobrescribirlo?"
+            "Ya existe un archivo para la fecha $fechaStr. ¿Desea sobrescribirlo?"
         } else {
-            "¿Exportar IPB para la fecha $fecha?"
+            "¿Exportar IPB para la fecha $fechaStr?"
         }
 
         MaterialAlertDialogBuilder(this)

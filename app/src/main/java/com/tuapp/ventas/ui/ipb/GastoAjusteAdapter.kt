@@ -8,7 +8,6 @@ import androidx.recyclerview.widget.RecyclerView
 import com.tuapp.ventas.data.model.Gasto
 import com.tuapp.ventas.databinding.ItemGastoAjusteBinding
 
-/** Adaptador editable para administrar los gastos dinámicos del IPB. */
 class GastoAjusteAdapter(private val gastos: MutableList<Gasto>) :
     RecyclerView.Adapter<GastoAjusteAdapter.ViewHolder>() {
 
@@ -22,7 +21,7 @@ class GastoAjusteAdapter(private val gastos: MutableList<Gasto>) :
             watcher = object : TextWatcher {
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
                 override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                    val posicion = bindingAdapterPosition
+                    val posicion = adapterPosition  // <--- Cambio aquí
                     if (posicion != RecyclerView.NO_POSITION) {
                         val monto = s?.toString()?.replace(",", ".")?.toDoubleOrNull() ?: 0.0
                         gastos[posicion] = gastos[posicion].copy(monto = monto)
@@ -32,7 +31,7 @@ class GastoAjusteAdapter(private val gastos: MutableList<Gasto>) :
             }
             binding.etMonto.addTextChangedListener(watcher)
             binding.btnEliminar.setOnClickListener {
-                val posicion = bindingAdapterPosition
+                val posicion = adapterPosition  // <--- Cambio aquí
                 if (posicion != RecyclerView.NO_POSITION) {
                     gastos.removeAt(posicion)
                     notifyItemRemoved(posicion)

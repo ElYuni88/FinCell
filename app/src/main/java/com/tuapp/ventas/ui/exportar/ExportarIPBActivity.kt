@@ -1,5 +1,6 @@
 package com.tuapp.ventas.ui.exportar
 
+import android.content.ContentUris
 import android.content.ContentValues
 import android.os.Build
 import android.os.Bundle
@@ -46,7 +47,8 @@ class ExportarIPBActivity : BaseActivity() {
 
             val ventas = repo.ventasDirectasDia(inicio, fin)
             val cuentas = repo.cuentasCerradasDia(inicio, fin)
-            val gastos = PreferencesManager(this@ExportarIPBActivity).obtenerGastos(DateUtils.fechaArchivo(now))
+            val fechaStr = DateUtils.fechaArchivo(now)
+            val gastos = PreferencesManager(this@ExportarIPBActivity).obtenerGastos(fechaStr)
             val totalVentas = ventas.sumOf { it.precio }
             val totalCuentas = cuentas.sumOf { it.cuenta.total }
             val totalGeneral = totalVentas + totalCuentas
@@ -90,13 +92,11 @@ class ExportarIPBActivity : BaseActivity() {
 
     private fun guardar(nombre: String, json: String, sobrescribir: Boolean) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            // Para Android 10+, usar MediaStore con posibilidad de sobrescritura
             val collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
             val projection = arrayOf(MediaStore.MediaColumns._ID)
             val selection = "${MediaStore.MediaColumns.DISPLAY_NAME} = ?"
             val selectionArgs = arrayOf(nombre)
 
-            // Buscar si ya existe un archivo con ese nombre
             val cursor = contentResolver.query(collection, projection, selection, selectionArgs, null)
             val id = cursor?.use {
                 if (it.moveToFirst()) {
@@ -106,36 +106,20 @@ class ExportarIPBActivity : BaseActivity() {
 
             if (id != null) {
                 if (sobrescribir) {
-                    // Eliminar el existente
-                    ContentValues().apply {
-                        put(MediaStore.MediaColumns.IS_PENDING, 1)
-                    }.let {
-                        contentResolver.update(
-                            MediaStore.Downloads.EXTERNAL_CONTENT_URI,
-                            it,
-                            "${MediaStore.MediaColumns._ID} = ?",
-                            arrayOf(id.toString())
-                        )
+                    // ✅ En lugar de eliminar, obtenemos el URI existente y escribimos sobre él
+                    val uri = ContentUris.withAppendedId(MediaStore.Downloads.EXTERNAL_CONTENT_URI, id)
+                    contentResolver.openOutputStream(uri).use { outputStream ->
+                        outputStream?.write(json.toByteArray()) ?: error("No se pudo escribir IPB")
                     }
-                    // Ahora eliminar
-                    contentResolver.delete(
-                        MediaStore.Downloads.EXTERNAL_CONTENT_URI,
-                        "${MediaStore.MediaColumns._ID} = ?",
-                        arrayOf(id.toString())
-                    )
+                    return // Salimos porque ya guardamos
                 } else {
-                    // No sobrescribir, mostrar mensaje
-                    Toast.makeText(
-                        this,
-                        "El archivo ya existe. Usa la opción de sobrescritura.",
-                        Toast.LENGTH_LONG
-                    ).show()
+                    Toast.makeText(this, "El archivo ya existe. Usa la opción de sobrescritura.", Toast.LENGTH_LONG).show()
                     finish()
                     return
                 }
             }
 
-            // Insertar el nuevo archivo
+            // Si no existe, insertamos nuevo
             val values = ContentValues().apply {
                 put(MediaStore.MediaColumns.DISPLAY_NAME, nombre)
                 put(MediaStore.MediaColumns.MIME_TYPE, "application/json")
@@ -146,22 +130,16 @@ class ExportarIPBActivity : BaseActivity() {
             contentResolver.openOutputStream(uri).use { outputStream ->
                 outputStream?.write(json.toByteArray()) ?: error("No se pudo escribir IPB")
             }
-
         } else {
-            // Android 9 o inferior
+            // Android 9 o inferior (código existente, sin cambios)
             val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
             if (!dir.exists()) dir.mkdirs()
             val archivo = File(dir, nombre)
-
             if (archivo.exists()) {
                 if (sobrescribir) {
                     archivo.delete()
                 } else {
-                    Toast.makeText(
-                        this,
-                        "El archivo ya existe. Usa la opción de sobrescritura.",
-                        Toast.LENGTH_LONG
-                    ).show()
+                    Toast.makeText(this, "El archivo ya existe. Usa la opción de sobrescritura.", Toast.LENGTH_LONG).show()
                     finish()
                     return
                 }

@@ -41,6 +41,7 @@ class AjustarIPBActivity : AppCompatActivity() {
     private fun configurarBotones() {
         binding.btnAgregarCategoria.setOnClickListener { mostrarDialogoAgregarGasto() }
         binding.btnGuardarAjustes.setOnClickListener {
+            // ✅ CORREGIDO: pasar la fecha también
             prefs.guardarGastos(fecha, adapter.obtenerGastos())
             Toast.makeText(this, "Ajustes guardados", Toast.LENGTH_SHORT).show()
             finish()

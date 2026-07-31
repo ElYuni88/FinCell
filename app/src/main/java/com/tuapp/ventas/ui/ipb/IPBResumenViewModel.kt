@@ -36,23 +36,66 @@ class IPBResumenViewModel(
         viewModelScope.launch {
             val inicio = DateUtils.inicioDia(fecha)
             val fin = DateUtils.finDia(fecha)
-            val productos = repo.listarProductos().map {
-                ProductoIPB(
-                    id = it.id,
-                    nombre = it.nombre,
-                    codigoBarras = it.codigoBarras,
-                    precio = it.precio,
-                    inventario = it.inventario,
-                    vendidos = it.vendidos
-                )
+
+            // Obtener ventas directas y cuentas cerradas del día
+            val ventasDirectas = repo.ventasDirectasDia(inicio, fin)
+            val cuentasCerradas = repo.cuentasCerradasDia(inicio, fin)
+
+            // Calcular totales
+            val totalVentasDia = ventasDirectas.sumOf { it.precio } + cuentasCerradas.sumOf { it.cuenta.total }
+
+            // Crear un mapa para acumular ventas por producto
+            val ventasPorProducto = mutableMapOf<Long, ProductoIPB>()
+
+            // Procesar ventas directas
+            ventasDirectas.forEach { venta ->
+                val producto = repo.buscarProductoPorId(venta.productoId) ?: return@forEach
+                val key = producto.id
+                val actual = ventasPorProducto[key]
+                if (actual == null) {
+                    ventasPorProducto[key] = ProductoIPB(
+                        id = producto.id,
+                        nombre = producto.nombre,
+                        codigoBarras = producto.codigoBarras,
+                        precio = producto.precio,
+                        inventario = producto.inventario, // stock inicial
+                        vendidos = 1
+                    )
+                } else {
+                    ventasPorProducto[key] = actual.copy(vendidos = actual.vendidos + 1)
+                }
             }
-            val ventasDirectas = repo.ventasDirectasDia(inicio, fin).sumOf { it.precio }
-            val ventasCuentas = repo.cuentasCerradasDia(inicio, fin).sumOf { it.cuenta.total }
-            val gastosDia = preferencesManager.obtenerGastos(DateUtils.fechaArchivo(fecha))
-            val totalVentasDia = ventasDirectas + ventasCuentas
+
+            // Procesar cuentas cerradas
+            cuentasCerradas.forEach { cuenta ->
+                cuenta.detalles.forEach { detalleConProducto ->
+                    val producto = detalleConProducto.producto
+                    val detalle = detalleConProducto.detalle
+                    val key = producto.id
+                    val actual = ventasPorProducto[key]
+                    if (actual == null) {
+                        ventasPorProducto[key] = ProductoIPB(
+                            id = producto.id,
+                            nombre = producto.nombre,
+                            codigoBarras = producto.codigoBarras,
+                            precio = producto.precio,
+                            inventario = producto.inventario,
+                            vendidos = detalle.cantidad
+                        )
+                    } else {
+                        ventasPorProducto[key] = actual.copy(vendidos = actual.vendidos + detalle.cantidad)
+                    }
+                }
+            }
+
+            // Obtener gastos del día
+            val fechaStr = DateUtils.fechaArchivo(fecha)
+            val gastosDia = preferencesManager.obtenerGastos(fechaStr)
+           // val gastosDia = preferencesManager.obtenerGastos()
             val totalGastosDia = gastosDia.sumOf { it.monto }
 
-            _productosIPB.value = productos
+            // Actualizar LiveData
+            _productosIPB.value = ventasPorProducto.values.sortedBy { it.nombre }
             _gastos.value = gastosDia
             _totalVentas.value = totalVentasDia
             _totalGastos.value = totalGastosDia

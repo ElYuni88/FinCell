@@ -134,13 +134,35 @@ class ProductosActivity : BaseActivity() {
                 }
             )
         } else {
-            // Si no es editable (edición de producto existente), no aplicar filtro numérico
             dialogBinding.inputCodigo.filters = arrayOf()
         }
 
         dialogBinding.inputNombre.setText(producto?.nombre.orEmpty())
         dialogBinding.inputPrecio.setText(producto?.precio?.toString().orEmpty())
-        dialogBinding.inputInventario.setText((producto?.inventario ?: 0).toString())
+
+        // --- Configurar visibilidad según nuevo/edición ---
+        val stockDisponible = if (producto != null) {
+            (producto.inventario - producto.vendidos).coerceAtLeast(0)
+        } else {
+            0
+        }
+
+        if (producto == null) {
+            // ✅ NUEVO PRODUCTO: mostrar inventario, ocultar entrada y stock actual
+            dialogBinding.tvStockActual.visibility = View.GONE
+            dialogBinding.inputEntradaStock.visibility = View.GONE
+            dialogBinding.inputInventario.visibility = View.VISIBLE
+            dialogBinding.inputInventario.setText("0")
+            dialogBinding.inputInventario.hint = "Cantidad en inventario"
+        } else {
+            // ✅ EDICIÓN: mostrar stock actual y entrada, ocultar inventario
+            dialogBinding.tvStockActual.visibility = View.VISIBLE
+            dialogBinding.tvStockActual.text = "Stock actual: $stockDisponible"
+            dialogBinding.inputEntradaStock.visibility = View.VISIBLE
+            dialogBinding.inputEntradaStock.setText("")
+            dialogBinding.inputEntradaStock.hint = "Entrada de stock (+)"
+            dialogBinding.inputInventario.visibility = View.GONE
+        }
 
         MaterialAlertDialogBuilder(this)
             .setTitle(titulo)
@@ -149,32 +171,27 @@ class ProductosActivity : BaseActivity() {
             .setPositiveButton("Guardar") { _, _ ->
                 val nombre = dialogBinding.inputNombre.text?.toString()?.trim().orEmpty()
                 val precio = dialogBinding.inputPrecio.text?.toString()?.toDoubleOrNull()
-                val inventario = dialogBinding.inputInventario.text?.toString()?.toIntOrNull() ?: 0
                 val codigo = dialogBinding.inputCodigo.text?.toString()?.trim().orEmpty()
 
                 // Validaciones
-                if (nombre.isBlank() || precio == null || precio < 0.0 || inventario < 0) {
-                    toast("Nombre, precio e inventario válidos son requeridos")
+                if (nombre.isBlank() || precio == null || precio < 0.0) {
+                    toast("Nombre y precio válidos son requeridos")
                     return@setPositiveButton
                 }
 
-                // NUEVA VALIDACIÓN: si es manual forzado (nuevo producto manual), el código no puede estar vacío
                 if (esManualForzado && codigo.isBlank()) {
                     toast("El código no puede estar vacío")
                     return@setPositiveButton
                 }
 
-                // Para productos existentes, si dejan el código vacío, mantener el anterior
                 val codigoFinal = if (codigo.isBlank() && producto != null) {
                     producto.codigoBarras
                 } else if (codigo.isBlank() && producto == null && !esManualForzado) {
-                    // Si es un producto nuevo pero no forzado (ej. desde escáner), generar automático
                     viewModel.generarCodigoManualSugerido()
                 } else {
                     codigo
                 }
 
-                // Si se aplicó el filtro numérico, el código solo tiene dígitos, pero por si acaso
                 if (esManualForzado && !codigoFinal.all { it.isDigit() }) {
                     toast("El código solo debe contener números")
                     return@setPositiveButton
@@ -183,7 +200,21 @@ class ProductosActivity : BaseActivity() {
                 val tipo = if (codigoFinal.startsWith("MANUAL_", ignoreCase = true)) Producto.TIPO_MANUAL else Producto.TIPO_CODIGO_BARRAS
                 val base = producto ?: Producto(nombre = nombre, precio = precio)
 
-                // Calcular esManualFinal
+                // --- Calcular el nuevo inventario según el caso ---
+                val nuevoInventario = if (producto != null) {
+                    // EDICIÓN: sumar entrada al inventario actual
+                    val entradaStr = dialogBinding.inputEntradaStock.text?.toString()?.trim()
+                    val entrada = if (!entradaStr.isNullOrEmpty()) {
+                        entradaStr.toIntOrNull() ?: 0
+                    } else {
+                        0
+                    }
+                    (producto.inventario + entrada).coerceAtLeast(0)
+                } else {
+                    // NUEVO PRODUCTO: usar el valor del campo inventario
+                    dialogBinding.inputInventario.text?.toString()?.toIntOrNull() ?: 0
+                }
+
                 val esManualFinal = if (esManualForzado) {
                     true
                 } else {
@@ -195,7 +226,7 @@ class ProductosActivity : BaseActivity() {
                         nombre = nombre,
                         codigoBarras = codigoFinal,
                         precio = precio,
-                        inventario = inventario,
+                        inventario = nuevoInventario,
                         tipoProducto = producto?.tipoProducto ?: tipo,
                         esManual = esManualFinal
                     )

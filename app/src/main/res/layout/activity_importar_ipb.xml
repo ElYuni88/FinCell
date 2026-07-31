@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background"
+    android:orientation="vertical">
+
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/pos_green"
+        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+        app:navigationIcon="@drawable/ic_arrow_back"
+        app:title="Importar IPB"
+        app:titleTextColor="@android:color/white" />
+
+    <Button
+        android:id="@+id/btnSeleccionarArchivo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        android:text="Seleccionar archivo IPB"
+        android:backgroundTint="@color/pos_blue" />
+
+    <TextView
+        android:id="@+id/txtArchivoSeleccionado"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="16dp"
+        android:text="Ningún archivo seleccionado"
+        android:textAppearance="@style/TextAppearance.FinSell.Body" />
+
+    <TextView
+        android:id="@+id/txtFechaIPB"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="16dp"
+        android:text="Fecha: --"
+        android:textAppearance="@style/TextAppearance.FinSell.Title" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerProductosIPB"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:padding="8dp" />
+
+    <Button
+        android:id="@+id/btnImportar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        android:enabled="false"
+        android:text="Importar"
+        android:backgroundTint="@color/pos_green" />
+</LinearLayout>

@@ -38,7 +38,9 @@ class MainViewModel(private val repo: VentasRepository) : ViewModel() {
 
     fun procesarEscaneoAlta(codigoBarras: String) = viewModelScope.launch {
         val producto = repo.buscarProducto(codigoBarras)
-        if (producto == null) codigoNuevoProducto.value = "FAB:$codigoBarras" else mensaje.value = "Producto ya registrado"
+        if (producto == null)
+            codigoNuevoProducto.value = "FAB:$codigoBarras"
+        else mensaje.value = "Producto ya registrado"
     }
     fun registrarVentaDirecta(producto: Producto, cantidad: Int = 1) = viewModelScope.launch {
         val cantidadFinal = cantidad.coerceIn(1, 99)

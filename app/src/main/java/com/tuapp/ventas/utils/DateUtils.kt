@@ -12,4 +12,10 @@ object DateUtils {
     fun fechaArchivo(time: Long = System.currentTimeMillis()): String = fileFormat.format(Date(time))
     fun fechaHora(time: Long): String = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date(time))
     fun moneda(valor: Double): String = "$%.2f".format(Locale.US, valor)
+    fun esMismoDia(fecha1: Long, fecha2: Long): Boolean {
+        val cal1 = Calendar.getInstance().apply { timeInMillis = fecha1 }
+        val cal2 = Calendar.getInstance().apply { timeInMillis = fecha2 }
+        return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
+                cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
+    }
 }

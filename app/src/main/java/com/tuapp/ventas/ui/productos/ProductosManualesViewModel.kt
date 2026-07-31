@@ -14,23 +14,14 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 class ProductosManualesViewModel(private val repo: VentasRepository) : ViewModel() {
-    // Todos los productos manuales (esManual = true)
-    private val productosManuales = repo.obtenerTodosLosProductos().asLiveData()
-        .let { liveData ->
-            // Filtramos solo los manuales en el observer
-            MutableLiveData<List<Producto>>().apply {
-                liveData.observeForever { todos ->
-                    val manuales = todos?.filter { it.esManual }.orEmpty()
-                    value = manuales
-                }
-            }
-        }
+    // ✅ Ahora todos los productos (sin filtrar por esManual)
+    private val todosLosProductos = repo.obtenerTodosLosProductos().asLiveData()
 
     private val query = MutableLiveData("")
 
-    // Productos filtrados por búsqueda
+    // Productos filtrados por búsqueda (sobre todos los productos)
     val productosFiltrados: LiveData<List<Producto>> = combine(
-        productosManuales.asFlow(),
+        todosLosProductos.asFlow(),
         query.asFlow()
     ) { productos, q ->
         if (q.isBlank()) productos

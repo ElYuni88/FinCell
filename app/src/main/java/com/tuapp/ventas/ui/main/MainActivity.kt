@@ -33,6 +33,7 @@ import com.tuapp.ventas.ui.exportar.ExportarIPBActivity
 import com.tuapp.ventas.ui.productosmanuales.ProductosManualesActivity
 import com.tuapp.ventas.ui.escaneo.EscaneoContinuoActivity
 import com.tuapp.ventas.ui.ipb.IPBResumenActivity
+import com.tuapp.ventas.ui.ipb.ImportarIPBActivity
 import com.tuapp.ventas.ui.scanner.BarcodeScannerActivity
 import com.tuapp.ventas.ui.settings.SettingsActivity
 import com.tuapp.ventas.ui.simple.VentaDirectaDialog
@@ -60,7 +61,16 @@ class MainActivity : BaseActivity() {
         if (codigo.isNotBlank()) {
             if (prefs.sonidoEscaneo) SoundUtils.beep()
             if (prefs.vibrarEscaneo) SoundUtils.vibrar(this)
-            manejarEscaneo(codigo)
+
+            // 🔥 Bifurcar según el flujo
+            if (scanFlow == ScanFlow.ALTA_PRODUCTO) {
+                // Flujo de alta de producto (sin venta)
+                viewModel.procesarEscaneoAlta(codigo)
+            } else {
+                // Flujo de venta (normal)
+                manejarEscaneo(codigo)
+            }
+            scanFlow = ScanFlow.VENTA // Reiniciar al flujo por defecto
         }
     }
     private val cameraPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { if (it) abrirScanner() else Toast.makeText(this, "Permiso de cámara requerido", Toast.LENGTH_LONG).show() }
@@ -90,6 +100,7 @@ class MainActivity : BaseActivity() {
                            else solicitarCamara(); true }
         R.id.nav_productos, R.id.menu_productos -> { startActivity(Intent(this, ProductosActivity::class.java)); true }
         R.id.nav_estadisticas, R.id.menu_estadisticas -> { startActivity(Intent(this, EstadisticasActivity::class.java)); true }
+        R.id.nav_importar_ipb, R.id.menu_importar_ipb -> { startActivity(Intent(this, ImportarIPBActivity::class.java)); true}
         R.id.nav_exportar_ipb, R.id.menu_exportar_ipb -> { startActivity(Intent(this, IPBResumenActivity::class.java)); true }
         R.id.menu_configuraciones -> { startActivity(Intent(this, SettingsActivity::class.java)); true }
         else -> false
@@ -154,8 +165,11 @@ class MainActivity : BaseActivity() {
         viewModel.productoEscaneado.observe(this) { it?.let(::mostrarDialogoProducto) }
         viewModel.codigoNuevoProducto.observe(this) { valor ->
             valor?.let { codigo ->
-                if (codigo.startsWith("FAB:")) mostrarDialogoAltaProductoEscaneado(codigo.removePrefix("FAB:"), abrirVentaAlGuardar = false)
-                else mostrarDialogoNuevoProducto(codigo)
+                if (codigo.startsWith("FAB:")) {
+                    mostrarDialogoAltaProductoEscaneado(codigo.removePrefix("FAB:"), abrirVentaAlGuardar = false)
+                } else {
+                    mostrarDialogoNuevoProducto(codigo)
+                }
             }
         }
         viewModel.productoCreadoParaVenta.observe(this) { it?.let(::mostrarDialogoProducto) }

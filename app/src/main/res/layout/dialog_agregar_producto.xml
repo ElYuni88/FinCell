@@ -1,9 +1,96 @@
-<?xml version="1.0" ?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="24dp" android:background="@drawable/bg_dialog_rounded">
-    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="✓" android:textColor="@color/primary_container" android:textSize="36sp"/>
-    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="Escaneo exitoso" android:textAppearance="@style/TextAppearance.FinSell.Title"/>
-    <EditText android:id="@+id/inputCodigo" android:layout_width="match_parent" android:layout_height="56dp" android:layout_marginTop="16dp" android:background="@drawable/bg_stitch_card" android:hint="Código de barras" android:padding="12dp" android:singleLine="true" android:fontFamily="monospace"/>
-    <EditText android:id="@+id/inputNombre" android:layout_width="match_parent" android:layout_height="56dp" android:layout_marginTop="10dp" android:background="@drawable/bg_stitch_card" android:hint="Nombre del producto *" android:padding="12dp" android:singleLine="true"/>
-    <EditText android:id="@+id/inputPrecio" android:layout_width="match_parent" android:layout_height="56dp" android:layout_marginTop="10dp" android:background="@drawable/bg_stitch_card" android:hint="Precio" android:inputType="numberDecimal" android:padding="12dp" android:singleLine="true"/>
-    <EditText android:id="@+id/inputInventario" android:layout_width="match_parent" android:layout_height="56dp" android:layout_marginTop="10dp" android:background="@drawable/bg_stitch_card" android:hint="Cantidad en inventario" android:inputType="number" android:padding="12dp" android:singleLine="true"/>
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="@drawable/bg_dialog_rounded">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:text="✓"
+        android:textColor="@color/primary_container"
+        android:textSize="36sp"/>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:text="Escaneo exitoso"
+        android:textAppearance="@style/TextAppearance.FinSell.Title"/>
+
+    <!-- Código de barras -->
+    <EditText
+        android:id="@+id/inputCodigo"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/bg_stitch_card"
+        android:hint="Código de barras"
+        android:padding="12dp"
+        android:singleLine="true"
+        android:fontFamily="monospace"/>
+
+    <!-- Nombre -->
+    <EditText
+        android:id="@+id/inputNombre"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bg_stitch_card"
+        android:hint="Nombre del producto *"
+        android:padding="12dp"
+        android:singleLine="true"/>
+
+    <!-- Precio -->
+    <EditText
+        android:id="@+id/inputPrecio"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bg_stitch_card"
+        android:hint="Precio"
+        android:inputType="numberDecimal"
+        android:padding="12dp"
+        android:singleLine="true"/>
+
+    <!-- ✅ NUEVO: Stock actual (solo lectura, visible solo en edición) -->
+    <TextView
+        android:id="@+id/tvStockActual"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:text="Stock actual: 0"
+        android:textAppearance="@style/TextAppearance.FinSell.Secondary"
+        android:visibility="gone" />
+
+    <!-- ✅ NUEVO: Entrada de stock (visible solo en edición) -->
+    <EditText
+        android:id="@+id/inputEntradaStock"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bg_stitch_card"
+        android:hint="Entrada de stock (+)"
+        android:inputType="number"
+        android:padding="12dp"
+        android:singleLine="true"
+        android:visibility="gone" />
+
+    <!-- ⚠️ Campo original: inventario (visible en creación de nuevo producto) -->
+    <EditText
+        android:id="@+id/inputInventario"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bg_stitch_card"
+        android:hint="Cantidad en inventario"
+        android:inputType="number"
+        android:padding="12dp"
+        android:singleLine="true" />
+
 </LinearLayout>

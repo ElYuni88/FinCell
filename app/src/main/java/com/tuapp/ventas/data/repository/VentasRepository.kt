@@ -2,6 +2,10 @@ package com.tuapp.ventas.data.repository
 
 import android.database.sqlite.SQLiteConstraintException
 import android.util.Log
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.room.withTransaction
 import com.tuapp.ventas.data.database.AppDatabase
 import com.tuapp.ventas.data.model.*
@@ -322,6 +326,7 @@ class VentasRepository(private val db: AppDatabase) {
         }.sortedBy { it.nombre }
     }
 
+
     suspend fun obtenerCuentaConDetalles(cuentaId: Long): CuentaConDetalles? = cuentas.obtenerCuentaConDetalles(cuentaId)
     suspend fun obtenerCuenta(cuentaId: Long): Cuenta? = cuentas.obtener(cuentaId)
     suspend fun eliminarCuentaVacia(cuentaId: Long) {
@@ -333,4 +338,14 @@ class VentasRepository(private val db: AppDatabase) {
     suspend fun obtenerVentaFinal(cuentaId: Long): VentaFinal? = finales.obtenerPorCuenta(cuentaId)
     suspend fun ventasDirectasDia(inicio: Long, fin: Long): List<VentaDirecta> = ventas.listarDelDia(inicio, fin)
     suspend fun cuentasCerradasDia(inicio: Long, fin: Long): List<CuentaConDetalles> = cuentas.cuentasCerradasDelDia(inicio, fin)
+    suspend fun actualizarStockDesdeIPB(productoIPB: ProductoIPB) {
+        val producto = productos.buscarPorId(productoIPB.id) ?: error("Producto no encontrado: ${productoIPB.nombre}")
+        // Establecer el stock final como nuevo inventario (reiniciar vendidos a 0)
+        productos.actualizar(
+            producto.copy(
+                inventario = productoIPB.stockFinal,
+                vendidos = 0
+            )
+        )
+    }
 }

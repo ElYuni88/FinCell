@@ -3,6 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item android:id="@+id/menu_productos" android:title="📦 Productos" app:showAsAction="never" />
     <item android:id="@+id/menu_estadisticas" android:title="📊 Estadísticas" app:showAsAction="never" />
+    <item android:id="@+id/menu_importar_ipb" android:title="📥 Importar IPB" app:showAsAction="never"/>
     <item android:id="@+id/menu_exportar_ipb" android:title="📤 Exportar IPB" app:showAsAction="never" />
     <item android:id="@+id/menu_configuraciones" android:title="⚙️ Configuraciones" app:showAsAction="never" />
 </menu>
