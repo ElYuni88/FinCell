@@ -4,8 +4,8 @@
         <item android:id="@+id/nav_scan" android:icon="@drawable/ic_barcode_scanner" android:title="Inicio"/>
         <item android:id="@+id/menu_productos" android:icon="@drawable/ic_inventory_2" android:title="Productos"/>
         <item android:id="@+id/menu_estadisticas" android:icon="@drawable/ic_leaderboard" android:title="Estadísticas"/>
-        <item android:id="@+id/nav_importar_ipb" android:icon="@drawable/ic_import" android:title="Importar IPB"/>
-        <item android:id="@+id/menu_exportar_ipb" android:icon="@drawable/ic_ios_share" android:title="Exportar IPB"/>
+        <item android:id="@+id/nav_importar_ipb" android:icon="@drawable/ic_import" android:title="Importar IPV"/>
+        <item android:id="@+id/menu_exportar_ipb" android:icon="@drawable/ic_ios_share" android:title="Exportar IPV"/>
     </group><item android:title="">
     <menu><item android:id="@+id/menu_configuraciones" android:icon="@drawable/ic_settings" android:title="Configuraciones"/>
     </menu></item></menu>

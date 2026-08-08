@@ -34,11 +34,13 @@ import com.tuapp.ventas.ui.productosmanuales.ProductosManualesActivity
 import com.tuapp.ventas.ui.escaneo.EscaneoContinuoActivity
 import com.tuapp.ventas.ui.ipb.IPBResumenActivity
 import com.tuapp.ventas.ui.ipb.ImportarIPBActivity
+import com.tuapp.ventas.ui.license.LicenseActivity
 import com.tuapp.ventas.ui.scanner.BarcodeScannerActivity
 import com.tuapp.ventas.ui.settings.SettingsActivity
 import com.tuapp.ventas.ui.simple.VentaDirectaDialog
 import com.tuapp.ventas.ui.venta.OperacionesActivity
 import com.tuapp.ventas.utils.DateUtils
+import com.tuapp.ventas.utils.LicenseManager
 import com.tuapp.ventas.utils.PreferencesManager
 import com.tuapp.ventas.utils.SoundUtils
 import kotlinx.coroutines.launch
@@ -77,6 +79,13 @@ class MainActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Verificar licencia
+        if (!LicenseManager.hasValidLicense(this)) {
+            startActivity(Intent(this, LicenseActivity::class.java))
+            finish()
+            return
+        }
+
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.toolbar.visibility = View.GONE

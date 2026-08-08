@@ -11,6 +11,11 @@ class PreferencesManager(context: Context) {
     private val gson = Gson()
 
     // Variables existentes (sin cambios)
+
+    var codigoPuntoVenta: String
+        get() = prefs.getString("codigo_punto_venta", "") ?: ""
+        set(value) = prefs.edit().putString("codigo_punto_venta", value).apply()
+
     var modoActual: ModoOperacion
         get() = ModoOperacion.valueOf(prefs.getString("modo_actual", ModoOperacion.SIMPLE.name) ?: ModoOperacion.SIMPLE.name)
         set(value) = prefs.edit().putString("modo_actual", value.name).apply()

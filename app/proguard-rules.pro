@@ -19,3 +19,12 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# Mantener la clase LicenseManager (para que no se ofusque su nombre)
+-keep class com.tuapp.ventas.utils.LicenseManager { *; }
+
+# Mantener TODA la clase LicenseManager (más seguro)
+-keep class com.tuapp.ventas.utils.LicenseManager
+-keepclassmembers class com.tuapp.ventas.utils.LicenseManager {
+    <methods>;
+}

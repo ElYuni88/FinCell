@@ -13,7 +13,7 @@
         android:background="@color/pos_green"
         android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
         app:navigationIcon="@drawable/ic_arrow_back"
-        app:title="Importar IPB"
+        app:title="Importar IPV"
         app:titleTextColor="@android:color/white" />
 
     <Button
@@ -21,7 +21,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_margin="16dp"
-        android:text="Seleccionar archivo IPB"
+        android:text="Seleccionar archivo IPV"
         android:backgroundTint="@color/pos_blue" />
 
     <TextView

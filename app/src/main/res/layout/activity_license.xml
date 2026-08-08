@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:gravity="center"
+    android:background="@color/background">
+
+    <ImageView
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        android:src="@drawable/ic_logo_cafe"
+        android:layout_marginBottom="24dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="🔐 Activación de licencia"
+        android:textAppearance="@style/TextAppearance.FinSell.Title"
+        android:textSize="24sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/tvDeviceId"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="ID de dispositivo: --"
+        android:textAppearance="@style/TextAppearance.FinSell.Secondary"
+        android:background="@drawable/bg_stitch_card"
+        android:padding="12dp" />
+
+    <!-- Campo para el código del punto de venta -->
+    <EditText
+        android:id="@+id/etCodigoPuntoVenta"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:hint="Código del punto de venta (ej. PV-001)"
+        android:text="PV-001"
+        android:inputType="text"
+        android:background="@drawable/bg_stitch_card"
+        android:padding="12dp" />
+
+    <!-- Botón para solicitar licencia por correo -->
+    <Button
+        android:id="@+id/btnSolicitarLicencia"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="📧 Solicitar licencia"
+        android:backgroundTint="@color/pos_blue"
+        android:textColor="@android:color/white" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginVertical="16dp"
+        android:background="@color/outline_variant" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="O ingresa tu licencia"
+        android:textAppearance="@style/TextAppearance.FinSell.Secondary" />
+
+    <!-- Campo para la licencia -->
+    <EditText
+        android:id="@+id/etLicencia"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:hint="Código de licencia (ej. abc123...|1735689600000)"
+        android:inputType="text"
+        android:background="@drawable/bg_stitch_card"
+        android:padding="12dp"
+        android:maxLength="60" /> <!-- Más largo porque incluye timestamp -->
+
+    <Button
+        android:id="@+id/btnActivar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="✅ Activar licencia"
+        android:backgroundTint="@color/pos_green"
+        android:textColor="@android:color/white" />
+
+</LinearLayout>
