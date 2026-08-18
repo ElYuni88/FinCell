@@ -15,7 +15,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="top|center_horizontal"
         android:layout_marginTop="24dp"
-        android:background="#99000000"
+        android:background="@color/overlay_scrim"
         android:paddingHorizontal="18dp"
         android:paddingVertical="10dp"
         android:text="Productos: 0"

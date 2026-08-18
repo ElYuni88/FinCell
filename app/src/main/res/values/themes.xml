@@ -1,13 +1,28 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <style name="Base.Theme.FinSell" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="android:navigationBarColor">@color/pos_green</item>
-        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">false</item>
-        <item name="colorPrimary">@color/primary</item><item name="colorPrimaryDark">@color/primary_dark</item><item name="colorSecondary">@color/secondary</item><item name="colorError">@color/error</item>
-        <item name="android:fontFamily">sans-serif</item><item name="fontFamily">sans-serif</item>
-        <item name="android:windowBackground">@color/background</item>
-        <item name="android:statusBarColor">@color/background</item>
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorOnPrimary">@color/colorOnPrimary</item>
+        <item name="colorPrimaryContainer">@color/colorPrimaryContainer</item>
+        <item name="colorOnPrimaryContainer">@color/colorOnPrimaryContainer</item>
+        <item name="colorPrimaryDark">@color/primary_dark</item>
+        <item name="colorSecondary">@color/secondary</item>
+        <item name="colorSurface">@color/colorSurface</item>
+        <item name="colorOnSurface">@color/colorOnSurface</item>
+        <item name="colorBackground">@color/colorBackground</item>
+        <item name="colorOnBackground">@color/colorOnBackground</item>
+        <item name="colorError">@color/colorError</item>
+        <item name="colorOnError">@color/colorOnError</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="fontFamily">sans-serif</item>
+        <item name="android:windowBackground">@color/colorBackground</item>
+        <item name="android:statusBarColor">?attr/colorPrimary</item>
+        <item name="android:navigationBarColor">@color/colorSurface</item>
         <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
-        <item name="materialButtonStyle">@style/Widget.FinSell.Button</item><item name="bottomNavigationStyle">@style/Widget.FinSell.BottomNavigation</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">true</item>
+        <item name="materialButtonStyle">@style/Widget.FinSell.Button</item>
+        <item name="bottomNavigationStyle">@style/Widget.FinSell.BottomNavigation</item>
     </style>
+
     <style name="Theme.FinSell" parent="Base.Theme.FinSell" />
+    <style name="Theme.CafePos" parent="Base.Theme.FinSell" />
 </resources>
