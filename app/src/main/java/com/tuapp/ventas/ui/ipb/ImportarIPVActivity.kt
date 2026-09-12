@@ -97,6 +97,7 @@ class ImportarIPVActivity : AppCompatActivity() {
                     )
                 } ?: emptyList()
             )
+            binding.recyclerProductosIPB.setHasFixedSize(true)
             binding.recyclerProductosIPB.layoutManager = LinearLayoutManager(this)
             binding.recyclerProductosIPB.adapter = adapter
 

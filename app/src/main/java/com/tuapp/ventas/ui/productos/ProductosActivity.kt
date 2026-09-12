@@ -54,6 +54,7 @@ class ProductosActivity : BaseActivity() {
     }
 
     private fun configurarRecycler() = with(binding.recyclerProductos) {
+        setHasFixedSize(true)
         layoutManager = LinearLayoutManager(this@ProductosActivity)
         adapter = this@ProductosActivity.adapter
     }

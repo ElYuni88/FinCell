@@ -21,9 +21,14 @@ class NotificacionAdapter(
 
     fun idsSeleccionadas(): List<Long> = seleccionadas.toList()
     fun seleccionarTodas(seleccionar: Boolean) {
+        val nuevasSeleccionadas = if (seleccionar) currentList.mapTo(mutableSetOf()) { it.id } else emptySet()
+        currentList.forEachIndexed { index, notificacion ->
+            if (seleccionadas.contains(notificacion.id) != nuevasSeleccionadas.contains(notificacion.id)) {
+                notifyItemChanged(index)
+            }
+        }
         seleccionadas.clear()
-        if (seleccionar) seleccionadas.addAll(currentList.map { it.id })
-        notifyDataSetChanged()
+        seleccionadas.addAll(nuevasSeleccionadas)
         onSeleccionCambio()
     }
 

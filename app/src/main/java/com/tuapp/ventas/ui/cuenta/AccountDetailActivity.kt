@@ -59,6 +59,7 @@ class AccountDetailActivity : AppCompatActivity() {
     }
 
     private fun configurarRecycler() = with(binding.recyclerDetalle) {
+        setHasFixedSize(true)
         layoutManager = LinearLayoutManager(this@AccountDetailActivity)
         itemAnimator = DefaultItemAnimator().apply { addDuration = 180; removeDuration = 180; changeDuration = 180 }
         adapter = this@AccountDetailActivity.adapter

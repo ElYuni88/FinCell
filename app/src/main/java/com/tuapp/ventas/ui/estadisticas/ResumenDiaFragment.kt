@@ -26,6 +26,7 @@ class ResumenDiaFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        binding.recyclerResumen.setHasFixedSize(true)
         binding.recyclerResumen.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerResumen.adapter = adapter
         viewModel.resumenDia.observe(viewLifecycleOwner) { resumen ->

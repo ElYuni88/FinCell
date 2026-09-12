@@ -70,6 +70,7 @@ class OperacionesActivity : AppCompatActivity() {
 
     private fun configurarRecycler() {
         adapter = VentaMultipleAdapter { viewModel.eliminarProducto(it) }
+        binding.recyclerVentaMultiple.setHasFixedSize(true)
         binding.recyclerVentaMultiple.layoutManager = LinearLayoutManager(this)
         binding.recyclerVentaMultiple.adapter = adapter
     }

@@ -85,12 +85,15 @@ class IPBResumenActivity : AppCompatActivity() {
         gastoAdapter = GastoAdapter(emptyList())
         ingresoAdapter = GastoAdapter(emptyList())                  // ✅ NUEVO
 
+        binding.recyclerIPB.setHasFixedSize(true)
         binding.recyclerIPB.layoutManager = LinearLayoutManager(this)
         binding.recyclerIPB.adapter = productoAdapter
 
+        binding.recyclerGastos.setHasFixedSize(true)
         binding.recyclerGastos.layoutManager = LinearLayoutManager(this)
         binding.recyclerGastos.adapter = gastoAdapter
 
+        binding.recyclerIngresos.setHasFixedSize(true)
         binding.recyclerIngresos.layoutManager = LinearLayoutManager(this)   // ✅ NUEVO
         binding.recyclerIngresos.adapter = ingresoAdapter                    // ✅ NUEVO
     }
