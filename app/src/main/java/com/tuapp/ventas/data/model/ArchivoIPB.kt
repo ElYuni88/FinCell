@@ -4,8 +4,12 @@ package com.tuapp.ventas.data.model
 data class ArchivoIPB(
     val fecha: String,
     val timestamp: Long,
+    val puntoVenta: PuntoVentaExport? = null,
     val productos: List<ProductoIPB>,
     val gastos: List<Gasto> = emptyList(),
+    val ingresos: List<Gasto> = emptyList(),
+    val cuentas: List<CuentaIPB> = emptyList(),                    // ✅ NUEVO
+    val resumenClientes: ResumenClientesIPB? = null,              // ✅ NUEVO
     val resumen: ResumenIPB
 )
 
@@ -30,5 +34,6 @@ data class ResumenIPB(
     val cantidadVentas: Int,
     val cantidadCuentas: Int,
     val totalGastos: Double = 0.0,
-    val totalNeto: Double = totalGeneral - totalGastos
+    val totalIngresos: Double = 0.0,
+    val totalNeto: Double = totalGeneral + totalIngresos - totalGastos
 )

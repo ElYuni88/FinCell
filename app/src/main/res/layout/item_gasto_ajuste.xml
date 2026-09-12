@@ -2,9 +2,18 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:paddingVertical="8dp">
+    android:padding="8dp"
+    android:gravity="center_vertical"
+    android:background="@color/card_background"
+    android:layout_marginBottom="4dp">
+
+    <!-- Checkbox para activar/desactivar -->
+    <CheckBox
+        android:id="@+id/chkActivo"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:buttonTint="@color/colorPrimary" />
 
     <TextView
         android:id="@+id/tvCategoria"
@@ -12,21 +21,26 @@
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:text="Categoría"
-        android:textAppearance="@style/TextAppearance.FinSell.Body" />
+        android:textAppearance="@style/TextAppearance.FinSell.Body"
+        android:layout_marginStart="8dp" />
 
     <EditText
         android:id="@+id/etMonto"
-        android:layout_width="110dp"
+        android:layout_width="100dp"
         android:layout_height="wrap_content"
-        android:hint="0.00"
         android:inputType="numberDecimal"
-        android:textAlignment="textEnd" />
+        android:hint="0.00"
+        android:textAlignment="textEnd"
+        android:background="@drawable/bg_stitch_card"
+        android:padding="8dp" />
 
     <ImageButton
         android:id="@+id/btnEliminar"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:src="@drawable/ic_delete"
         android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="Eliminar gasto"
-        android:src="@drawable/ic_delete" />
+        android:contentDescription="Eliminar"
+        android:layout_marginStart="8dp" />
+
 </LinearLayout>

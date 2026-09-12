@@ -18,5 +18,6 @@ data class Notificacion(
         const val TIPO_BAJO_INVENTARIO = "BAJO_INVENTARIO"
         const val TIPO_CUENTAS_ABIERTAS = "CUENTAS_ABIERTAS"
         const val TIPO_TRANSFERENCIAS_DIA = "TRANSFERENCIAS_DIA"
+        const val TIPO_LICENCIA_EXPIRACION = "LICENCIA_EXPIRACION"  // ✅ NUEVO
     }
 }

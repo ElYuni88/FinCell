@@ -25,6 +25,7 @@ class IPBResumenActivity : AppCompatActivity() {
     private lateinit var binding: ActivityIpbResumenBinding
     private lateinit var productoAdapter: IPBAdapter
     private lateinit var gastoAdapter: GastoAdapter
+    private lateinit var ingresoAdapter: GastoAdapter              // ✅ NUEVO
     private val viewModel: IPBResumenViewModel by viewModels {
         IPBResumenViewModelFactory(
             (application as VentasApplication).repository,
@@ -45,7 +46,6 @@ class IPBResumenActivity : AppCompatActivity() {
         configurarObservadores()
         configurarBotones()
 
-        // Click en la fecha para abrir selector
         binding.txtFecha.setOnClickListener { mostrarSelectorFecha() }
     }
 
@@ -62,21 +62,17 @@ class IPBResumenActivity : AppCompatActivity() {
                 set(Calendar.MILLISECOND, 0)
             }.timeInMillis
 
-            // Validar que no sea una fecha futura
             if (fecha > System.currentTimeMillis()) {
                 Toast.makeText(this, "No se pueden ver fechas futuras", Toast.LENGTH_SHORT).show()
                 return@DatePickerDialog
             }
 
-            // Actualizar fecha seleccionada
             fechaSeleccionada = fecha
             val fechaStr = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(fecha)
             binding.txtFecha.text = "Fecha: $fechaStr"
 
-            // Cargar datos
             viewModel.cargarDatos(fecha)
 
-            // Habilitar/deshabilitar botón "Ajustar IPB" según sea hoy o no
             val esHoy = DateUtils.esMismoDia(fecha, System.currentTimeMillis())
             binding.btnAjustarIPB.isEnabled = esHoy
             binding.btnAjustarIPB.alpha = if (esHoy) 1f else 0.5f
@@ -87,19 +83,35 @@ class IPBResumenActivity : AppCompatActivity() {
     private fun configurarRecyclers() {
         productoAdapter = IPBAdapter(emptyList())
         gastoAdapter = GastoAdapter(emptyList())
+        ingresoAdapter = GastoAdapter(emptyList())                  // ✅ NUEVO
+
         binding.recyclerIPB.layoutManager = LinearLayoutManager(this)
         binding.recyclerIPB.adapter = productoAdapter
+
         binding.recyclerGastos.layoutManager = LinearLayoutManager(this)
         binding.recyclerGastos.adapter = gastoAdapter
+
+        binding.recyclerIngresos.layoutManager = LinearLayoutManager(this)   // ✅ NUEVO
+        binding.recyclerIngresos.adapter = ingresoAdapter                    // ✅ NUEVO
     }
 
+    // En configurarObservadores():
     private fun configurarObservadores() {
         viewModel.productosIPB.observe(this) { productoAdapter.submitList(it) }
         viewModel.gastos.observe(this) { gastoAdapter.submitList(it) }
-        viewModel.totalVentas.observe(this) { binding.txtTotalVentas.text = "Total ventas: ${DateUtils.moneda(it)}" }
-        viewModel.totalGastos.observe(this) { binding.txtTotalGastos.text = "Total gastos: ${DateUtils.moneda(it)}" }
+        viewModel.ingresos.observe(this) { ingresoAdapter.submitList(it) }
+
+        viewModel.totalVentas.observe(this) {
+            binding.txtTotalVentas.text = DateUtils.moneda(it)
+        }
+        viewModel.totalGastos.observe(this) {
+            binding.txtTotalGastos.text = DateUtils.moneda(it)
+        }
+        viewModel.totalIngresos.observe(this) {
+            binding.txtTotalIngresos.text = DateUtils.moneda(it)
+        }
         viewModel.totalNeto.observe(this) { total ->
-            binding.txtTotalNeto.text = "Total neto: ${DateUtils.moneda(total)}"
+            binding.txtTotalNeto.text = DateUtils.moneda(total)
             val color = if (total >= 0.0) R.color.success else R.color.pos_red
             binding.txtTotalNeto.setTextColor(ContextCompat.getColor(this, color))
         }
@@ -107,7 +119,11 @@ class IPBResumenActivity : AppCompatActivity() {
 
     private fun configurarBotones() {
         binding.btnAjustarIPB.setOnClickListener {
-            startActivity(Intent(this, AjustarIPBActivity::class.java))
+            val intent = Intent(this, AjustarIPBActivity::class.java).apply {
+                // ✅ CAMBIO: Pasar la fecha seleccionada
+                putExtra(AjustarIPBActivity.EXTRA_FECHA_SELECCIONADA, fechaSeleccionada)
+            }
+            startActivity(intent)
         }
         binding.btnExportar.setOnClickListener { confirmarExportacion() }
     }
@@ -116,38 +132,50 @@ class IPBResumenActivity : AppCompatActivity() {
         viewModel.cargarDatos(fechaSeleccionada)
         val fechaStr = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(fechaSeleccionada)
         binding.txtFecha.text = "Fecha: $fechaStr"
-        // Ajustar estado del botón según si es hoy o no
         val esHoy = DateUtils.esMismoDia(fechaSeleccionada, System.currentTimeMillis())
         binding.btnAjustarIPB.isEnabled = esHoy
         binding.btnAjustarIPB.alpha = if (esHoy) 1f else 0.5f
     }
 
+    // En confirmarExportacion() — Simplificar el diálogo:
     private fun confirmarExportacion() {
         val productos = viewModel.productosIPB.value.orEmpty()
         if (productos.isEmpty()) {
             Toast.makeText(this, "No hay datos para exportar", Toast.LENGTH_SHORT).show()
             return
         }
+
         val fechaStr = DateUtils.fechaArchivo(fechaSeleccionada)
         val archivoApp = File(getExternalFilesDir(null), "resumen_ipb_${fechaStr}.json")
-        val gastos = viewModel.gastos.value.orEmpty()
-        val resumenGastos = if (gastos.isEmpty()) {
-            "Gastos registrados: ninguno"
-        } else {
-            gastos.joinToString(separator = "\n") { "• ${it.categoria}: ${DateUtils.moneda(it.monto)}" }
-        }
-        val mensajeBase = if (archivoApp.exists()) {
-            "Ya existe un archivo para la fecha $fechaStr. ¿Desea sobrescribirlo?"
-        } else {
-            "¿Exportar IPB para la fecha $fechaStr?"
+
+        val totalVentas = viewModel.totalVentas.value ?: 0.0
+        val totalGastos = viewModel.totalGastos.value ?: 0.0
+        val totalIngresos = viewModel.totalIngresos.value ?: 0.0
+        val totalNeto = viewModel.totalNeto.value ?: 0.0
+
+        val mensaje = buildString {
+            if (archivoApp.exists()) {
+                appendLine("⚠️ Ya existe un archivo para $fechaStr.")
+                appendLine("¿Deseas sobrescribirlo?")
+            } else {
+                appendLine("¿Exportar IPB para la fecha $fechaStr?")
+            }
+            appendLine()
+            appendLine("📊 Resumen:")
+            appendLine("• Total ventas: ${DateUtils.moneda(totalVentas)}")
+            appendLine("• Total gastos: ${DateUtils.moneda(totalGastos)}")
+            appendLine("• Otros ingresos: ${DateUtils.moneda(totalIngresos)}")
+            appendLine("─────────────────")
+            appendLine("• Total neto: ${DateUtils.moneda(totalNeto)}")
         }
 
         MaterialAlertDialogBuilder(this)
             .setTitle("Exportar IPB")
-            .setMessage("$mensajeBase\n\n$resumenGastos\n\nTotal gastos: ${DateUtils.moneda(viewModel.totalGastos.value ?: 0.0)}")
+            .setMessage(mensaje)
             .setPositiveButton("Exportar") { _, _ ->
                 val intent = Intent(this, ExportarIPBActivity::class.java).apply {
                     putExtra(ExportarIPBActivity.EXTRA_SOBRESCRIBIR, true)
+                    putExtra(ExportarIPBActivity.EXTRA_FECHA_SELECCIONADA, fechaSeleccionada)
                 }
                 startActivity(intent)
             }

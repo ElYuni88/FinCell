@@ -1,6 +1,7 @@
 package com.tuapp.ventas.utils
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.provider.Settings
 import java.security.MessageDigest
 
@@ -10,85 +11,99 @@ object LicenseManager {
     private const val PREF_NAME = "license_prefs"
     private const val KEY_LICENSE = "license_code"
     private const val KEY_EXPIRATION = "license_expiration"
-    private const val KEY_POS_ID = "license_pos_id"
+    private const val KEY_TRANSACTION = "license_transaction"
+    private const val KEY_IS_FREE_TRIAL = "license_is_free_trial"
+    private const val KEY_LAST_NOTIFICATION = "last_notification_day"
 
     /**
-     * Genera una clave de licencia incluyendo el ID del punto de venta.
-     * Formato: hash|timestamp
+     * Genera una licencia con deviceId, expiración y código de transacción.
+     * Formato: hash|expiracion|transaccion
+     *
+     * @param deviceId ID del dispositivo
+     * @param expiracion Timestamp de expiración
+     * @param transactionCode Código de transacción (o "GRATUITA" para prueba)
      */
-    fun generarLicencia(deviceId: String, posId: String, expiracion: Long): String {
-        val data = "$deviceId|$posId|$expiracion|$SECRET_KEY"
+    fun generarLicencia(deviceId: String, expiracion: Long, transactionCode: String): String {
+        val data = "$deviceId|$expiracion|$transactionCode|$SECRET_KEY"
         val hash = sha256(data).take(32)
-        return "$hash|$expiracion"
+        return "$hash|$expiracion|$transactionCode"
     }
 
     /**
-     * Verifica una licencia completa (hash|timestamp) contra el dispositivo actual y el POS ID.
+     * Verifica una licencia completa.
+     * Formato esperado: hash|expiracion|transaccion
      */
-    fun verifyLicense(context: Context, codigo: String, posId: String): Boolean {
+    fun verifyLicense(context: Context, codigo: String): Boolean {
         val parts = codigo.split("|")
-        if (parts.size != 2) return false
+        if (parts.size != 3) return false
+
         val hashIngresado = parts[0]
         val expiracion = parts[1].toLongOrNull() ?: return false
+        val transactionCode = parts[2]
 
         // Verificar expiración
         if (System.currentTimeMillis() > expiracion) return false
 
-        val deviceId = Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID) ?: return false
-        val expectedHash = generarLicencia(deviceId, posId, expiracion).split("|")[0]
+        val deviceId = getDeviceId(context)
+        val expectedHash = generarLicencia(deviceId, expiracion, transactionCode).split("|")[0]
         return hashIngresado == expectedHash
     }
 
     /**
-     * Versión sin POS ID (para compatibilidad con código antiguo) - no usar.
+     * Guarda la licencia en SharedPreferences.
      */
-    @Deprecated("Usar verifyLicense con posId")
-    fun verifyLicense(context: Context, codigo: String): Boolean {
-        // Esta versión no funciona sin posId, redirigimos a una versión que pida posId
-        // pero no podemos obtener posId aquí, así que lanzamos error o devolvemos false.
-        return false
-    }
-
-    /**
-     * Guarda la licencia y el POS ID en SharedPreferences.
-     */
-    fun saveLicense(context: Context, codigo: String, posId: String) {
+    fun saveLicense(context: Context, codigo: String, esGratuita: Boolean = false) {
         val parts = codigo.split("|")
-        if (parts.size == 2) {
-            val expiracion = parts[1].toLongOrNull()
-            if (expiracion != null) {
-                val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-                prefs.edit().putString(KEY_LICENSE, codigo).apply()
-                prefs.edit().putLong(KEY_EXPIRATION, expiracion).apply()
-                prefs.edit().putString(KEY_POS_ID, posId).apply()
+        if (parts.size == 3) {
+            val expiracion = parts[1].toLongOrNull() ?: return
+            val transactionCode = parts[2]
+
+            val prefs = getPrefs(context)
+            prefs.edit().apply {
+                putString(KEY_LICENSE, codigo)
+                putLong(KEY_EXPIRATION, expiracion)
+                putString(KEY_TRANSACTION, transactionCode)
+                putBoolean(KEY_IS_FREE_TRIAL, esGratuita)
+                putInt(KEY_LAST_NOTIFICATION, 0)
+                apply()
             }
         }
     }
 
     /**
      * Carga la licencia guardada.
-     * @return El código completo de licencia (hash|timestamp) o null
      */
     fun loadLicense(context: Context): String? {
-        val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-        return prefs.getString(KEY_LICENSE, null)
+        return getPrefs(context).getString(KEY_LICENSE, null)
     }
 
     /**
-     * Carga el POS ID guardado.
+     * Obtiene el código de transacción guardado.
      */
-    fun loadPosId(context: Context): String? {
-        val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-        return prefs.getString(KEY_POS_ID, null)
+    fun getTransactionCode(context: Context): String? {
+        return getPrefs(context).getString(KEY_TRANSACTION, null)
     }
 
     /**
-     * Verifica si hay una licencia válida guardada usando el POS ID almacenado.
+     * Verifica si la licencia actual es una prueba gratuita.
+     */
+    fun isFreeTrial(context: Context): Boolean {
+        return getPrefs(context).getBoolean(KEY_IS_FREE_TRIAL, false)
+    }
+
+    /**
+     * Obtiene la fecha de expiración.
+     */
+    fun getExpiration(context: Context): Long {
+        return getPrefs(context).getLong(KEY_EXPIRATION, 0L)
+    }
+
+    /**
+     * Verifica si hay una licencia válida guardada.
      */
     fun hasValidLicense(context: Context): Boolean {
         val license = loadLicense(context) ?: return false
-        val posId = loadPosId(context) ?: return false
-        return verifyLicense(context, license, posId)
+        return verifyLicense(context, license)
     }
 
     /**
@@ -96,6 +111,40 @@ object LicenseManager {
      */
     fun getDeviceId(context: Context): String {
         return Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID) ?: "unknown"
+    }
+
+    /**
+     * Calcula los días restantes de la licencia.
+     */
+    fun getDaysRemaining(context: Context): Long {
+        val expiracion = getExpiration(context)
+        if (expiracion == 0L) return 0
+        val ahora = System.currentTimeMillis()
+        return (expiracion - ahora) / (24 * 60 * 60 * 1000)
+    }
+
+    /**
+     * Verifica si debe mostrar notificación de expiración.
+     */
+    fun checkExpirationWarning(context: Context): Int? {
+        val daysRemaining = getDaysRemaining(context)
+        if (daysRemaining <= 0) return null
+
+        val prefs = getPrefs(context)
+        val lastNotified = prefs.getInt(KEY_LAST_NOTIFICATION, 0)
+
+        val diasNotificar = listOf(5, 3, 1)
+        for (dia in diasNotificar) {
+            if (daysRemaining <= dia && lastNotified < dia) {
+                prefs.edit().putInt(KEY_LAST_NOTIFICATION, dia).apply()
+                return dia
+            }
+        }
+        return null
+    }
+
+    private fun getPrefs(context: Context): SharedPreferences {
+        return context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
     }
 
     private fun sha256(input: String): String {

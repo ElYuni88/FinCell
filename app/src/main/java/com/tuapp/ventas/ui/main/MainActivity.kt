@@ -33,7 +33,7 @@ import com.tuapp.ventas.ui.exportar.ExportarIPBActivity
 import com.tuapp.ventas.ui.productosmanuales.ProductosManualesActivity
 import com.tuapp.ventas.ui.escaneo.EscaneoContinuoActivity
 import com.tuapp.ventas.ui.ipb.IPBResumenActivity
-import com.tuapp.ventas.ui.ipb.ImportarIPBActivity
+import com.tuapp.ventas.ui.ipb.ImportarIPVActivity
 import com.tuapp.ventas.ui.license.LicenseActivity
 import com.tuapp.ventas.ui.scanner.BarcodeScannerActivity
 import com.tuapp.ventas.ui.settings.SettingsActivity
@@ -109,7 +109,8 @@ class MainActivity : BaseActivity() {
                            else solicitarCamara(); true }
         R.id.nav_productos, R.id.menu_productos -> { startActivity(Intent(this, ProductosActivity::class.java)); true }
         R.id.nav_estadisticas, R.id.menu_estadisticas -> { startActivity(Intent(this, EstadisticasActivity::class.java)); true }
-        R.id.nav_importar_ipb, R.id.menu_importar_ipb -> { startActivity(Intent(this, ImportarIPBActivity::class.java)); true}
+        R.id.nav_importar_ipb, R.id.menu_importar_ipb -> { startActivity(Intent(this,
+            ImportarIPVActivity::class.java)); true}
         R.id.nav_exportar_ipb, R.id.menu_exportar_ipb -> { startActivity(Intent(this, IPBResumenActivity::class.java)); true }
         R.id.menu_configuraciones -> { startActivity(Intent(this, SettingsActivity::class.java)); true }
         else -> false

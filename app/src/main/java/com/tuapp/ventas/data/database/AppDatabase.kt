@@ -12,8 +12,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 @Database(
-    entities = [Producto::class, VentaDirecta::class, Cliente::class, Cuenta::class, DetalleCuenta::class, VentaFinal::class, Notificacion::class],
-    version = 7,
+    entities = [
+        Producto::class,
+        VentaDirecta::class,
+        Cliente::class,
+        Cuenta::class,
+        DetalleCuenta::class,
+        VentaFinal::class,
+        Notificacion::class,
+        PuntoVenta::class],
+    version = 8,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -24,6 +32,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun detalleCuentaDao(): DetalleCuentaDao
     abstract fun ventaFinalDao(): VentaFinalDao
     abstract fun notificacionDao(): NotificacionDao
+    abstract fun puntoVentaDao(): PuntoVentaDao
 
     companion object {
         private val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -168,6 +177,24 @@ abstract class AppDatabase : RoomDatabase() {
             database.execSQL("UPDATE productos SET esManual = 1 WHERE tipo_producto = 'MANUAL' OR codigo_barras LIKE 'MANUAL_%'")
         }
 
+        private val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE puntos_venta (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        codigo TEXT NOT NULL,
+                        nombre TEXT NOT NULL,
+                        direccion TEXT,
+                        telefono TEXT,
+                        email TEXT,
+                        fecha_creacion INTEGER NOT NULL,
+                        activo INTEGER NOT NULL DEFAULT 1
+                    )
+                """.trimIndent())
+                database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_puntos_venta_codigo ON puntos_venta(codigo)")
+            }
+        }
+
         @Volatile private var INSTANCE: AppDatabase? = null
         fun getDatabase(context: Context): AppDatabase = INSTANCE ?: synchronized(this) {
             Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, "ventas_seguras.db")
@@ -176,7 +203,8 @@ abstract class AppDatabase : RoomDatabase() {
                                MIGRATION_3_4,
                                MIGRATION_4_5,
                                MIGRATION_5_6,
-                               MIGRATION_6_7)
+                               MIGRATION_6_7,
+                               MIGRATION_7_8 )
                 .addCallback(object : Callback() {
                     override fun onCreate(db: SupportSQLiteDatabase) {
                         super.onCreate(db)
@@ -185,6 +213,8 @@ abstract class AppDatabase : RoomDatabase() {
                 })
                 .build().also { INSTANCE = it }
         }
+
+
     }
 
     private suspend fun precargarProductosDemo() {

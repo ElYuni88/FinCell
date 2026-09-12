@@ -11,11 +11,11 @@
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
         android:background="@color/pos_green"
-        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
         app:title="Seleccionar producto manual"
         app:titleTextColor="@android:color/white"
         app:navigationIcon="@drawable/ic_arrow_back" />
 
+    <!-- Buscador -->
     <EditText
         android:id="@+id/etBuscar"
         android:layout_width="match_parent"
@@ -30,6 +30,7 @@
         android:imeOptions="actionSearch"
         android:maxLines="1" />
 
+    <!-- Lista de productos -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerProductos"
         android:layout_width="match_parent"
@@ -37,17 +38,94 @@
         android:layout_weight="1"
         android:paddingHorizontal="8dp"
         android:clipToPadding="false"
-        android:paddingBottom="80dp"
+        android:paddingBottom="8dp"
         android:scrollbars="vertical" />
 
     <TextView
         android:id="@+id/tvEmpty"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="24dp"
         android:gravity="center"
         android:text="No hay productos manuales"
         android:textColor="@color/text_secondary"
         android:textSize="16sp"
         android:visibility="gone" />
+
+    <!-- ============================================ -->
+    <!-- CARRITO TEMPORAL (visible solo si hay items) -->
+    <!-- ============================================ -->
+    <LinearLayout
+        android:id="@+id/layoutCarrito"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@color/surface"
+        android:elevation="8dp"
+        android:visibility="gone">
+
+        <!-- Header del carrito -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:padding="12dp"
+            android:background="@color/colorPrimary">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="🛒 Productos a vender"
+                android:textColor="@android:color/white"
+                android:textStyle="bold"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/txtTotalCarrito"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Total: $0.00"
+                android:textColor="@android:color/white"
+                android:textStyle="bold"
+                android:textSize="14sp" />
+        </LinearLayout>
+
+        <!-- Lista del carrito -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerCarrito"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxHeight="200dp"
+            android:nestedScrollingEnabled="true" />
+
+        <!-- Botones -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:padding="8dp">
+
+            <Button
+                android:id="@+id/btnCancelarVenta"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginEnd="4dp"
+                android:text="Cancelar"
+                android:backgroundTint="@color/pos_gray_button"
+                android:textColor="@color/text_primary" />
+
+            <Button
+                android:id="@+id/btnRegistrarVenta"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="4dp"
+                android:text="Registrar venta"
+                android:backgroundTint="@color/pos_green"
+                android:textColor="@android:color/white" />
+        </LinearLayout>
+    </LinearLayout>
 
 </LinearLayout>

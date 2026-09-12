@@ -11,7 +11,6 @@
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
         android:background="@color/pos_green"
-        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
         app:navigationIcon="@drawable/ic_arrow_back"
         app:title="IPB - Resumen del día"
         app:titleTextColor="@android:color/white" />
@@ -26,8 +25,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp"
-            android:paddingBottom="8dp">
+            android:padding="16dp">
 
             <!-- Fecha -->
             <TextView
@@ -38,12 +36,14 @@
                 android:textAppearance="@style/TextAppearance.FinSell.Title"
                 android:textSize="18sp" />
 
-            <!-- Tabla de productos -->
+            <!-- ============================================ -->
+            <!-- 1. PRODUCTOS VENDIDOS -->
+            <!-- ============================================ -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:text="Productos vendidos"
+                android:text="📦 Productos vendidos"
                 android:textAppearance="@style/TextAppearance.FinSell.Title" />
 
             <androidx.recyclerview.widget.RecyclerView
@@ -51,21 +51,21 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:nestedScrollingEnabled="false"
-                android:clipToPadding="false" />
+                android:nestedScrollingEnabled="false" />
 
-            <!-- Separador visual -->
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
                 android:layout_marginVertical="12dp"
                 android:background="@color/outline_variant" />
 
-            <!-- Tabla de gastos -->
+            <!-- ============================================ -->
+            <!-- 2. GASTOS -->
+            <!-- ============================================ -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Gastos del día"
+                android:text="💸 Gastos"
                 android:textAppearance="@style/TextAppearance.FinSell.Title" />
 
             <androidx.recyclerview.widget.RecyclerView
@@ -73,10 +73,33 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:nestedScrollingEnabled="false"
-                android:clipToPadding="false" />
+                android:nestedScrollingEnabled="false" />
 
-            <!-- Totales -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginVertical="12dp"
+                android:background="@color/outline_variant" />
+
+            <!-- ============================================ -->
+            <!-- 3. OTROS INGRESOS -->
+            <!-- ============================================ -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="💵 Otros ingresos"
+                android:textAppearance="@style/TextAppearance.FinSell.Title" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerIngresos"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:nestedScrollingEnabled="false" />
+
+            <!-- ============================================ -->
+            <!-- 4. TOTALES -->
+            <!-- ============================================ -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -88,45 +111,112 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Totales"
+                    android:text="📊 Totales"
                     android:textAppearance="@style/TextAppearance.FinSell.Title" />
 
-                <TextView
-                    android:id="@+id/txtTotalVentas"
+                <!-- Ventas -->
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="$0.00"
-                    android:textAppearance="@style/TextAppearance.FinSell.Body" />
+                    android:orientation="horizontal">
 
-                <TextView
-                    android:id="@+id/txtTotalGastos"
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Total ventas:"
+                        android:textAppearance="@style/TextAppearance.FinSell.Body" />
+
+                    <TextView
+                        android:id="@+id/txtTotalVentas"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="$0.00"
+                        android:textAppearance="@style/TextAppearance.FinSell.Body"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- Gastos -->
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:text="$0.00"
-                    android:textAppearance="@style/TextAppearance.FinSell.Body" />
+                    android:orientation="horizontal">
 
-                <TextView
-                    android:id="@+id/txtTotalNeto"
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Total gastos:"
+                        android:textAppearance="@style/TextAppearance.FinSell.Body" />
+
+                    <TextView
+                        android:id="@+id/txtTotalGastos"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="$0.00"
+                        android:textAppearance="@style/TextAppearance.FinSell.Body"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- Otros ingresos -->
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="$0.00"
-                    android:textAppearance="@style/TextAppearance.FinSell.Title"
-                    android:textStyle="bold" />
-            </LinearLayout>
+                    android:layout_marginTop="4dp"
+                    android:orientation="horizontal">
 
-            <!-- Espacio extra al final para separar del borde -->
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="8dp"
-                android:visibility="invisible" />
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Otros ingresos:"
+                        android:textAppearance="@style/TextAppearance.FinSell.Body" />
+
+                    <TextView
+                        android:id="@+id/txtTotalIngresos"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="$0.00"
+                        android:textAppearance="@style/TextAppearance.FinSell.Body"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- Separador -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginVertical="8dp"
+                    android:background="@color/outline_variant" />
+
+                <!-- Total Neto -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Total neto:"
+                        android:textAppearance="@style/TextAppearance.FinSell.Title" />
+
+                    <TextView
+                        android:id="@+id/txtTotalNeto"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="$0.00"
+                        android:textAppearance="@style/TextAppearance.FinSell.Title"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </LinearLayout>
 
         </LinearLayout>
     </ScrollView>
 
-    <!-- Botones fijos en la parte inferior -->
+    <!-- Botones inferiores -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

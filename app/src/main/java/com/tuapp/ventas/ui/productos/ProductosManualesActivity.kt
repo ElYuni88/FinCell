@@ -4,31 +4,29 @@ import android.content.Intent
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
+import android.view.View
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.tuapp.ventas.R
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.tuapp.ventas.VentasApplication
 import com.tuapp.ventas.data.model.ModoOperacion
 import com.tuapp.ventas.data.model.Producto
 import com.tuapp.ventas.databinding.ActivityProductosManualesBinding
 import com.tuapp.ventas.ui.simple.VentaDirectaDialog
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import com.tuapp.ventas.utils.DateUtils
 
 class ProductosManualesActivity : AppCompatActivity() {
+
     private lateinit var binding: ActivityProductosManualesBinding
     private val viewModel: ProductosManualesViewModel by viewModels {
         ProductosManualesViewModelFactory((application as VentasApplication).repository)
     }
-    private lateinit var adapter: ProductosManualesAdapter
+    private lateinit var productosAdapter: ProductosManualesAdapter
+    private lateinit var carritoAdapter: VentaTemporalAdapter
 
-    // Obtener extras del Intent
+    // Extras del Intent
     private val modo: ModoOperacion by lazy {
         intent.getSerializableExtra(EXTRA_MODO) as? ModoOperacion ?: ModoOperacion.SIMPLE
     }
@@ -38,10 +36,6 @@ class ProductosManualesActivity : AppCompatActivity() {
     private val modoSeleccion: Boolean by lazy {
         intent.getBooleanExtra(EXTRA_SELECCION, false)
     }
-
-    // Scope para operaciones largas que no se cancelan al destruir la actividad
-    private val job = SupervisorJob()
-    private val ioScope = CoroutineScope(job + Dispatchers.IO)
 
     companion object {
         const val EXTRA_MODO = "modo"
@@ -59,23 +53,36 @@ class ProductosManualesActivity : AppCompatActivity() {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         supportActionBar?.title = if (modoSeleccion) {
             "Seleccionar producto"
-        } else if (modo == ModoOperacion.SIMPLE) {
-            "Seleccionar producto manual"
         } else {
-            "Agregar a cuenta"
+            "Venta manual"
         }
 
-        configurarRecycler()
+        configurarRecyclers()
         configurarBusqueda()
-        observarProductos()
+        configurarBotones()
+        observarDatos()
     }
 
-    private fun configurarRecycler() {
-        adapter = ProductosManualesAdapter { producto ->
-            if (modoSeleccion) devolverProductoSeleccionado(producto) else mostrarDialogoCantidad(producto)
+    private fun configurarRecyclers() {
+        // Adapter de productos (catálogo)
+        productosAdapter = ProductosManualesAdapter { producto ->
+            if (modoSeleccion) {
+                devolverProductoSeleccionado(producto)
+            } else {
+                mostrarDialogoCantidad(producto)
+            }
         }
         binding.recyclerProductos.layoutManager = LinearLayoutManager(this)
-        binding.recyclerProductos.adapter = adapter
+        binding.recyclerProductos.adapter = productosAdapter
+        binding.recyclerProductos.setHasFixedSize(true)
+
+        // Adapter del carrito temporal
+        carritoAdapter = VentaTemporalAdapter { item ->
+            viewModel.eliminarDelCarrito(item)
+        }
+        binding.recyclerCarrito.layoutManager = LinearLayoutManager(this)
+        binding.recyclerCarrito.adapter = carritoAdapter
+        binding.recyclerCarrito.setHasFixedSize(true)
     }
 
     private fun configurarBusqueda() {
@@ -88,10 +95,41 @@ class ProductosManualesActivity : AppCompatActivity() {
         })
     }
 
-    private fun observarProductos() {
+    private fun configurarBotones() {
+        binding.btnRegistrarVenta.setOnClickListener { confirmarVenta() }
+        binding.btnCancelarVenta.setOnClickListener { confirmarCancelar() }
+    }
+
+    private fun observarDatos() {
+        // Productos filtrados
         viewModel.productosFiltrados.observe(this) { productos ->
-            adapter.submitList(productos)
-            binding.tvEmpty.visibility = if (productos.isEmpty()) android.view.View.VISIBLE else android.view.View.GONE
+            productosAdapter.submitList(productos)
+            binding.tvEmpty.visibility = if (productos.isEmpty()) View.VISIBLE else View.GONE
+        }
+
+        // Carrito temporal
+        viewModel.productosAcumulados.observe(this) { items ->
+            carritoAdapter.submitList(items)
+
+            if (items.isEmpty()) {
+                binding.layoutCarrito.visibility = View.GONE
+            } else {
+                binding.layoutCarrito.visibility = View.VISIBLE
+                binding.txtTotalCarrito.text = "Total: ${DateUtils.moneda(items.sumOf { it.subtotal })}"
+            }
+        }
+
+        // Mensajes
+        viewModel.mensaje.observe(this) {
+            Toast.makeText(this, it, Toast.LENGTH_SHORT).show()
+        }
+
+        // Venta registrada → cerrar
+        viewModel.ventaRegistrada.observe(this) { registrada ->
+            if (registrada) {
+                viewModel.consumirVentaRegistrada()
+                finish()
+            }
         }
     }
 
@@ -101,7 +139,7 @@ class ProductosManualesActivity : AppCompatActivity() {
     }
 
     private fun mostrarDialogoCantidad(producto: Producto) {
-        // Verificar si estamos en modo cuenta y la cuenta existe
+        // Validar modo CUENTA
         if (modo == ModoOperacion.CUENTA && cuentaId <= 0) {
             Toast.makeText(this, "No hay cuenta seleccionada", Toast.LENGTH_SHORT).show()
             finish()
@@ -112,54 +150,55 @@ class ProductosManualesActivity : AppCompatActivity() {
             this.producto = producto
             this.modo = this@ProductosManualesActivity.modo
             onConfirmar = { _, _, _, _, cantidad ->
-                // Lanzar la corrutina en el scope propio (no se cancela al destruir actividad)
-                ioScope.launch {
-                    try {
-                        val repo = (application as VentasApplication).repository
-                        // Ejecutar la operación con NonCancellable para evitar que se cancele
-                        withContext(NonCancellable) {
-                            if (modo == ModoOperacion.SIMPLE) {
-                                repo.registrarVentaDirecta(producto, cantidad)
-                            } else {
-                                repo.agregarProductoACuenta(cuentaId, producto, cantidad)
-                            }
-                        }
-                        // Si llegamos aquí, la operación fue exitosa
-                        // Mostrar el Toast en el hilo principal
-                        withContext(Dispatchers.Main) {
-                            Toast.makeText(
-                                this@ProductosManualesActivity,
-                                if (modo == ModoOperacion.SIMPLE) "Venta registrada: ${producto.nombre} x$cantidad"
-                                else "${producto.nombre} x$cantidad agregado a la cuenta",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                            // Cerrar la actividad después de mostrar el mensaje
-                            finish()
-                        }
-                    } catch (e: Exception) {
-                        // Mostrar el error en el hilo principal
-                        withContext(Dispatchers.Main) {
-                            Toast.makeText(
-                                this@ProductosManualesActivity,
-                                e.message ?: "Error al procesar",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                    }
-                }
+                // ✅ AGREGAR AL CARRITO en lugar de registrar directamente
+                viewModel.agregarAlCarrito(producto, cantidad)
             }
             onCancelar = { /* No hacer nada */ }
         }.show(supportFragmentManager, "venta_directa")
     }
 
-    override fun onSupportNavigateUp(): Boolean {
-        onBackPressed()
-        return true
+    private fun confirmarVenta() {
+        val items = viewModel.productosAcumulados.value.orEmpty()
+        if (items.isEmpty()) {
+            Toast.makeText(this, "Agrega al menos un producto", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val total = items.sumOf { it.subtotal }
+        val modoTexto = if (modo == ModoOperacion.SIMPLE) "venta directa" else "la cuenta"
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Registrar venta")
+            .setMessage("¿Registrar ${items.size} productos por ${DateUtils.moneda(total)} en $modoTexto?")
+            .setNegativeButton("Cancelar", null)
+            .setPositiveButton("Registrar") { _, _ ->
+                viewModel.registrarVenta(
+                    modo = if (modo == ModoOperacion.SIMPLE) "SIMPLE" else "CUENTA",
+                    cuentaId = cuentaId
+                )
+            }
+            .show()
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        // Cancelar el scope para evitar fugas de memoria
-        job.cancel()
+    private fun confirmarCancelar() {
+        if (viewModel.productosAcumulados.value.isNullOrEmpty()) {
+            finish()
+            return
+        }
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Cancelar venta")
+            .setMessage("¿Descartar todos los productos agregados?")
+            .setNegativeButton("No", null)
+            .setPositiveButton("Sí, descartar") { _, _ ->
+                viewModel.limpiarCarrito()
+                finish()
+            }
+            .show()
+    }
+
+    override fun onSupportNavigateUp(): Boolean {
+        onBackPressedDispatcher.onBackPressed()
+        return true
     }
 }

@@ -3,6 +3,8 @@ package com.tuapp.ventas.utils
 import android.content.Context
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.tuapp.ventas.data.model.AjusteDia
+import com.tuapp.ventas.data.model.CategoriaAjuste
 import com.tuapp.ventas.data.model.Gasto
 import com.tuapp.ventas.data.model.ModoOperacion
 
@@ -11,7 +13,6 @@ class PreferencesManager(context: Context) {
     private val gson = Gson()
 
     // Variables existentes (sin cambios)
-
     var codigoPuntoVenta: String
         get() = prefs.getString("codigo_punto_venta", "") ?: ""
         set(value) = prefs.edit().putString("codigo_punto_venta", value).apply()
@@ -49,44 +50,115 @@ class PreferencesManager(context: Context) {
         set(value) = prefs.edit().putString("modo_default", value).apply()
 
     // ================================================================
-    // ✅ NUEVOS MÉTODOS para gastos fijos (sin fecha)
+    // ✅ NUEVOS MÉTODOS: CATEGORÍAS PERSISTENTES DE AJUSTES
     // ================================================================
 
-    /** Guarda la lista de gastos fijos (persistentes). */
-    fun guardarGastos(gastos: List<Gasto>) {
-        val gastosNormalizados = gastos
-            .map { it.copy(categoria = it.categoria.trim(), monto = it.monto.coerceAtLeast(0.0)) }
-            .filter { it.categoria.isNotBlank() }
-        prefs.edit().putString("gastos_fijos", gson.toJson(gastosNormalizados)).apply()
+    /** Guarda todas las categorías persistentes (gastos e ingresos). */
+    fun guardarCategorias(categorias: List<CategoriaAjuste>) {
+        val normalizadas = categorias
+            .map { it.copy(nombre = it.nombre.trim(), montoSugerido = it.montoSugerido.coerceAtLeast(0.0)) }
+            .filter { it.nombre.isNotBlank() }
+        prefs.edit().putString("categorias_ajuste", gson.toJson(normalizadas)).apply()
     }
 
-    /** Recupera la lista de gastos fijos. */
-    fun obtenerGastos(): List<Gasto> {
-        val json = prefs.getString("gastos_fijos", null) ?: return emptyList()
+    /** Recupera todas las categorías persistentes. */
+    fun obtenerCategorias(): List<CategoriaAjuste> {
+        val json = prefs.getString("categorias_ajuste", null) ?: return emptyList()
         return runCatching {
-            val tipo = object : TypeToken<List<Gasto>>() {}.type
-            gson.fromJson<List<Gasto>>(json, tipo).orEmpty()
+            val tipo = object : TypeToken<List<CategoriaAjuste>>() {}.type
+            gson.fromJson<List<CategoriaAjuste>>(json, tipo).orEmpty()
         }.getOrDefault(emptyList())
     }
 
+    /** Agrega una nueva categoría persistente. */
+    fun agregarCategoria(categoria: CategoriaAjuste) {
+        val actuales = obtenerCategorias().toMutableList()
+        actuales.add(categoria)
+        guardarCategorias(actuales)
+    }
+
+    /** Elimina una categoría persistente por ID. */
+    fun eliminarCategoria(id: String) {
+        val actuales = obtenerCategorias().filterNot { it.id == id }
+        guardarCategorias(actuales)
+    }
+
     // ================================================================
-    // ⚠️ MÉTODOS DEPRECATED (mantenidos por compatibilidad, pero usan los fijos)
+    // ✅ NUEVOS MÉTODOS: AJUSTES DEL DÍA
     // ================================================================
 
+    /** Guarda los ajustes aplicados a un día específico. */
+    fun guardarAjustesDia(fecha: String, ajustes: List<AjusteDia>) {
+        val json = gson.toJson(ajustes)
+        prefs.edit().putString("ajustes_dia_$fecha", json).apply()
+    }
+
+    /** Recupera los ajustes de un día específico. */
+    fun obtenerAjustesDia(fecha: String): List<AjusteDia> {
+        val json = prefs.getString("ajustes_dia_$fecha", null) ?: return emptyList()
+        return runCatching {
+            val tipo = object : TypeToken<List<AjusteDia>>() {}.type
+            gson.fromJson<List<AjusteDia>>(json, tipo).orEmpty()
+        }.getOrDefault(emptyList())
+    }
+
+    /** Obtiene solo los gastos activos del día. */
+    fun obtenerGastosActivosDia(fecha: String): List<AjusteDia> =
+        obtenerAjustesDia(fecha).filter { it.tipo == CategoriaAjuste.TIPO_GASTO && it.activo }
+
+    /** Obtiene solo los ingresos activos del día. */
+    fun obtenerIngresosActivosDia(fecha: String): List<AjusteDia> =
+        obtenerAjustesDia(fecha).filter { it.tipo == CategoriaAjuste.TIPO_INGRESO && it.activo }
+
+    // ================================================================
+    // ⚠️ MÉTODOS DEPRECATED (mantener por compatibilidad)
+    // ================================================================
+
+    @Deprecated("Usar guardarAjustesDia en su lugar")
     fun guardarGastos(fecha: String, gastos: List<Gasto>) {
-        val gastosNormalizados = gastos
-            .map { it.copy(categoria = it.categoria.trim(), monto = it.monto.coerceAtLeast(0.0)) }
-            .filter { it.categoria.isNotBlank() }
-        prefs.edit().putString(claveGastos(fecha), gson.toJson(gastosNormalizados)).apply()
+        // Convertir Gasto → AjusteDia
+        val ajustes = gastos.map {
+            AjusteDia(
+                categoriaId = it.categoria,
+                nombre = it.categoria,
+                tipo = CategoriaAjuste.TIPO_GASTO,
+                monto = it.monto,
+                activo = true
+            )
+        }
+        // Preservar los ingresos existentes
+        val ingresosExistentes = obtenerAjustesDia(fecha).filter { it.tipo == CategoriaAjuste.TIPO_INGRESO }
+        guardarAjustesDia(fecha, ajustes + ingresosExistentes)
     }
 
-    /** @deprecated Usa obtenerGastos() en su lugar. */
+    @Deprecated("Usar obtenerGastosActivosDia en su lugar")
     fun obtenerGastos(fecha: String): List<Gasto> {
-        val json = prefs.getString(claveGastos(fecha), null) ?: return emptyList()
-        return runCatching {
-            val tipo = object : TypeToken<List<Gasto>>() {}.type
-            gson.fromJson<List<Gasto>>(json, tipo).orEmpty()
-        }.getOrDefault(emptyList())
+        return obtenerGastosActivosDia(fecha).map {
+            Gasto(categoria = it.nombre, monto = it.monto)
+        }
+    }
+
+    /** @deprecated Mantener compatibilidad con código antiguo */
+    @Deprecated("Usar guardarCategorias en su lugar")
+    fun guardarGastos(gastos: List<Gasto>) {
+        val categorias = gastos.map {
+            CategoriaAjuste(
+                id = it.categoria,
+                nombre = it.categoria,
+                tipo = CategoriaAjuste.TIPO_GASTO,
+                montoSugerido = it.monto
+            )
+        }
+        // Preservar ingresos existentes
+        val ingresosExistentes = obtenerCategorias().filter { it.tipo == CategoriaAjuste.TIPO_INGRESO }
+        guardarCategorias(categorias + ingresosExistentes)
+    }
+
+    /** @deprecated Usar obtenerCategorias() en su lugar */
+    fun obtenerGastos(): List<Gasto> {
+        return obtenerCategorias()
+            .filter { it.tipo == CategoriaAjuste.TIPO_GASTO }
+            .map { Gasto(categoria = it.nombre, monto = it.montoSugerido) }
     }
 
     // Mantenemos la clave privada por si acaso (ya no se usa)

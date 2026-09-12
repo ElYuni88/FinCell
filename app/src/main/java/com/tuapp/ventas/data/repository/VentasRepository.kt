@@ -12,12 +12,14 @@ import com.tuapp.ventas.data.model.*
 import com.tuapp.ventas.data.model.relaciones.CuentaConDetalles
 import com.tuapp.ventas.data.model.relaciones.CuentaResumen
 import com.tuapp.ventas.utils.DateUtils
+import com.tuapp.ventas.utils.LicenseManager
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.firstOrNull
 import java.text.Normalizer
 import java.util.Calendar
 
-class VentasRepository(private val db: AppDatabase) {
+class VentasRepository(private val db: AppDatabase,  private val context: android.content.Context ) {
     private val productos = db.productoDao()
     private val ventas = db.ventaDirectaDao()
     private val clientes = db.clienteDao()
@@ -118,6 +120,182 @@ class VentasRepository(private val db: AppDatabase) {
         }
     }
 
+
+    private val puntoVentaDao = db.puntoVentaDao()
+
+    // ============================================================
+    // PUNTO DE VENTA
+    // ============================================================
+
+    suspend fun obtenerPuntoVentaActivo(): PuntoVenta? = puntoVentaDao.obtenerActivo()
+    fun observarPuntoVentaActivo(): Flow<PuntoVenta?> = puntoVentaDao.observarActivo()
+
+    suspend fun crearPuntoVenta(pv: PuntoVenta): PuntoVenta {
+        val existente = puntoVentaDao.buscarPorCodigo(pv.codigo)
+        if (existente != null) {
+            // Si existe pero está inactivo, reactivar
+            if (!existente.activo) {
+                puntoVentaDao.actualizar(existente.copy(activo = true))
+                return existente
+            }
+            return existente
+        }
+        val id = puntoVentaDao.insertar(pv)
+        return pv.copy(id = id)
+    }
+
+    // ============================================================
+    // IMPORTACIÓN IPV
+    // ============================================================
+
+    /**
+     * Importa un archivo IPV validado por el Admin.
+     * - Si no existe PV → se crea
+     * - Si existe PV → se valida el código
+     * - Los productos se crean o actualizan
+     */
+    suspend fun importarIPV(archivoIPV: ArchivoIPV): ImportResult {
+        return db.withTransaction {
+            // 1. Validar/Crear Punto de Venta
+            val pvExistente = puntoVentaDao.obtenerActivo()
+            val pv = if (pvExistente == null) {
+                // Crear nuevo PV desde PuntoVentaExport
+                val nuevoPv = PuntoVenta(
+                    codigo = archivoIPV.puntoVenta.codigo,
+                    nombre = archivoIPV.puntoVenta.nombre,
+                    direccion = archivoIPV.puntoVenta.direccion,
+                    telefono = archivoIPV.puntoVenta.telefono,
+                    email = archivoIPV.puntoVenta.email,
+                    fechaCreacion = archivoIPV.puntoVenta.fechaCreacion
+                )
+                val id = puntoVentaDao.insertar(nuevoPv)
+                nuevoPv.copy(id = id)  // ✅ Ahora es PuntoVenta con id
+            } else {
+                // Validar que el código coincida
+                if (pvExistente.codigo != archivoIPV.puntoVenta.codigo) {
+                    return@withTransaction ImportResult(
+                        exito = false,
+                        mensaje = "El código del PV no coincide. Esperado: ${pvExistente.codigo}, Recibido: ${archivoIPV.puntoVenta.codigo}",
+                        pv = pvExistente
+                    )
+                }
+                pvExistente
+            }
+
+            // 2. Importar productos
+            var creados = 0
+            var actualizados = 0
+            var errores = 0
+
+            archivoIPV.productos.forEach { productoIPV ->
+                try {
+                    val existente = productos.buscarPorCodigo(productoIPV.codigoBarras)
+                    if (existente == null) {
+                        // Crear producto
+                        val nuevo = Producto(
+                            codigoBarras = productoIPV.codigoBarras,
+                            nombre = productoIPV.nombre,
+                            precio = productoIPV.precio,
+                            inventario = productoIPV.inventario,
+                            esManual = productoIPV.esManual,
+                            tipoProducto = productoIPV.tipoProducto
+                        )
+                        productos.insertar(nuevo)
+                        creados++
+                    } else {
+                        // Actualizar producto
+                        val actualizado = existente.copy(
+                            nombre = productoIPV.nombre,
+                            precio = productoIPV.precio,
+                            inventario = productoIPV.inventario,
+                            esManual = productoIPV.esManual,
+                            tipoProducto = productoIPV.tipoProducto
+                        )
+                        productos.actualizar(actualizado)
+                        actualizados++
+                    }
+                } catch (e: Exception) {
+                    errores++
+                    Log.e(TAG, "Error importando producto ${productoIPV.nombre}: ${e.message}")
+                }
+            }
+
+            ImportResult(
+                exito = true,
+                mensaje = "Importación completada: $creados creados, $actualizados actualizados, $errores errores",
+                pv = pv,
+                creados = creados,
+                actualizados = actualizados,
+                errores = errores
+            )
+        }
+    }
+    data class ImportResult(
+    val exito: Boolean,
+    val mensaje: String,
+    val pv: PuntoVenta? = null,
+    val creados: Int = 0,
+    val actualizados: Int = 0,
+    val errores: Int = 0
+)
+
+    // ============================================================
+// NOTIFICACIONES DE LICENCIA
+// ============================================================
+
+    /**
+     * Genera notificaciones de expiración de licencia si es necesario.
+     * Se llama automáticamente al iniciar la app.
+     */
+    suspend fun generarNotificacionesLicencia() {
+        val daysRemaining = LicenseManager.getDaysRemaining(context)
+
+        // Solo generar si hay licencia activa
+        if (daysRemaining <= 0) return
+
+        // Días en los que debemos notificar
+        val diasNotificar = listOf(5, 3, 1)
+
+        for (dia in diasNotificar) {
+            if (daysRemaining <= dia) {
+                // Verificar si ya existe una notificación para este día
+                val notificacionExistente = notificaciones.buscarActivaPorTipo(
+                    "${Notificacion.TIPO_LICENCIA_EXPIRACION}_$dia"
+                )
+
+                if (notificacionExistente == null) {
+                    val mensaje = when (dia) {
+                        5 -> "⏰ Tu licencia expira en 5 días. Renueva para continuar usando la app."
+                        3 -> "⚠️ ¡Solo quedan 3 días! Renueva tu licencia ahora."
+                        1 -> "🚨 ¡ÚLTIMO DÍA! Tu licencia expira MAÑANA. Renueva hoy."
+                        else -> "Tu licencia expira en $daysRemaining días."
+                    }
+
+                    notificaciones.insertar(
+                        Notificacion(
+                            tipo = "${Notificacion.TIPO_LICENCIA_EXPIRACION}_$dia",
+                            mensaje = mensaje
+                        )
+                    )
+                }
+                break // Solo notificar el día más cercano
+            }
+        }
+    }
+
+    /**
+     * Elimina notificaciones de licencia cuando se renueva.
+     */
+    suspend fun limpiarNotificacionesLicencia() {
+        val notificacionesLicencia = notificaciones.observarNoEliminadas()
+            .firstOrNull()
+            ?.filter { it.tipo.startsWith(Notificacion.TIPO_LICENCIA_EXPIRACION) }
+            ?: emptyList()
+
+        notificacionesLicencia.forEach {
+            notificaciones.eliminar(it.id)
+        }
+    }
     suspend fun eliminarProducto(producto: Producto) = productos.eliminar(producto)
     fun observarProductos(): Flow<List<Producto>> = productos.observarTodos()
     fun obtenerTodosLosProductos(): Flow<List<Producto>> = productos.obtenerTodos()
@@ -182,15 +360,48 @@ class VentasRepository(private val db: AppDatabase) {
         }
     }
     suspend fun crearCuenta(nombreCliente: String, telefono: String?, mesa: String? = null, recordarCuenta: Boolean = true): Long {
-        val clienteId = clientes.insertar(
-            Cliente(
-                nombre = nombreCliente.ifBlank { "Cliente" },
-                telefono = telefono?.ifBlank { null },
-                mesa = mesa?.ifBlank { null },
-                recordarCuenta = recordarCuenta,
-                esFrecuente = recordarCuenta
+        val nombreNormalizado = nombreCliente.trim().ifBlank { "Cliente" }
+
+        // ✅ Si NO quiere recordar, crear cuenta temporal (sin cliente)
+        if (!recordarCuenta) {
+            return cuentas.insertar(
+                Cuenta(
+                    clienteId = null,
+                    esClienteTemporal = true,
+                    nombreClienteTemporal = nombreNormalizado,
+                    mesaTemporal = mesa?.ifBlank { null }
+                )
             )
-        )
+        }
+
+        // ✅ Buscar si el cliente ya existe por nombre
+        val clienteExistente = clientes.buscarPorNombre(nombreNormalizado)
+            .firstOrNull { it.nombre.equals(nombreNormalizado, ignoreCase = true) }
+
+        val clienteId = if (clienteExistente != null) {
+            // ✅ Cliente existe: usar el existente y actualizar sus datos
+            val clienteActualizado = clienteExistente.copy(
+                telefono = telefono?.ifBlank { null } ?: clienteExistente.telefono,
+                mesa = mesa?.ifBlank { null } ?: clienteExistente.mesa
+            )
+            // Solo actualizar si hay cambios
+            if (clienteActualizado != clienteExistente) {
+                clientes.actualizar(clienteActualizado)
+            }
+            clienteExistente.id
+        } else {
+            // ✅ Cliente nuevo: insertar
+            clientes.insertar(
+                Cliente(
+                    nombre = nombreNormalizado,
+                    telefono = telefono?.ifBlank { null },
+                    mesa = mesa?.ifBlank { null },
+                    recordarCuenta = true,
+                    esFrecuente = true
+                )
+            )
+        }
+
         return cuentas.insertar(Cuenta(clienteId = clienteId, esClienteTemporal = false))
     }
 

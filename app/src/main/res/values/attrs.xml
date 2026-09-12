@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Atributos personalizados de la app -->
+    <attr name="colorBackground" format="color" />
+    <attr name="colorSurface" format="color" />
+    <attr name="colorError" format="color" />
+    <attr name="colorOnBackground" format="color" />
+    <attr name="colorOnSurface" format="color" />
+    <attr name="colorOnError" format="color" />
+    <attr name="colorPrimaryDark" format="color" />
+</resources>

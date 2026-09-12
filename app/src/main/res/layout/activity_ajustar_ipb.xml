@@ -3,43 +3,59 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background"
-    android:orientation="vertical">
+    android:orientation="vertical"
+    android:background="@color/background">
 
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
         android:background="@color/pos_green"
-        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
         app:navigationIcon="@drawable/ic_arrow_back"
-        app:title="Ajustar IPB"
+        app:title="Ajustar IPV"
         app:titleTextColor="@android:color/white" />
 
-    <Button
-        android:id="@+id/btnAgregarCategoria"
-        style="@style/Widget.Material3.Button.OutlinedButton"
+    <!-- Pestañas: Gastos e Ingresos -->
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/tabLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="16dp"
-        android:text="Agregar categoría"
-        android:textColor="@color/pos_blue"
-        app:strokeColor="@color/pos_blue" />
+        android:background="@color/surface"
+        app:tabIndicatorColor="@color/colorPrimary"
+        app:tabSelectedTextColor="@color/colorPrimary"
+        app:tabTextColor="@color/text_secondary" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerGastosAjuste"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:clipToPadding="false"
-        android:paddingHorizontal="16dp" />
+        android:padding="8dp" />
 
-    <Button
-        android:id="@+id/btnGuardarAjustes"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="16dp"
-        android:backgroundTint="@color/pos_green"
-        android:text="Guardar ajustes"
-        android:textColor="@android:color/white" />
+        android:orientation="horizontal"
+        android:padding="8dp">
+
+        <Button
+            android:id="@+id/btnAgregarCategoria"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="4dp"
+            android:text="+ Categoría"
+            android:backgroundTint="@color/pos_blue" />
+
+        <Button
+            android:id="@+id/btnGuardarAjustes"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="4dp"
+            android:text="Guardar"
+            android:backgroundTint="@color/pos_green" />
+
+    </LinearLayout>
+
 </LinearLayout>

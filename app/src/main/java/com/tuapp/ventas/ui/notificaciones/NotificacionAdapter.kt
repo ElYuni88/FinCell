@@ -5,6 +5,7 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.tuapp.ventas.R
 import com.tuapp.ventas.data.model.Notificacion
 import com.tuapp.ventas.databinding.ItemNotificacionBinding
 import java.text.SimpleDateFormat
@@ -26,7 +27,9 @@ class NotificacionAdapter(
         onSeleccionCambio()
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH = VH(ItemNotificacionBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH =
+        VH(ItemNotificacionBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+
     override fun onBindViewHolder(holder: VH, position: Int) = holder.bind(getItem(position))
 
     override fun onCurrentListChanged(previousList: MutableList<Notificacion>, currentList: MutableList<Notificacion>) {
@@ -38,7 +41,18 @@ class NotificacionAdapter(
         fun bind(item: Notificacion) = with(binding) {
             chkNotificacion.setOnCheckedChangeListener(null)
             chkNotificacion.isChecked = seleccionadas.contains(item.id)
-            txtMensaje.text = "${item.mensaje}\n${formato.format(Date(item.fechaGeneracion))}"
+
+            // ✅ Mostrar ícono según tipo de notificación
+            val icono = when {
+                item.tipo.startsWith(Notificacion.TIPO_LICENCIA_EXPIRACION) -> "🔐 "
+                item.tipo == Notificacion.TIPO_BAJO_INVENTARIO -> "📦 "
+                item.tipo == Notificacion.TIPO_CUENTAS_ABIERTAS -> "🧾 "
+                item.tipo == Notificacion.TIPO_TRANSFERENCIAS_DIA -> "💳 "
+                else -> "📌 "
+            }
+
+            txtMensaje.text = "$icono${item.mensaje}\n${formato.format(Date(item.fechaGeneracion))}"
+
             chkNotificacion.setOnCheckedChangeListener { _, checked ->
                 if (checked) seleccionadas.add(item.id) else seleccionadas.remove(item.id)
                 onSeleccionCambio()

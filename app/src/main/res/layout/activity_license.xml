@@ -23,33 +23,28 @@
         android:textStyle="bold" />
 
     <TextView
-        android:id="@+id/tvDeviceId"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:text="ID de dispositivo: --"
-        android:textAppearance="@style/TextAppearance.FinSell.Secondary"
-        android:background="@drawable/bg_stitch_card"
-        android:padding="12dp" />
+        android:text="Selecciona el tiempo de activación:"
+        android:textAppearance="@style/TextAppearance.FinSell.Body" />
 
-    <!-- Campo para el código del punto de venta -->
-    <EditText
-        android:id="@+id/etCodigoPuntoVenta"
+    <!-- Spinner con precios -->
+    <Spinner
+        android:id="@+id/spinnerTiempo"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:hint="Código del punto de venta (ej. PV-001)"
-        android:text="PV-001"
-        android:inputType="text"
+        android:layout_marginTop="8dp"
         android:background="@drawable/bg_stitch_card"
-        android:padding="12dp" />
+        android:padding="12dp"
+        android:dropDownSelector="@drawable/bg_stitch_card" />
 
-    <!-- Botón para solicitar licencia por correo -->
+    <!-- Botón para solicitar licencia -->
     <Button
         android:id="@+id/btnSolicitarLicencia"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
+        android:layout_marginTop="16dp"
         android:text="📧 Solicitar licencia"
         android:backgroundTint="@color/pos_blue"
         android:textColor="@android:color/white" />
@@ -66,7 +61,6 @@
         android:text="O ingresa tu licencia"
         android:textAppearance="@style/TextAppearance.FinSell.Secondary" />
 
-    <!-- Campo para la licencia -->
     <EditText
         android:id="@+id/etLicencia"
         android:layout_width="match_parent"
@@ -76,7 +70,7 @@
         android:inputType="text"
         android:background="@drawable/bg_stitch_card"
         android:padding="12dp"
-        android:maxLength="60" /> <!-- Más largo porque incluye timestamp -->
+        android:maxLength="60" />
 
     <Button
         android:id="@+id/btnActivar"

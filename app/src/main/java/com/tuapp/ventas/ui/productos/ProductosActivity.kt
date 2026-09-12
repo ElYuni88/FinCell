@@ -24,6 +24,7 @@ import com.tuapp.ventas.ui.exportar.ExportarIPBActivity
 import com.tuapp.ventas.ui.estadisticas.EstadisticasActivity
 import com.tuapp.ventas.ui.main.MainActivity
 import com.tuapp.ventas.ui.scanner.BarcodeScannerActivity
+import com.tuapp.ventas.utils.TextUtils
 
 /** Pantalla de gestión de productos con alta por escáner, alta manual, edición y eliminación. */
 class ProductosActivity : BaseActivity() {
@@ -246,9 +247,13 @@ class ProductosActivity : BaseActivity() {
     }
 
     private fun filtrarProductos(query: String) {
-        val normalizada = query.trim().lowercase()
-        val filtrados = if (normalizada.isBlank()) productosCompletos else productosCompletos.filter {
-            it.nombre.lowercase().contains(normalizada) || it.codigoBarras.lowercase().contains(normalizada)
+        val filtrados = if (query.isBlank()) {
+            productosCompletos
+        } else {
+            productosCompletos.filter { producto ->
+                TextUtils.contiene(producto.nombre, query) ||
+                        producto.codigoBarras.contains(query, ignoreCase = true)
+            }
         }
         adapter.submitList(filtrados)
     }

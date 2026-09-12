@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="💳 Código de transacción"
+        android:textAppearance="@style/TextAppearance.FinSell.Title"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Ingresa el código de confirmación de la transferencia."
+        android:textAppearance="@style/TextAppearance.FinSell.Body"
+        android:layout_marginBottom="4dp" />
+
+    <TextView
+        android:id="@+id/tvCodigoReferencia"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text=" Confirmar la transacción al Número: 55808823"
+        android:textAppearance="@style/TextAppearance.FinSell.Secondary"
+        android:textColor="@color/colorError"
+        android:textStyle="bold"
+        android:layout_marginBottom="16dp" />
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+        android:hint="Código de transacción (ej. TX-123ABC)">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etCodigoTransaccion"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="text"
+            android:maxLength="30" />
+
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <TextView
+        android:id="@+id/tvMontoPagar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="💰 Monto a pagar: $0.00"
+        android:textAppearance="@style/TextAppearance.FinSell.Body" />
+
+</LinearLayout>

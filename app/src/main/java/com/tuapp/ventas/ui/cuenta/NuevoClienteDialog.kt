@@ -24,6 +24,12 @@ class NuevoClienteDialog : DialogFragment() {
     private var clientesCache: Map<String, Cliente> = emptyMap()
     private var busquedaJob: Job? = null
 
+    // ✅ NUEVO: Guardar el cliente seleccionado actualmente
+    private var clienteSeleccionado: Cliente? = null
+
+    // ✅ NUEVO: Flag para evitar que se dispare la búsqueda al autocompletar
+    private var ignorarCambiosNombre = false
+
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val binding = DialogNuevoClienteBinding.inflate(layoutInflater)
         configurarAutocomplete(binding)
@@ -46,7 +52,14 @@ class NuevoClienteDialog : DialogFragment() {
                             return@setOnClickListener
                         }
 
-                        onCrear?.invoke(nombre, telefono, mesa, recordar)
+                        // ✅ CAMBIO: Si es un cliente existente, no volver a guardarlo
+                        val esClienteExistente = clienteSeleccionado != null
+                                && clienteSeleccionado!!.nombre.equals(nombre, ignoreCase = true)
+
+                        // Si es existente, no forzar recordar (ya está guardado)
+                        val recordarFinal = if (esClienteExistente) false else recordar
+
+                        onCrear?.invoke(nombre, telefono, mesa, recordarFinal)
                         dismiss()
                     }
                 }
@@ -67,15 +80,23 @@ class NuevoClienteDialog : DialogFragment() {
             override fun afterTextChanged(s: Editable?) = Unit
 
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                if (ignorarCambiosNombre) return
+
                 val query = s?.toString()?.trim().orEmpty()
+
+                if (clienteSeleccionado != null
+                    && !clienteSeleccionado!!.nombre.equals(query, ignoreCase = true)) {
+                    clienteSeleccionado = null
+                }
+
                 busquedaJob?.cancel()
                 if (query.length < 2) {
                     clientesCache = emptyMap()
                     adapter.clear()
+                    adapter.notifyDataSetChanged()
                     return
                 }
 
-                // Pequeña espera para no consultar Room en cada tecla cuando el usuario escribe rápido.
                 busquedaJob = lifecycleScope.launch {
                     delay(250)
                     val clientes = repo.buscarClientesPorNombre(query)
@@ -88,16 +109,46 @@ class NuevoClienteDialog : DialogFragment() {
             }
         })
 
-        binding.inputNombre.setOnItemClickListener { _, _, position, _ ->
+        binding.inputNombre.setOnItemClickListener { parent, _, position, _ ->
             val nombreSeleccionado = adapter.getItem(position).orEmpty()
             val cliente = clientesCache[nombreSeleccionado] ?: return@setOnItemClickListener
 
-            // Al seleccionar un cliente recurrente se rellenan los datos conocidos.
+            // 1. Ignorar cambios de texto
+            ignorarCambiosNombre = true
+            clienteSeleccionado = cliente
+
+            // 2. Rellenar campos
             binding.inputNombre.setText(cliente.nombre, false)
             binding.inputTelefono.setText(cliente.telefono.orEmpty())
             binding.inputMesa.setText(cliente.mesa.orEmpty())
             binding.checkRecordarCuenta.isChecked = cliente.recordarCuenta
+
+            // 3. Cerrar dropdown de múltiples formas (defensivo)
             binding.inputNombre.dismissDropDown()
+
+            // 4. Forzar el cierre con post (a veces el filter lo reabre)
+            binding.inputNombre.post {
+                binding.inputNombre.dismissDropDown()
+                binding.inputNombre.clearFocus()
+
+                // Mover el foco a otro campo para evitar que se reabra
+                binding.inputTelefono.requestFocus()
+            }
+
+            // 5. Cancelar cualquier búsqueda pendiente
+            busquedaJob?.cancel()
+
+            // 6. Restaurar el flag después de un tiempo
+            binding.inputNombre.postDelayed({
+                ignorarCambiosNombre = false
+            }, 200)
+        }
+
+        // Cerrar dropdown si pierde foco
+        binding.inputNombre.setOnFocusChangeListener { _, hasFocus ->
+            if (!hasFocus) {
+                binding.inputNombre.dismissDropDown()
+            }
         }
     }
 }
