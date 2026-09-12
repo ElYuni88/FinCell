@@ -28,3 +28,8 @@
 -keepclassmembers class com.tuapp.ventas.utils.LicenseManager {
     <methods>;
 }
+
+# Elimina llamadas de registro del binario release; los mensajes solo se conservan en debug.
+-assumenosideeffects class android.util.Log {
+    public static *** v(...);
+}

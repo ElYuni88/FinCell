@@ -43,12 +43,17 @@ import com.tuapp.ventas.utils.DateUtils
 import com.tuapp.ventas.utils.LicenseManager
 import com.tuapp.ventas.utils.PreferencesManager
 import com.tuapp.ventas.utils.SoundUtils
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 
 class MainActivity : BaseActivity() {
+
+    private companion object {
+        const val NOTIFICATIONS_INITIAL_DELAY_MS = 500L
+    }
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var prefs: PreferencesManager
@@ -99,7 +104,11 @@ class MainActivity : BaseActivity() {
         }
         prefs.modoActual = modo
         viewModel.seleccionarCuenta(prefs.cuentaSeleccionadaId)
-        configurarListas(); configurarClicks(); observarDatos(); renderModo(); viewModel.generarNotificaciones()
+        configurarListas(); configurarClicks(); observarDatos(); renderModo()
+        lifecycleScope.launch {
+            delay(NOTIFICATIONS_INITIAL_DELAY_MS)
+            viewModel.generarNotificaciones()
+        }
         if (!prefs.tooltipModoMostrado) { Toast.makeText(this, "Cambia entre venta directa y cuentas sin perder datos", Toast.LENGTH_LONG).show(); prefs.tooltipModoMostrado = true }
     }
 
@@ -126,6 +135,7 @@ class MainActivity : BaseActivity() {
     }
 
     private fun configurarListas() {
+        binding.recyclerVentas.setHasFixedSize(true)
         binding.recyclerVentas.layoutManager = LinearLayoutManager(this)
         binding.recyclerVentas.adapter = ventasAdapter
         cuentasAdapter = CuentasActivasAdapter(
@@ -136,6 +146,7 @@ class MainActivity : BaseActivity() {
             },
             onEliminarCuenta = { cuenta -> confirmarEliminarCuenta(cuenta.id, cuenta.nombreCliente) }
         )
+        binding.recyclerCuentas.setHasFixedSize(true)
         binding.recyclerCuentas.layoutManager = LinearLayoutManager(this)
         binding.recyclerCuentas.adapter = cuentasAdapter
     }

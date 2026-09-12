@@ -25,6 +25,7 @@ class ExistenciaDiaFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        binding.recyclerExistencia.setHasFixedSize(true)
         binding.recyclerExistencia.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerExistencia.adapter = adapter
         viewModel.existenciaDia.observe(viewLifecycleOwner) { adapter.submitList(it) }

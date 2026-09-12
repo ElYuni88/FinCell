@@ -136,6 +136,7 @@ class AjustarIPBActivity : AppCompatActivity() {
             onActivoCambiado = { _, _ -> },
             onEliminar = { ajuste -> confirmarEliminarCategoria(ajuste) }
         )
+        binding.recyclerGastosAjuste.setHasFixedSize(true)
         binding.recyclerGastosAjuste.layoutManager = LinearLayoutManager(this)
         binding.recyclerGastosAjuste.adapter = adapter
     }

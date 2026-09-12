@@ -29,6 +29,7 @@
         <item name="android:navigationBarColor">@color/colorSurface</item>
         <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
         <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">false</item>
+        <item name="android:windowAnimationStyle">@style/WindowAnimation.FinSell.Rapid</item>
 
         <!-- Estilos de widgets -->
         <item name="materialButtonStyle">@style/Widget.FinSell.Button</item>

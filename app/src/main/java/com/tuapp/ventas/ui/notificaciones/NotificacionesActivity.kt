@@ -19,6 +19,7 @@ class NotificacionesActivity : BaseActivity() {
         setContentView(binding.root)
         supportActionBar?.title = "Notificaciones"
         adapter = NotificacionAdapter(onSeleccionCambio = { actualizarAcciones() }, onEliminar = { viewModel.eliminar(it.id) })
+        binding.recyclerNotificaciones.setHasFixedSize(true)
         binding.recyclerNotificaciones.layoutManager = LinearLayoutManager(this)
         binding.recyclerNotificaciones.adapter = adapter
         binding.chkMarcarTodas.setOnCheckedChangeListener { _, checked -> adapter.seleccionarTodas(checked); viewModel.marcarLeidas(adapter.idsSeleccionadas()) }

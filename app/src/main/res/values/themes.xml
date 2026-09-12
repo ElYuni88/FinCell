@@ -26,6 +26,7 @@
         <item name="android:navigationBarColor">@color/colorSurface</item>
         <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
         <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">true</item>
+        <item name="android:windowAnimationStyle">@style/WindowAnimation.FinSell.Rapid</item>
 
         <!-- Estilos de widgets -->
         <item name="materialButtonStyle">@style/Widget.FinSell.Button</item>
@@ -34,4 +35,11 @@
 
     <style name="Theme.FinSell" parent="Base.Theme.FinSell" />
     <style name="Theme.CafePos" parent="Base.Theme.FinSell" />
+
+    <style name="WindowAnimation.FinSell.Rapid" parent="@android:style/Animation.Activity">
+        <item name="android:activityOpenEnterAnimation">@anim/activity_fade_in_rapid</item>
+        <item name="android:activityOpenExitAnimation">@anim/activity_fade_out_rapid</item>
+        <item name="android:activityCloseEnterAnimation">@anim/activity_fade_in_rapid</item>
+        <item name="android:activityCloseExitAnimation">@anim/activity_fade_out_rapid</item>
+    </style>
 </resources>

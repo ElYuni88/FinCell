@@ -32,30 +32,33 @@ class CuentasActivasAdapter(
     override fun onBindViewHolder(holder: VH, position: Int) = holder.bind(getItem(position))
 
     inner class VH(private val binding: ItemCuentaBinding) : RecyclerView.ViewHolder(binding.root) {
+        private val colorFondoAbierta = ContextCompat.getColor(binding.root.context, R.color.card_background_abierta)
+        private val colorFondoCerrada = ContextCompat.getColor(binding.root.context, R.color.card_background_cerrada)
+        private val colorStripeAbierta = ContextCompat.getColor(binding.root.context, R.color.pos_red)
+        private val colorStripeCerrada = ContextCompat.getColor(binding.root.context, R.color.pos_green)
+        private val colorTextoAbierta = ContextCompat.getColor(binding.root.context, R.color.cuenta_abierta_text)
+        private val colorTextoCerrada = ContextCompat.getColor(binding.root.context, R.color.cuenta_cerrada_text)
+        private val tintBotonAbierta = ColorStateList.valueOf(ContextCompat.getColor(binding.root.context, R.color.error))
+        private val tintBotonCerrada = ColorStateList.valueOf(ContextCompat.getColor(binding.root.context, R.color.success))
+
         fun bind(cuenta: CuentaResumen) = with(binding) {
-            val context = root.context
             val abierta = cuenta.estado == Cuenta.ESTADO_ABIERTA
-            val fondo = if (abierta) R.color.card_background_abierta else R.color.card_background_cerrada
-            val texto = if (abierta) R.color.cuenta_abierta_text else R.color.cuenta_cerrada_text
+            val colorFondo = if (abierta) colorFondoAbierta else colorFondoCerrada
+            val colorStripe = if (abierta) colorStripeAbierta else colorStripeCerrada
+            val colorTexto = if (abierta) colorTextoAbierta else colorTextoCerrada
             val nombre = if (cuenta.esClienteTemporal) "${cuenta.nombreCliente} (No registrado)" else cuenta.nombreCliente
             val mesa = cuenta.mesa?.takeIf { it.isNotBlank() }?.let { " · Mesa: $it" }.orEmpty()
 
-            cardCuenta.setCardBackgroundColor(ContextCompat.getColor(context, fondo))
-            viewEstadoStripe.setBackgroundColor(ContextCompat.getColor(context, if (abierta) R.color.pos_red else R.color.pos_green))
-            //txtEstadoIcono.text = if (abierta) "🔴" else "🟢"
-            val colorTint = if (abierta) {
-                ContextCompat.getColor(context, R.color.cuenta_abierta_text) // Rojo
-            } else {
-                ContextCompat.getColor(context, R.color.cuenta_cerrada_text) // Verde
-            }
-            binding.ivIconoPersona.setColorFilter(colorTint, android.graphics.PorterDuff.Mode.SRC_IN)
+            cardCuenta.setCardBackgroundColor(colorFondo)
+            viewEstadoStripe.setBackgroundColor(colorStripe)
+            binding.ivIconoPersona.setColorFilter(colorTexto, android.graphics.PorterDuff.Mode.SRC_IN)
             txtNombreCliente.text = nombre
-            txtNombreCliente.setTextColor(ContextCompat.getColor(context, texto))
+            txtNombreCliente.setTextColor(colorTexto)
             txtTotalCuenta.text = DateUtils.moneda(cuenta.total)
-            txtTotalCuenta.setTextColor(ContextCompat.getColor(context, texto))
+            txtTotalCuenta.setTextColor(colorTexto)
             txtMetaCuenta.text = "${cuenta.cantidadProductos} productos$mesa · ${DateUtils.fechaHora(cuenta.fechaApertura)}"
             btnAccionCuenta.text = if (abierta) "VER CUENTA" else "VER DETALLE"
-            btnAccionCuenta.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(context, if (abierta) R.color.error else R.color.success))
+            btnAccionCuenta.backgroundTintList = if (abierta) tintBotonAbierta else tintBotonCerrada
             btnEliminarCuenta.visibility = if (abierta && cuenta.total == 0.0) View.VISIBLE else View.GONE
             btnEliminarCuenta.setOnClickListener { onEliminarCuenta(cuenta) }
             btnAccionCuenta.setOnClickListener { onClick(cuenta) }
