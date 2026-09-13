@@ -43,6 +43,15 @@ class VentasApplication : Application() {
             // ✅ Generar notificaciones de licencia en el repositorio
             repository.generarNotificacionesLicencia()
 
+            // ✅ 2. Notificación diaria de licencia
+            repository.generarNotificacionLicenciaDiaria()
+
+            // ✅ 3. Notificación si no hay Punto de Venta
+            repository.generarNotificacionSinPuntoVenta()
+
+            // ✅ 4. Notificación si no se exportó el IPB
+            repository.generarNotificacionIPBNoExportado()
+
             // ✅ También verificar para notificación push (sistema)
             val daysRemaining = LicenseManager.getDaysRemaining(this@VentasApplication)
             val diaNotificacion = LicenseManager.checkExpirationWarning(this@VentasApplication)

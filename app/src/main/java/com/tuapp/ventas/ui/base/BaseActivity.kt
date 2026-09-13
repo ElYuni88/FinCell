@@ -4,12 +4,13 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.view.animation.AnimationUtils
-import android.widget.Toast
+import android.widget.TextView
 import androidx.annotation.IdRes
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.GravityCompat
 import androidx.lifecycle.lifecycleScope
+import com.tuapp.ventas.BuildConfig
 import com.tuapp.ventas.R
 import com.tuapp.ventas.VentasApplication
 import com.tuapp.ventas.databinding.ActivityBaseBinding
@@ -40,6 +41,7 @@ abstract class BaseActivity : AppCompatActivity() {
         configurarToolbarYDrawer()
         configurarBottomNavigation()
         configurarNotificaciones()
+        actualizarHeaderMenu()   // ✅ NUEVA LÍNEA
     }
 
     /** Redirige el contenido de las hijas al FrameLayout común. */
@@ -72,7 +74,10 @@ abstract class BaseActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        if (::baseBinding.isInitialized) seleccionarItemActual()
+        if (::baseBinding.isInitialized) {
+            seleccionarItemActual()
+            actualizarHeaderMenu()   // ✅ Actualizar también al volver (por si cambió el PV)
+        }
     }
 
     private fun configurarBottomNavigation() {
@@ -99,6 +104,37 @@ abstract class BaseActivity : AppCompatActivity() {
                         baseBinding.imgNotifications.clearAnimation()
                     }
                 }
+        }
+    }
+
+    /**
+     * Actualiza el header del menú lateral con los datos dinámicos:
+     * - Versión de la app
+     * - Nombre del Punto de Venta registrado
+     */
+    private fun actualizarHeaderMenu() {
+        val header = baseBinding.navView.getHeaderView(0) ?: return
+
+        // ✅ 1. Actualizar versión en el título
+        val txtAppNombre = header.findViewById<TextView>(R.id.txtAppNombre)
+        txtAppNombre?.text = "CafePos v${BuildConfig.VERSION_NAME}"
+
+        // ✅ 2. Actualizar nombre del PV
+        val txtPVNombre = header.findViewById<TextView>(R.id.txtPVNombre)
+
+        lifecycleScope.launch {
+            try {
+                val repo = (application as VentasApplication).repository
+                val pv = repo.obtenerPuntoVentaActivo()
+
+                txtPVNombre?.text = if (pv != null) {
+                    pv.nombre
+                } else {
+                    "Sin asignación"
+                }
+            } catch (e: Exception) {
+                txtPVNombre?.text = "Sin asignación"
+            }
         }
     }
 

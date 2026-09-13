@@ -161,6 +161,35 @@ class PreferencesManager(context: Context) {
             .map { Gasto(categoria = it.nombre, monto = it.montoSugerido) }
     }
 
+    // ================================================================
+// ✅ CONTROL DE EXPORTACIÓN DE IPB
+// ================================================================
+
+    /**
+     * Guarda la fecha (timestamp) del último IPB exportado exitosamente.
+     */
+    fun guardarUltimaExportacionIPB(timestamp: Long) {
+        prefs.edit().putLong("ultima_exportacion_ipb", timestamp).apply()
+    }
+
+    /**
+     * Obtiene la fecha del último IPB exportado.
+     * Devuelve 0 si nunca se ha exportado.
+     */
+    fun obtenerUltimaExportacionIPB(): Long {
+        return prefs.getLong("ultima_exportacion_ipb", 0L)
+    }
+
+    /**
+     * Verifica si ha pasado más de 1 día desde la última exportación.
+     */
+    fun necesitaExportarIPB(): Boolean {
+        val ultima = obtenerUltimaExportacionIPB()
+        if (ultima == 0L) return true  // Nunca ha exportado
+        val unDiaMs = 24 * 60 * 60 * 1000L
+        return (System.currentTimeMillis() - ultima) > unDiaMs
+    }
+
     // Mantenemos la clave privada por si acaso (ya no se usa)
     @Suppress("unused")
     private fun claveGastos(fecha: String): String = "gastos_ipb_$fecha"

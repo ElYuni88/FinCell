@@ -1,0 +1,327 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- ================================================= -->
+    <!-- FONDO VERDE REDONDEADO                            -->
+    <!-- ================================================= -->
+    <path
+        android:fillColor="#39A844"
+        android:pathData="
+            M18,0
+            L90,0
+            C100,0 108,8 108,18
+            L108,90
+            C108,100 100,108 90,108
+            L18,108
+            C8,108 0,100 0,90
+            L0,18
+            C0,8 8,0 18,0
+            Z" />
+
+    <!-- ================================================= -->
+    <!-- PLANTA                                            -->
+    <!-- ================================================= -->
+
+    <!-- Tallo -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="
+            M18,72
+            C18,65 20,58 24,52
+            L25,52
+            C23,60 22,67 22,72
+            Z" />
+
+    <!-- Hoja izquierda superior -->
+    <path
+        android:fillColor="#8BCF35"
+        android:pathData="
+            M22,60
+            C16,58 14,54 15,49
+            C20,50 23,54 22,60
+            Z" />
+
+    <!-- Hoja derecha superior -->
+    <path
+        android:fillColor="#8BCF35"
+        android:pathData="
+            M24,57
+            C26,51 30,48 34,49
+            C33,54 29,57 24,57
+            Z" />
+
+    <!-- Hoja izquierda inferior -->
+    <path
+        android:fillColor="#8BCF35"
+        android:pathData="
+            M21,67
+            C15,66 12,62 12,58
+            C17,59 21,62 21,67
+            Z" />
+
+    <!-- Hoja derecha inferior -->
+    <path
+        android:fillColor="#8BCF35"
+        android:pathData="
+            M23,65
+            C27,60 31,59 34,61
+            C32,65 28,67 23,65
+            Z" />
+
+    <!-- Maceta -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="
+            M15,69
+            L28,69
+            L26,79
+            L17,79
+            Z" />
+
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="
+            M14,68
+            L29,68
+            L29,71
+            L14,71
+            Z" />
+
+    <!-- ================================================= -->
+    <!-- ESTRUCTURA PRINCIPAL DE LA CAFETERÍA              -->
+    <!-- ================================================= -->
+
+    <!-- Cuerpo del edificio -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="
+            M29,38
+            L79,38
+            L79,76
+            L29,76
+            Z" />
+
+    <!-- Parte superior / techo -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="
+            M29,38
+            L35,27
+            L73,27
+            L79,38
+            Z" />
+
+    <!-- ================================================= -->
+    <!-- TOLDO                                              -->
+    <!-- ================================================= -->
+
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="
+            M26,38
+            L82,38
+            L82,45
+            L26,45
+            Z" />
+
+    <!-- Ondas del toldo -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="
+            M26,43
+            C26,48 30,50 34,50
+            C38,50 40,48 40,43
+            Z" />
+
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="
+            M38,43
+            C38,48 42,50 46,50
+            C50,50 52,48 52,43
+            Z" />
+
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="
+            M50,43
+            C50,48 54,50 58,50
+            C62,50 64,48 64,43
+            Z" />
+
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="
+            M62,43
+            C62,48 66,50 70,50
+            C74,50 76,48 76,43
+            Z" />
+
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="
+            M74,43
+            C74,48 78,50 82,50
+            L82,43
+            Z" />
+
+    <!-- ================================================= -->
+    <!-- VENTANA                                           -->
+    <!-- ================================================= -->
+
+    <path
+        android:fillColor="#176F31"
+        android:pathData="
+            M32,52
+            L55,52
+            L55,70
+            L32,70
+            Z" />
+
+    <!-- Interior de cafetería -->
+    <path
+        android:fillColor="#21863A"
+        android:pathData="
+            M34,66
+            L53,66
+            L53,69
+            L34,69
+            Z" />
+
+    <!-- Elementos interiores -->
+    <path
+        android:fillColor="#145F2B"
+        android:pathData="
+            M38,59
+            L41,59
+            L42,65
+            L37,65
+            Z" />
+
+    <path
+        android:fillColor="#145F2B"
+        android:pathData="
+            M44,60
+            L49,60
+            L50,65
+            L43,65
+            Z" />
+
+    <!-- ================================================= -->
+    <!-- PUERTA                                             -->
+    <!-- ================================================= -->
+
+    <path
+        android:fillColor="#176F31"
+        android:pathData="
+            M59,52
+            L76,52
+            L76,76
+            L59,76
+            Z" />
+
+    <!-- Ventana/parte superior de puerta -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="
+            M65,57
+            L73,57
+            L73,64
+            L65,64
+            Z" />
+
+    <!-- Cartel ABIERTO simplificado -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="
+            M64,58
+            L74,58
+            L74,63
+            L64,63
+            Z" />
+
+    <!-- Manija -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="
+            M61,66
+            A1.5,1.5 0,1 0,64,66
+            A1.5,1.5 0,1 0,61,66
+            Z" />
+
+    <!-- ================================================= -->
+    <!-- BASE DE LA CAFETERÍA                               -->
+    <!-- ================================================= -->
+
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="
+            M25,75
+            L83,75
+            L83,78
+            L25,78
+            Z" />
+
+    <!-- ================================================= -->
+    <!-- CÍRCULO SUPERIOR                                   -->
+    <!-- ================================================= -->
+
+    <!-- Círculo exterior -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="
+            M54,8
+            A10,10 0,1 1,54,28
+            A10,10 0,1 1,54,8
+            Z" />
+
+    <!-- Borde verde interior -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:strokeColor="#176F31"
+        android:strokeWidth="1.2"
+        android:pathData="
+            M54,10
+            A8,8 0,1 1,54,26
+            A8,8 0,1 1,54,10
+            Z" />
+
+    <!-- ================================================= -->
+    <!-- GRÁFICO DE BARRAS                                  -->
+    <!-- ================================================= -->
+
+    <!-- Barra pequeña -->
+    <path
+        android:fillColor="#39A844"
+        android:pathData="
+            M49,19
+            L51,19
+            L51,23
+            L49,23
+            Z" />
+
+    <!-- Barra mediana -->
+    <path
+        android:fillColor="#39A844"
+        android:pathData="
+            M53,16
+            L55,16
+            L55,23
+            L53,23
+            Z" />
+
+    <!-- Barra grande -->
+    <path
+        android:fillColor="#39A844"
+        android:pathData="
+            M57,13
+            L59,13
+            L59,23
+            L57,23
+            Z" />
+
+</vector>

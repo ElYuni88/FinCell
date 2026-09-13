@@ -20,6 +20,7 @@ import com.tuapp.ventas.databinding.DialogCodigoTransaccionBinding
 import com.tuapp.ventas.ui.main.MainActivity
 import com.tuapp.ventas.utils.LicenseManager
 import com.tuapp.ventas.utils.PreferencesManager
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 
 class LicenseActivity : AppCompatActivity() {
 
@@ -51,6 +52,7 @@ class LicenseActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         binding = ActivityLicenseBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -113,10 +115,8 @@ class LicenseActivity : AppCompatActivity() {
     private fun configurarBotones() {
         binding.btnSolicitarLicencia.setOnClickListener {
             if (tiempoSeleccionado.esGratuito) {
-                // ✅ AHORA la prueba gratuita también se solicita (no se activa automáticamente)
                 mostrarDialogoSolicitudGratuita()
             } else {
-                // Solicitud con pago
                 mostrarDialogoCodigoTransaccion()
             }
         }
@@ -128,14 +128,22 @@ class LicenseActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            if (LicenseManager.verifyLicense(this, codigoCompleto)) {
-                // ✅ Detectar si es gratuita por el código de transacción
-                val esGratuita = codigoCompleto.endsWith("|GRATUITA")
-                LicenseManager.saveLicense(this, codigoCompleto, esGratuita)
-                Toast.makeText(this, "✅ Licencia activada correctamente", Toast.LENGTH_LONG).show()
-                irAMain()
-            } else {
-                Toast.makeText(this, "❌ Código de licencia inválido o expirado", Toast.LENGTH_LONG).show()
+            // ✅ Usar el nuevo VerificationResult
+            when (val resultado = LicenseManager.verifyLicense(this, codigoCompleto)) {
+                is LicenseManager.VerificationResult.Valid -> {
+                    val esGratuita = codigoCompleto.endsWith("|GRATUITA")
+                    LicenseManager.saveLicense(this, codigoCompleto, esGratuita)
+                    Toast.makeText(this, "✅ Licencia activada correctamente", Toast.LENGTH_LONG).show()
+                    irAMain()
+                }
+                is LicenseManager.VerificationResult.Invalid -> {
+                    // ✅ Mostrar mensaje específico en un diálogo
+                    MaterialAlertDialogBuilder(this)
+                        .setTitle("❌ No se pudo activar la licencia")
+                        .setMessage(resultado.mensaje)
+                        .setPositiveButton("Entendido", null)
+                        .show()
+                }
             }
         }
     }
@@ -146,7 +154,9 @@ class LicenseActivity : AppCompatActivity() {
             .setMessage("""
                 Estás solicitando la prueba gratuita de 15 días.
                 
-                ⚠️ IMPORTANTE: Solo se puede solicitar una vez por dispositivo.
+                ⚠️ IMPORTANTE:
+                • Solo se puede solicitar una vez por dispositivo.
+                • La licencia que recibas debe activarse dentro de las primeras 24 horas.
                 
                 Al continuar, se enviará tu solicitud con el ID del dispositivo.
                 El administrador verificará si ya usaste la prueba anteriormente.
@@ -260,6 +270,10 @@ class LicenseActivity : AppCompatActivity() {
                     Tu solicitud ha sido enviada.
                     
                     Por favor, espera la respuesta con tu código de licencia.
+                    
+                    ⚠️ IMPORTANTE:
+                    • La licencia que recibas debe activarse dentro de las primeras 24 horas.
+                    • Si no la activas en ese tiempo, deberás solicitar una nueva.
                     
                     ⏱️ Una vez recibido el código, ingrésalo en el campo "O ingresa tu licencia" y presiona "Activar licencia".
                 """.trimIndent())

@@ -7,6 +7,7 @@ import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.tuapp.ventas.R
@@ -15,6 +16,8 @@ import com.tuapp.ventas.databinding.ActivityIpbResumenBinding
 import com.tuapp.ventas.ui.exportar.ExportarIPBActivity
 import com.tuapp.ventas.utils.DateUtils
 import com.tuapp.ventas.utils.PreferencesManager
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -142,6 +145,30 @@ class IPBResumenActivity : AppCompatActivity() {
 
     // En confirmarExportacion() — Simplificar el diálogo:
     private fun confirmarExportacion() {
+        // ✅ PRIMERO: Verificar si hay cuentas abiertas
+        lifecycleScope.launch {
+            val repo = (application as VentasApplication).repository
+            val cuentasAbiertas = repo.cantidadCuentasAbiertas().firstOrNull() ?: 0
+
+            if (cuentasAbiertas > 0) {
+                MaterialAlertDialogBuilder(this@IPBResumenActivity)
+                    .setTitle("⚠️ No se puede exportar")
+                    .setMessage(
+                        "Hay $cuentasAbiertas cuenta(s) abierta(s) en este momento.\n\n" +
+                                "Debes cerrar TODAS las cuentas antes de exportar el IPB.\n\n" +
+                                "Ve a Inicio y cierra las cuentas pendientes."
+                    )
+                    .setPositiveButton("Entendido", null)
+                    .show()
+                return@launch
+            }
+
+            // ✅ Si no hay cuentas abiertas, continuar con el flujo normal
+            continuarExportacion()
+        }
+    }
+
+    private fun continuarExportacion() {
         val productos = viewModel.productosIPB.value.orEmpty()
         if (productos.isEmpty()) {
             Toast.makeText(this, "No hay datos para exportar", Toast.LENGTH_SHORT).show()

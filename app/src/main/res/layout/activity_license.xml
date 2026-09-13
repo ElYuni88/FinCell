@@ -66,11 +66,11 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:hint="Código de licencia (ej. abc123...|1735689600000)"
+        android:hint="Pega aquí tu código de licencia"
         android:inputType="text"
         android:background="@drawable/bg_stitch_card"
         android:padding="12dp"
-        android:maxLength="60" />
+        android:maxLength="200" />
 
     <Button
         android:id="@+id/btnActivar"

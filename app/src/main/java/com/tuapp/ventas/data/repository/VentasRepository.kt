@@ -13,6 +13,7 @@ import com.tuapp.ventas.data.model.relaciones.CuentaConDetalles
 import com.tuapp.ventas.data.model.relaciones.CuentaResumen
 import com.tuapp.ventas.utils.DateUtils
 import com.tuapp.ventas.utils.LicenseManager
+import com.tuapp.ventas.utils.PreferencesManager
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.firstOrNull
@@ -296,6 +297,144 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
             notificaciones.eliminar(it.id)
         }
     }
+
+    /**
+     * Genera una notificación si no hay Punto de Venta registrado.
+     * Se llama al iniciar la app.
+     */
+    suspend fun generarNotificacionSinPuntoVenta() {
+        val pv = puntoVentaDao.obtenerActivo()
+
+        if (pv == null) {
+            // No hay PV → crear notificación si no existe
+            crearNotificacionSiNoExiste(
+                Notificacion.TIPO_SIN_PUNTO_VENTA,
+                "⚠️ No hay punto de venta registrado.\n\n" +
+                        "Para sincronizar la app, importa un archivo IPV desde la app admin.\n\n" +
+                        "Ve al menú → Importar IPV"
+            )
+        } else {
+            // Sí hay PV → eliminar notificación si existe
+            val notif = notificaciones.buscarActivaPorTipo(Notificacion.TIPO_SIN_PUNTO_VENTA)
+            if (notif != null) {
+                notificaciones.eliminar(notif.id)
+            }
+        }
+    }
+
+
+    /**
+     * Genera una notificación diaria con el estado de la licencia.
+     * Se reescribe cada día (no se acumula).
+     */
+    suspend fun generarNotificacionLicenciaDiaria() {
+        val daysRemaining = LicenseManager.getDaysRemaining(context)
+        val expiration = LicenseManager.getExpiration(context)
+        val isFreeTrial = LicenseManager.isFreeTrial(context)
+        val license = LicenseManager.loadLicense(context)
+
+        // Si no hay licencia, no mostrar nada (se maneja con el sistema de activación)
+        if (license.isNullOrBlank() || expiration == 0L) return
+
+        // Formatear fecha de expiración
+        val fechaExpiracion = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault())
+            .format(java.util.Date(expiration))
+
+        // Determinar tipo de licencia
+        val tipoLicencia = if (isFreeTrial) "Gratuita" else "Pagada"
+
+        // Mensaje
+        val mensaje = if (daysRemaining > 0) {
+            "📋 Estado de licencia\n\n" +
+                    "Tipo: $tipoLicencia\n" +
+                    "Días restantes: $daysRemaining\n" +
+                    "Expira el: $fechaExpiracion"
+        } else {
+            "❌ Tu licencia ha expirado.\n\n" +
+                    "Renueva para continuar usando la app."
+        }
+
+        // ✅ Buscar notificación diaria existente y actualizarla
+        val notifExistente = notificaciones.buscarActivaPorTipo(Notificacion.TIPO_LICENCIA_DIARIA)
+
+        if (notifExistente != null) {
+            // ✅ Actualizar la existente con el nuevo mensaje
+            // Marcar la vieja como eliminada y crear una nueva
+            notificaciones.eliminar(notifExistente.id)
+        }
+
+        // ✅ Crear la nueva notificación diaria
+        notificaciones.insertar(
+            Notificacion(
+                tipo = Notificacion.TIPO_LICENCIA_DIARIA,
+                mensaje = mensaje
+            )
+        )
+    }
+
+
+
+    /**
+     * Genera una notificación si hay ventas sin exportar.
+     * SOLO notifica si hay ventas pendientes de exportar.
+     * NO notifica si no hay ventas (aunque no se exporte).
+     */
+    suspend fun generarNotificacionIPBNoExportado() {
+        val prefs = PreferencesManager(context)
+        val ultimaExportacion = prefs.obtenerUltimaExportacionIPB()
+
+        // ✅ Buscar ventas desde la última exportación (o desde el inicio si nunca se exportó)
+        val desde = if (ultimaExportacion == 0L) {
+            // Nunca se ha exportado → buscar desde el inicio de la app
+            // Considerar solo los últimos 30 días para no escanear toda la historia
+            System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000)
+        } else {
+            ultimaExportacion
+        }
+
+        val ahora = System.currentTimeMillis()
+
+        // ✅ Contar ventas directas + cuentas cerradas desde la última exportación
+        val ventasDirectas = ventas.listarDelDia(desde, ahora)
+        val cuentasCerradas = cuentas.cuentasCerradasDelDia(desde, ahora)
+
+        val totalVentas = ventasDirectas.size + cuentasCerradas.size
+
+        if (totalVentas > 0) {
+            // ✅ HAY ventas sin exportar → mostrar notificación
+            val mensaje = if (ultimaExportacion == 0L) {
+                "⚠️ Tienes $totalVentas venta(s) sin exportar.\n\n" +
+                        "Exporta el informe diario desde:\n" +
+                        "Menú → IPB → Exportar"
+            } else {
+                val dias = (ahora - ultimaExportacion) / (24 * 60 * 60 * 1000L)
+                "⚠️ No has exportado el IPB en $dias día(s).\n\n" +
+                        "Tienes $totalVentas venta(s) pendiente(s) de exportar.\n\n" +
+                        "Exporta el informe desde:\n" +
+                        "Menú → IPB → Exportar"
+            }
+
+            // ✅ Eliminar el existente y crear uno nuevo con el mensaje actualizado
+            val notifExistente = notificaciones.buscarActivaPorTipo(Notificacion.TIPO_IPB_NO_EXPORTADO)
+            if (notifExistente != null) {
+                notificaciones.eliminar(notifExistente.id)
+            }
+
+            notificaciones.insertar(
+                Notificacion(
+                    tipo = Notificacion.TIPO_IPB_NO_EXPORTADO,
+                    mensaje = mensaje
+                )
+            )
+        } else {
+            // ✅ NO hay ventas sin exportar → eliminar notificación si existe
+            val notif = notificaciones.buscarActivaPorTipo(Notificacion.TIPO_IPB_NO_EXPORTADO)
+            if (notif != null) {
+                notificaciones.eliminar(notif.id)
+            }
+        }
+    }
+
     suspend fun eliminarProducto(producto: Producto) = productos.eliminar(producto)
     fun observarProductos(): Flow<List<Producto>> = productos.observarTodos()
     fun obtenerTodosLosProductos(): Flow<List<Producto>> = productos.obtenerTodos()
@@ -329,6 +468,8 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
     private suspend fun crearNotificacionSiNoExiste(tipo: String, mensaje: String) {
         if (notificaciones.buscarActivaPorTipo(tipo) == null) notificaciones.insertar(Notificacion(tipo = tipo, mensaje = mensaje))
     }
+
+
 
     private fun normalizar(texto: String): String = Normalizer.normalize(texto.trim(), Normalizer.Form.NFD).replace("\\p{Mn}+".toRegex(), "").lowercase()
 
