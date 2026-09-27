@@ -45,7 +45,7 @@ class ImportarIPVActivity : AppCompatActivity() {
         supportActionBar?.title = "Importar IPV"
 
         binding.btnSeleccionarArchivo.setOnClickListener {
-            seleccionarArchivoLauncher.launch("application/json")
+            seleccionarArchivoLauncher.launch("*/*")
         }
 
         binding.btnImportar.setOnClickListener {
@@ -57,57 +57,55 @@ class ImportarIPVActivity : AppCompatActivity() {
     }
 
     private fun procesarArchivo(uri: Uri) {
-        try {
-            val inputStream = contentResolver.openInputStream(uri)
-            val reader = InputStreamReader(inputStream)
-            archivoIPV = Gson().fromJson(reader, ArchivoIPV::class.java)
-            reader.close()
-            inputStream?.close()
-
-            if (archivoIPV == null) {
-                Toast.makeText(this, "Error al leer el archivo IPV", Toast.LENGTH_LONG).show()
-                return
-            }
-
-            // Validar que tenga productos
-            if (archivoIPV?.productos.isNullOrEmpty()) {
-                Toast.makeText(this, "El archivo IPV no contiene productos", Toast.LENGTH_LONG).show()
+        lifecycleScope.launch {
+            try {
                 binding.btnImportar.isEnabled = false
-                return
-            }
+                binding.txtArchivoSeleccionado.text = "Leyendo archivo…"
 
-            binding.txtArchivoSeleccionado.text = "Archivo: ${uri.lastPathSegment}"
-            binding.txtFechaIPB.text = """
-                PV: ${archivoIPV?.puntoVenta?.codigo ?: "--"} · ${archivoIPV?.puntoVenta?.nombre ?: ""}
-                Fecha: ${DateUtils.fechaHora(archivoIPV?.fechaExportacion ?: 0)}
-                Productos: ${archivoIPV?.productos?.size ?: 0}
+                val archivo = withContext(Dispatchers.IO) {
+                    com.tuapp.ventas.utils.IpvReader.leerDesdeUri(this@ImportarIPVActivity, uri)
+                }
+                archivoIPV = archivo
+
+                // Mostrar info del archivo
+                val nombre = uri.lastPathSegment ?: "ipv_desconocido.ipv"
+                binding.txtArchivoSeleccionado.text = "Archivo: $nombre"
+                binding.txtFechaIPB.text = """
+                PV: ${archivo.puntoVenta.codigo} · ${archivo.puntoVenta.nombre}
+                Fecha exportación: ${DateUtils.fechaHora(archivo.fechaExportacion)}
+                Productos: ${archivo.productos.size}
+                Tipo: ${if (archivo.esSincronizacionInicial) "Sincronización inicial" else "Actualización"}
             """.trimIndent()
 
-            // Mostrar productos en el RecyclerView
-            val adapter = IPBAdapter(
-                archivoIPV?.productos?.map { productoIPV ->
-                    // Convertir ProductoIPV a ProductoIPB para mostrar
-                    com.tuapp.ventas.data.model.ProductoIPB(
-                        id = 0, // Temporal, solo para mostrar
-                        nombre = productoIPV.nombre,
-                        codigoBarras = productoIPV.codigoBarras,
-                        precio = productoIPV.precio,
-                        inventario = productoIPV.inventario,
-                        vendidos = 0
-                    )
-                } ?: emptyList()
-            )
-            binding.recyclerProductosIPB.setHasFixedSize(true)
-            binding.recyclerProductosIPB.layoutManager = LinearLayoutManager(this)
-            binding.recyclerProductosIPB.adapter = adapter
+                // Mostrar productos en el RecyclerView
+                val adapter = IPBAdapter(
+                    archivo.productos.map { productoIPV ->
+                        com.tuapp.ventas.data.model.ProductoIPB(
+                            id = 0,
+                            nombre = productoIPV.nombre,
+                            codigoBarras = productoIPV.codigoBarras,
+                            precio = productoIPV.precio,
+                            inventario = productoIPV.inventario,
+                            vendidos = 0
+                        )
+                    }
+                )
+                binding.recyclerProductosIPB.setHasFixedSize(true)
+                binding.recyclerProductosIPB.layoutManager = LinearLayoutManager(this@ImportarIPVActivity)
+                binding.recyclerProductosIPB.adapter = adapter
 
-            binding.btnImportar.isEnabled = true
-            Toast.makeText(this, "Archivo IPV cargado correctamente", Toast.LENGTH_SHORT).show()
+                binding.btnImportar.isEnabled = true
+                Toast.makeText(this@ImportarIPVActivity, "Archivo IPV cargado", Toast.LENGTH_SHORT).show()
 
-        } catch (e: Exception) {
-            Toast.makeText(this, "Error al procesar el archivo: ${e.message}", Toast.LENGTH_LONG).show()
-            archivoIPV = null
-            binding.btnImportar.isEnabled = false
+            } catch (e: Exception) {
+                Toast.makeText(
+                    this@ImportarIPVActivity,
+                    "Error al procesar el archivo: ${e.message}",
+                    Toast.LENGTH_LONG
+                ).show()
+                archivoIPV = null
+                binding.btnImportar.isEnabled = false
+            }
         }
     }
 
@@ -115,16 +113,28 @@ class ImportarIPVActivity : AppCompatActivity() {
         val archivo = archivoIPV ?: return
         val productos = archivo.productos
 
+        val tipoMensaje = if (archivo.esSincronizacionInicial) {
+            if (productos.isEmpty()) {
+                "Se creará el Punto de Venta ${archivo.puntoVenta.codigo} - ${archivo.puntoVenta.nombre}\n" +
+                        "Sin productos (solo sincronización del PV)."
+            } else {
+                "Se creará el Punto de Venta e importarán ${productos.size} productos."
+            }
+        } else {
+            "Se actualizarán ${productos.size} productos."
+        }
+
         MaterialAlertDialogBuilder(this)
             .setTitle("Confirmar importación IPV")
             .setMessage("""
-                Se importarán ${productos.size} productos.
-                
-                PV: ${archivo.puntoVenta.codigo} - ${archivo.puntoVenta.nombre}
-                Fecha: ${DateUtils.fechaHora(archivo.fechaExportacion)}
-                
-                ¿Continuar?
-            """.trimIndent())
+            $tipoMensaje
+            
+            PV: ${archivo.puntoVenta.codigo} - ${archivo.puntoVenta.nombre}
+            Fecha: ${DateUtils.fechaHora(archivo.fechaExportacion)}
+            Tipo: ${if (archivo.esSincronizacionInicial) "Sincronización inicial" else "Actualización"}
+            
+            ¿Continuar?
+        """.trimIndent())
             .setPositiveButton("Importar") { _, _ ->
                 realizarImportacion()
             }
@@ -134,16 +144,22 @@ class ImportarIPVActivity : AppCompatActivity() {
 
     private fun realizarImportacion() {
         val archivo = archivoIPV ?: return
+        val nombreArchivo = binding.txtArchivoSeleccionado.text.toString().removePrefix("Archivo: ")
 
-        if (archivo.productos.isEmpty()) {
-            Toast.makeText(this, "No hay productos para importar", Toast.LENGTH_SHORT).show()
+        // Validación: solo exigir productos si NO es sincronización inicial
+        if (!archivo.esSincronizacionInicial && archivo.productos.isEmpty()) {
+            Toast.makeText(
+                this,
+                "Este archivo de actualización no contiene productos",
+                Toast.LENGTH_SHORT
+            ).show()
             return
         }
 
         lifecycleScope.launch {
             try {
                 val resultado = withContext(Dispatchers.IO) {
-                    repo.importarIPV(archivo)
+                    repo.importarIPV(archivo, nombreArchivo)
                 }
 
                 withContext(Dispatchers.Main) {

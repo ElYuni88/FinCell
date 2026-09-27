@@ -20,8 +20,10 @@ import kotlinx.coroutines.launch
         DetalleCuenta::class,
         VentaFinal::class,
         Notificacion::class,
-        PuntoVenta::class],
-    version = 8,
+        PuntoVenta::class,
+        IpvImportado::class],
+
+    version = 9,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -33,6 +35,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun ventaFinalDao(): VentaFinalDao
     abstract fun notificacionDao(): NotificacionDao
     abstract fun puntoVentaDao(): PuntoVentaDao
+
+    abstract fun ipvImportadoDao(): IpvImportadoDao
 
     companion object {
         private val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -146,6 +150,27 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+
+        private val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+            CREATE TABLE IF NOT EXISTS `ipv_importados` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `nombreArchivo` TEXT NOT NULL,
+                `firma` TEXT NOT NULL,
+                `codigoPv` TEXT NOT NULL,
+                `fechaExportacion` INTEGER NOT NULL,
+                `fechaImportacion` INTEGER NOT NULL,
+                `esSincronizacionInicial` INTEGER NOT NULL,
+                `cantidadProductos` INTEGER NOT NULL,
+                `creados` INTEGER NOT NULL,
+                `actualizados` INTEGER NOT NULL,
+                `errores` INTEGER NOT NULL
+            )
+        """.trimIndent())
+            }
+        }
+
         private fun crearTablaNotificaciones(database: SupportSQLiteDatabase) {
             database.execSQL("""
                 CREATE TABLE IF NOT EXISTS notificaciones (
@@ -204,7 +229,8 @@ abstract class AppDatabase : RoomDatabase() {
                                MIGRATION_4_5,
                                MIGRATION_5_6,
                                MIGRATION_6_7,
-                               MIGRATION_7_8 )
+                               MIGRATION_7_8,
+                               MIGRATION_8_9)
                 .addCallback(object : Callback() {
                     override fun onCreate(db: SupportSQLiteDatabase) {
                         super.onCreate(db)

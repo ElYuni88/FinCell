@@ -150,40 +150,71 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
     // ============================================================
 
     /**
-     * Importa un archivo IPV validado por el Admin.
-     * - Si no existe PV → se crea
-     * - Si existe PV → se valida el código
-     * - Los productos se crean o actualizan
+     * Importa un archivo IPV firmado por el Admin.
+     *
+     * Validaciones:
+     * 1. Firma SHA-256 correcta (con SECRET_IPV).
+     * 2. Si el cliente ya tiene PV, el código debe coincidir.
+     * 3. Si es sincronización inicial, se puede crear el PV.
+     * 4. Si el mismo archivo ya se importó (misma firma), se rechaza.
      */
-    suspend fun importarIPV(archivoIPV: ArchivoIPV): ImportResult {
+    suspend fun importarIPV(
+        archivoIPV: ArchivoIPV,
+        nombreArchivo: String = "ipv_desconocido.ipv"
+    ): ImportResult {
         return db.withTransaction {
-            // 1. Validar/Crear Punto de Venta
+            // 1. Validar firma
+            val firmaValida = com.tuapp.ventas.utils.IpvFirmador.verificar(
+                codigoPv = archivoIPV.puntoVenta.codigo,
+                fechaExportacion = archivoIPV.fechaExportacion,
+                productos = archivoIPV.productos,
+                firmaEsperada = archivoIPV.firma
+            )
+            if (!firmaValida) {
+                return@withTransaction ImportResult(
+                    exito = false,
+                    mensaje = "❌ La firma del archivo IPV no es válida. El archivo está corrupto o fue alterado."
+                )
+            }
+
+            // 2. Verificar duplicado por firma
+            val yaImportado = db.ipvImportadoDao().buscarPorFirma(archivoIPV.firma)
+            if (yaImportado != null) {
+                return@withTransaction ImportResult(
+                    exito = false,
+                    mensaje = "⚠️ Este archivo IPV ya fue importado el " +
+                            java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault())
+                                .format(java.util.Date(yaImportado.fechaImportacion))
+                )
+            }
+
+            // 3. Validar/Crear Punto de Venta
             val pvExistente = puntoVentaDao.obtenerActivo()
             val pv = if (pvExistente == null) {
-                // Crear nuevo PV desde PuntoVentaExport
-                val nuevoPv = PuntoVenta(
-                    codigo = archivoIPV.puntoVenta.codigo,
-                    nombre = archivoIPV.puntoVenta.nombre,
-                    direccion = archivoIPV.puntoVenta.direccion,
-                    telefono = archivoIPV.puntoVenta.telefono,
-                    email = archivoIPV.puntoVenta.email,
-                    fechaCreacion = archivoIPV.puntoVenta.fechaCreacion
-                )
+                if (!archivoIPV.esSincronizacionInicial) {
+                    return@withTransaction ImportResult(
+                        exito = false,
+                        mensaje = "⚠️ El cliente no tiene un Punto de Venta configurado.\n\n" +
+                                "Necesitas primero un archivo de SINCRONIZACIÓN INICIAL del Admin."
+                    )
+                }
+                val nuevoPv = archivoIPV.puntoVenta.toPuntoVenta()
                 val id = puntoVentaDao.insertar(nuevoPv)
-                nuevoPv.copy(id = id)  // ✅ Ahora es PuntoVenta con id
+                nuevoPv.copy(id = id)
             } else {
-                // Validar que el código coincida
                 if (pvExistente.codigo != archivoIPV.puntoVenta.codigo) {
                     return@withTransaction ImportResult(
                         exito = false,
-                        mensaje = "El código del PV no coincide. Esperado: ${pvExistente.codigo}, Recibido: ${archivoIPV.puntoVenta.codigo}",
-                        pv = pvExistente
+                        mensaje = "❌ Este IPV es para otro Punto de Venta.\n\n" +
+                                "Tu PV: ${pvExistente.codigo}\n" +
+                                "IPV: ${archivoIPV.puntoVenta.codigo}\n\n" +
+                                "Si quieres cambiar de PV, debes limpiar la app y volver a configurarla."
                     )
                 }
                 pvExistente
             }
 
-            // 2. Importar productos
+            // 4. Importar productos
             var creados = 0
             var actualizados = 0
             var errores = 0
@@ -192,25 +223,20 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
                 try {
                     val existente = productos.buscarPorCodigo(productoIPV.codigoBarras)
                     if (existente == null) {
-                        // Crear producto
                         val nuevo = Producto(
                             codigoBarras = productoIPV.codigoBarras,
                             nombre = productoIPV.nombre,
                             precio = productoIPV.precio,
-                            inventario = productoIPV.inventario,
-                            esManual = productoIPV.esManual,
-                            tipoProducto = productoIPV.tipoProducto
+                            inventario = productoIPV.inventario
+                            // esManual y tipoProducto ya no vienen del Admin
                         )
                         productos.insertar(nuevo)
                         creados++
                     } else {
-                        // Actualizar producto
                         val actualizado = existente.copy(
                             nombre = productoIPV.nombre,
                             precio = productoIPV.precio,
-                            inventario = productoIPV.inventario,
-                            esManual = productoIPV.esManual,
-                            tipoProducto = productoIPV.tipoProducto
+                            inventario = productoIPV.inventario
                         )
                         productos.actualizar(actualizado)
                         actualizados++
@@ -221,9 +247,28 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
                 }
             }
 
+            // 5. Registrar en historial
+            db.ipvImportadoDao().insertar(
+                IpvImportado(
+                    nombreArchivo = nombreArchivo,
+                    firma = archivoIPV.firma,
+                    codigoPv = archivoIPV.puntoVenta.codigo,
+                    fechaExportacion = archivoIPV.fechaExportacion,
+                    esSincronizacionInicial = archivoIPV.esSincronizacionInicial,
+                    cantidadProductos = archivoIPV.productos.size,
+                    creados = creados,
+                    actualizados = actualizados,
+                    errores = errores
+                )
+            )
+
             ImportResult(
                 exito = true,
-                mensaje = "Importación completada: $creados creados, $actualizados actualizados, $errores errores",
+                mensaje = "✅ Importación completada\n" +
+                        "PV: ${archivoIPV.puntoVenta.codigo}\n" +
+                        "Productos creados: $creados\n" +
+                        "Productos actualizados: $actualizados" +
+                        (if (errores > 0) "\nErrores: $errores" else ""),
                 pv = pv,
                 creados = creados,
                 actualizados = actualizados,

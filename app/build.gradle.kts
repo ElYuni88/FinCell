@@ -18,6 +18,7 @@ android {
         versionName = "1.2.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("String", "SECRET_IPV", "\"${project.properties["SECRET_IPV"]}\"")
     }
 
     buildTypes {

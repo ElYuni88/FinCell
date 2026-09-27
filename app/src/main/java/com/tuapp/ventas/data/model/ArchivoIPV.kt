@@ -1,77 +1,55 @@
 package com.tuapp.ventas.data.model
 
+import com.google.gson.annotations.SerializedName
+
 /**
- * Archivo JSON exportado/importado para sincronización entre Admin y Cliente.
+ * Archivo IPV: sincronización Admin → Cliente.
  *
- * FLUJO:
- * 1. APK Cliente exporta IPV → lo envía al Admin
- * 2. Admin revisa, modifica y valida el IPV
- * 3. APK Cliente importa el IPV validado → actualiza su sistema
+ * Dos usos:
+ * 1. Sincronización inicial: el Admin asigna el PV al cliente (productos vacíos o catálogo completo).
+ * 2. Exportación tras auditoría: el Admin envía productos aprobados con precios e inventarios finales.
  *
- * @property version Versión del formato (ej. "1.0")
- * @property fechaExportacion Timestamp de cuando se exportó el archivo
- * @property puntoVenta Información del punto de venta (NO es entidad Room)
- * @property productos Lista de productos a importar/exportar
- * @property resumen Resumen del día (reutiliza ResumenIPB de ArchivoIPB.kt)
- * @property hashTotal Hash para verificar integridad (opcional)
+ * El campo `firma` contiene el SHA-256 generado con SECRET_IPV para verificar autenticidad.
  */
 data class ArchivoIPV(
-    val version: String = "1.0",
-    val fechaExportacion: Long = System.currentTimeMillis(),
-    val puntoVenta: PuntoVentaExport,
-    val productos: List<ProductoIPV> = emptyList(),
-    val resumen: ResumenIPB? = null,  // ← REUTILIZA ResumenIPB existente
-    val hashTotal: String? = null
+    @SerializedName("version") val version: String = "1.0",
+    @SerializedName("fecha_exportacion") val fechaExportacion: Long = System.currentTimeMillis(),
+    @SerializedName("punto_venta") val puntoVenta: PuntoVentaExport,
+    @SerializedName("productos") val productos: List<ProductoIPV> = emptyList(),
+    @SerializedName("es_sincronizacion_inicial") val esSincronizacionInicial: Boolean = false,
+    @SerializedName("firma") val firma: String = ""
 )
 
 /**
- * Versión de exportación de Punto de Venta.
- *
- * ⚠️ IMPORTANTE: Esta clase NO es una entidad Room.
- * Solo se usa para serializar/deserializar JSON.
- * La entidad Room es PuntoVenta (en PuntoVenta.kt)
- *
- * @property codigo Código único del punto de venta (ej. "PV-001")
- * @property nombre Nombre del establecimiento
- * @property direccion Dirección física (opcional)
- * @property telefono Teléfono de contacto (opcional)
- * @property email Email de contacto (opcional)
- * @property fechaCreacion Timestamp de creación
+ * Punto de Venta en formato de exportación (JSON).
+ * NO es una entidad Room. La entidad es `PuntoVenta`.
  */
 data class PuntoVentaExport(
-    val codigo: String,
-    val nombre: String,
-    val direccion: String? = null,
-    val telefono: String? = null,
-    val email: String? = null,
-    val fechaCreacion: Long = System.currentTimeMillis()
+    @SerializedName("codigo") val codigo: String,
+    @SerializedName("nombre") val nombre: String,
+    @SerializedName("direccion") val direccion: String? = null,
+    @SerializedName("telefono") val telefono: String? = null,
+    @SerializedName("email") val email: String? = null,
+    @SerializedName("fecha_creacion") val fechaCreacion: Long = System.currentTimeMillis()
 )
 
 /**
  * Producto para importar/exportar en IPV.
+ * NO es una entidad Room. La entidad es `Producto`.
  *
- * ⚠️ IMPORTANTE: Esta clase NO es una entidad Room.
- * Solo se usa para serializar/deserializar JSON.
- * La entidad Room es Producto (en Producto.kt)
- *
- * @property codigoBarras Código de barras del producto
- * @property nombre Nombre del producto
- * @property precio Precio unitario
- * @property inventario Cantidad en inventario
- * @property esManual Indica si es un producto manual (sin código de barras real)
- * @property tipoProducto Tipo de producto (CODIGO_BARRAS o MANUAL)
+ * ⚠️ Los nombres de los campos deben coincidir EXACTAMENTE con los del Admin,
+ *    porque la firma SHA-256 se calcula sobre el JSON serializado.
  */
 data class ProductoIPV(
-    val codigoBarras: String,
-    val nombre: String,
-    val precio: Double,
-    val inventario: Int,
-    val esManual: Boolean = false,
-    val tipoProducto: String = Producto.TIPO_CODIGO_BARRAS
+    @SerializedName("codigo_barras") val codigoBarras: String,
+    @SerializedName("nombre") val nombre: String,
+    @SerializedName("precio") val precio: Double,
+    @SerializedName("inventario") val inventario: Int
 )
 
 /**
- * Función de extensión para convertir ProductoIPV a Producto (entidad Room)
+ * Convierte un ProductoIPV (transportado en JSON) a la entidad Room `Producto`.
+ * Como el Admin no maneja `esManual` ni `tipoProducto`, se asume producto con código de barras.
  */
 fun ProductoIPV.toProducto(): Producto {
     return Producto(
@@ -79,27 +57,13 @@ fun ProductoIPV.toProducto(): Producto {
         nombre = this.nombre,
         precio = this.precio,
         inventario = this.inventario,
-        esManual = this.esManual,
-        tipoProducto = this.tipoProducto
+        esManual = false,
+        tipoProducto = Producto.TIPO_CODIGO_BARRAS
     )
 }
 
 /**
- * Función de extensión para convertir Producto (entidad Room) a ProductoIPV
- */
-fun Producto.toProductoIPV(): ProductoIPV {
-    return ProductoIPV(
-        codigoBarras = this.codigoBarras,
-        nombre = this.nombre,
-        precio = this.precio,
-        inventario = this.inventario,
-        esManual = this.esManual,
-        tipoProducto = this.tipoProducto
-    )
-}
-
-/**
- * Función de extensión para convertir PuntoVentaExport a PuntoVenta (entidad Room)
+ * Convierte una entidad `PuntoVentaExport` (JSON) a la entidad Room `PuntoVenta`.
  */
 fun PuntoVentaExport.toPuntoVenta(): PuntoVenta {
     return PuntoVenta(
@@ -113,7 +77,8 @@ fun PuntoVentaExport.toPuntoVenta(): PuntoVenta {
 }
 
 /**
- * Función de extensión para convertir PuntoVenta (entidad Room) a PuntoVentaExport
+ * Convierte una entidad `PuntoVenta` (Room) a `PuntoVentaExport` (JSON).
+ * Usado por ExportarIPBActivity para armar el IPB.
  */
 fun PuntoVenta.toPuntoVentaExport(): PuntoVentaExport {
     return PuntoVentaExport(
