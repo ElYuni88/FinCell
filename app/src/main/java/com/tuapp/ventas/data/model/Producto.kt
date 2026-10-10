@@ -16,7 +16,14 @@ data class Producto(
     val inventario: Int = 0,
     val vendidos: Int = 0,
     @ColumnInfo(name = "esManual") val esManual: Boolean = false,
-    @ColumnInfo(name = "fecha_creacion") val fechaCreacion: Long = System.currentTimeMillis()
+    @ColumnInfo(name = "fecha_creacion") val fechaCreacion: Long = System.currentTimeMillis(),
+    /**
+     * true = producto inactivo (lo inactivó el admin).
+     * El cliente NO puede inactivar, solo ACTIVAR (si el producto se vuelve a usar).
+     * Los productos inactivos no se pueden vender, pero si el operador escanea uno
+     * y decide activarlo, se reactiva y continúa la operación.
+     */
+    val inactivo: Boolean = false
 ) : Serializable {
     companion object {
         const val TIPO_CODIGO_BARRAS = "CODIGO_BARRAS"

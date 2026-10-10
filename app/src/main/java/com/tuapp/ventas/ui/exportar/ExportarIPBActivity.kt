@@ -157,11 +157,12 @@ class ExportarIPBActivity : BaseActivity() {
                 "Fecha: $fechaStr | Original: ${json.toByteArray().size} bytes | Comprimido: ${bytesComprimidos.size} bytes"
             )
         }.onSuccess {
-            PreferencesManager(this@ExportarIPBActivity)
-                .guardarUltimaExportacionIPB(System.currentTimeMillis())
+            val prefs = PreferencesManager(this@ExportarIPBActivity)
+            prefs.guardarUltimaExportacionIPB(System.currentTimeMillis())
+            // ✅ NUEVO: marcar inicio del periodo muerto (sobrescribe si había uno)
+            prefs.guardarInicioPeriodoMuerto(System.currentTimeMillis())
             Toast.makeText(
                 this@ExportarIPBActivity,
-
                 "IPB exportado en Descargas",
                 Toast.LENGTH_LONG
             ).show()

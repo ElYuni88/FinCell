@@ -1,6 +1,6 @@
 package com.tuapp.ventas.ui.ipb
 
-import android.content.Intent
+
 import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
@@ -9,7 +9,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.gson.Gson
+import com.tuapp.ventas.utils.PreferencesManager
 import com.tuapp.ventas.VentasApplication
 import com.tuapp.ventas.data.model.ArchivoIPV
 import com.tuapp.ventas.databinding.ActivityImportarIpbBinding
@@ -17,7 +17,6 @@ import com.tuapp.ventas.utils.DateUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.InputStreamReader
 
 class ImportarIPVActivity : AppCompatActivity() {
 
@@ -68,7 +67,7 @@ class ImportarIPVActivity : AppCompatActivity() {
                 archivoIPV = archivo
 
                 // Mostrar info del archivo
-                val nombre = uri.lastPathSegment ?: "ipv_desconocido.ipv"
+                val nombre = uri.lastPathSegment ?: "ipv_desconocido.ipb"
                 binding.txtArchivoSeleccionado.text = "Archivo: $nombre"
                 binding.txtFechaIPB.text = """
                 PV: ${archivo.puntoVenta.codigo} · ${archivo.puntoVenta.nombre}
@@ -113,6 +112,12 @@ class ImportarIPVActivity : AppCompatActivity() {
         val archivo = archivoIPV ?: return
         val productos = archivo.productos
 
+        // ✅ Detectar si hay periodo muerto o si es una importación "sospechosa"
+        val prefs = PreferencesManager(this)
+        val estaEnPeriodoMuerto = prefs.estaEnPeriodoMuerto()
+        val ultimaExportacion = prefs.obtenerUltimaExportacionIPB()
+        val nuncaExporto = ultimaExportacion == 0L && !archivo.esSincronizacionInicial
+
         val tipoMensaje = if (archivo.esSincronizacionInicial) {
             if (productos.isEmpty()) {
                 "Se creará el Punto de Venta ${archivo.puntoVenta.codigo} - ${archivo.puntoVenta.nombre}\n" +
@@ -124,24 +129,37 @@ class ImportarIPVActivity : AppCompatActivity() {
             "Se actualizarán ${productos.size} productos."
         }
 
+        // ✅ Bloque de advertencias
+        val advertencia = when {
+            estaEnPeriodoMuerto -> {
+                "\n\n📊 Se aplicarán las ventas del periodo muerto (desde tu última exportación)."
+            }
+            nuncaExporto -> {
+                "\n\n⚠️ ADVERTENCIA: Estás importando sin haber exportado el IPB antes.\n\n" +
+                        "Se recomienda exportar primero para que el administrador audite tus datos.\n\n" +
+                        "Si continúas, los productos se importarán tal como vienen del Admin y " +
+                        "las ventas locales que tengas NO se contabilizarán en el stock."
+            }
+            else -> ""
+        }
+
         MaterialAlertDialogBuilder(this)
             .setTitle("Confirmar importación IPV")
             .setMessage("""
-            $tipoMensaje
-            
-            PV: ${archivo.puntoVenta.codigo} - ${archivo.puntoVenta.nombre}
-            Fecha: ${DateUtils.fechaHora(archivo.fechaExportacion)}
-            Tipo: ${if (archivo.esSincronizacionInicial) "Sincronización inicial" else "Actualización"}
-            
-            ¿Continuar?
-        """.trimIndent())
+        $tipoMensaje
+        
+        PV: ${archivo.puntoVenta.codigo} - ${archivo.puntoVenta.nombre}
+        Fecha: ${DateUtils.fechaHora(archivo.fechaExportacion)}
+        Tipo: ${if (archivo.esSincronizacionInicial) "Sincronización inicial" else "Actualización"}$advertencia
+        
+        ¿Continuar?
+    """.trimIndent())
             .setPositiveButton("Importar") { _, _ ->
                 realizarImportacion()
             }
             .setNegativeButton("Cancelar", null)
             .show()
     }
-
     private fun realizarImportacion() {
         val archivo = archivoIPV ?: return
         val nombreArchivo = binding.txtArchivoSeleccionado.text.toString().removePrefix("Archivo: ")

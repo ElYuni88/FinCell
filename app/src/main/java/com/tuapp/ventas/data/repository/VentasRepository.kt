@@ -2,10 +2,6 @@ package com.tuapp.ventas.data.repository
 
 import android.database.sqlite.SQLiteConstraintException
 import android.util.Log
-import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import androidx.room.withTransaction
 import com.tuapp.ventas.data.database.AppDatabase
 import com.tuapp.ventas.data.model.*
@@ -15,7 +11,7 @@ import com.tuapp.ventas.utils.DateUtils
 import com.tuapp.ventas.utils.LicenseManager
 import com.tuapp.ventas.utils.PreferencesManager
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.firstOrNull
 import java.text.Normalizer
 import java.util.Calendar
@@ -29,30 +25,48 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
     private val finales = db.ventaFinalDao()
     private val notificaciones = db.notificacionDao()
 
+
     fun ventasDirectasHoy(): Flow<List<VentaDirecta>> = ventasDirectasPorFecha(System.currentTimeMillis())
+
     fun ventasDirectasPorFecha(fecha: Long): Flow<List<VentaDirecta>> = ventas.observarDelDia(inicioDia(fecha), finDia(fecha))
+
     fun totalVentasDirectasHoy(): Flow<Double> = totalVentasDirectasPorFecha(System.currentTimeMillis())
+
     fun totalVentasDirectasPorFecha(fecha: Long): Flow<Double> = ventas.observarTotalDia(inicioDia(fecha), finDia(fecha))
+
     fun cantidadVentasDirectasHoy(): Flow<Int> = cantidadVentasDirectasPorFecha(System.currentTimeMillis())
+
     fun cantidadVentasDirectasPorFecha(fecha: Long): Flow<Int> = ventas.observarCantidadDia(inicioDia(fecha), finDia(fecha))
+
     fun cuentasActivas(): Flow<List<Cuenta>> = cuentas.observarAbiertas()
+
     fun cantidadCuentasAbiertas(): Flow<Int> = cuentas.observarCantidadAbiertas()
+
     fun resumenCuentas(): Flow<List<CuentaResumen>> = cuentas.observarResumenCuentas()
+
     fun resumenCuentasPorFecha(fecha: Long): Flow<List<CuentaResumen>> = cuentas.observarResumenCuentasPorDia(inicioDia(fecha), finDia(fecha))
+
     fun totalCuentasCerradasHoy(): Flow<Double> = totalCuentasCerradasPorFecha(System.currentTimeMillis())
+
     fun totalCuentasCerradasPorFecha(fecha: Long): Flow<Double> = cuentas.observarTotalCerradasDia(inicioDia(fecha), finDia(fecha))
+
     fun cantidadCuentasCerradasHoy(): Flow<Int> = cantidadCuentasCerradasPorFecha(System.currentTimeMillis())
+
     fun cantidadCuentasCerradasPorFecha(fecha: Long): Flow<Int> = cuentas.observarCantidadCerradasDia(inicioDia(fecha), finDia(fecha))
     fun observarCuenta(cuentaId: Long): Flow<CuentaConDetalles?> = cuentas.observarCuentaConDetalles(cuentaId)
 
     suspend fun buscarProducto(codigo: String): Producto? = productos.buscarPorCodigo(codigo)
+
     suspend fun buscarProductoPorId(id: Long): Producto? = productos.buscarPorId(id)
+
     suspend fun buscarProductosManualesPorNombre(query: String): List<Producto> {
         val normalizada = normalizar(query)
         if (normalizada.length < 2) return emptyList()
         return productos.listarManuales().filter { normalizar(it.nombre).contains(normalizada) }.sortedBy { it.nombre }.take(10)
     }
+
     suspend fun buscarClientesPorNombre(query: String): List<Cliente> = clientes.buscarPorNombre(query)
+
     suspend fun crearProducto(codigo: String, nombre: String, precio: Double, inventario: Int = 0): Producto {
         Log.d(TAG, "crearProducto: codigo='$codigo', nombre='$nombre', inventario=$inventario")
         val codigoNormalizado = codigo.trim().ifBlank { generarCodigoManual() }
@@ -214,7 +228,25 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
                 pvExistente
             }
 
-            // 4. Importar productos
+            // 4. ✅ Calcular ventas del periodo muerto
+            val prefs = PreferencesManager(context)
+            val inicioPeriodoMuerto = prefs.obtenerInicioPeriodoMuerto()
+            val huboPeriodoMuerto = inicioPeriodoMuerto > 0L
+
+            val ventasPeriodoMuerto: Map<String, Int> = if (huboPeriodoMuerto) {
+                val directas = ventas.contarVentasPorCodigoDesde(inicioPeriodoMuerto)
+                    .associate { it.codigoBarras to it.cantidad }
+                val cuentas = detalles.contarVentasCuentasPorCodigoDesde(inicioPeriodoMuerto)
+                    .associate { it.codigoBarras to it.cantidad }
+                // Combinar sumando cantidades por código
+                (directas.keys + cuentas.keys).associateWith { codigo ->
+                    (directas[codigo] ?: 0) + (cuentas[codigo] ?: 0)
+                }
+            } else {
+                emptyMap()
+            }
+
+            // 5. Importar productos (merge con periodo muerto)
             var creados = 0
             var actualizados = 0
             var errores = 0
@@ -222,21 +254,32 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
             archivoIPV.productos.forEach { productoIPV ->
                 try {
                     val existente = productos.buscarPorCodigo(productoIPV.codigoBarras)
+                    val vendidosPeriodo = ventasPeriodoMuerto[productoIPV.codigoBarras] ?: 0
+
                     if (existente == null) {
+                        // ✅ Crear producto nuevo
                         val nuevo = Producto(
                             codigoBarras = productoIPV.codigoBarras,
                             nombre = productoIPV.nombre,
                             precio = productoIPV.precio,
-                            inventario = productoIPV.inventario
-                            // esManual y tipoProducto ya no vienen del Admin
+                            inventario = productoIPV.inventario,
+                            vendidos = vendidosPeriodo,
+                            tipoProducto = Producto.TIPO_CODIGO_BARRAS,
+                            esManual = false,
+                            inactivo = productoIPV.inactivo
                         )
                         productos.insertar(nuevo)
                         creados++
                     } else {
+                        // ✅ Actualizar producto existente
+                        // Se mantiene esManual y tipoProducto (el admin no los conoce)
                         val actualizado = existente.copy(
                             nombre = productoIPV.nombre,
                             precio = productoIPV.precio,
-                            inventario = productoIPV.inventario
+                            inventario = productoIPV.inventario,
+                            // ✅ Reemplaza (NO suma) con las ventas del periodo muerto
+                            vendidos = vendidosPeriodo,
+                            inactivo = productoIPV.inactivo
                         )
                         productos.actualizar(actualizado)
                         actualizados++
@@ -247,7 +290,13 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
                 }
             }
 
-            // 5. Registrar en historial
+            // 6. ✅ Borrar todas las notificaciones (se regeneran solas)
+            notificaciones.eliminarTodas()
+
+            // 7. ✅ Limpiar periodo muerto
+            prefs.limpiarInicioPeriodoMuerto()
+
+            // 8. Registrar en historial
             db.ipvImportadoDao().insertar(
                 IpvImportado(
                     nombreArchivo = nombreArchivo,
@@ -262,28 +311,43 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
                 )
             )
 
+            val totalVentasPeriodoMuerto = ventasPeriodoMuerto.values.sum()
+
+            val mensaje = buildString {
+                appendLine("✅ Importación completada")
+                appendLine("PV: ${archivoIPV.puntoVenta.codigo}")
+                appendLine("Productos creados: $creados")
+                appendLine("Productos actualizados: $actualizados")
+                if (errores > 0) appendLine("Errores: $errores")
+                if (huboPeriodoMuerto) {
+                    appendLine()
+                    appendLine("📊 Ventas del periodo muerto aplicadas: $totalVentasPeriodoMuerto")
+                }
+            }.trim()
+
             ImportResult(
                 exito = true,
-                mensaje = "✅ Importación completada\n" +
-                        "PV: ${archivoIPV.puntoVenta.codigo}\n" +
-                        "Productos creados: $creados\n" +
-                        "Productos actualizados: $actualizados" +
-                        (if (errores > 0) "\nErrores: $errores" else ""),
+                mensaje = mensaje,
                 pv = pv,
                 creados = creados,
                 actualizados = actualizados,
-                errores = errores
+                errores = errores,
+                huboPeriodoMuerto = huboPeriodoMuerto,
+                ventasPeriodoMuerto = totalVentasPeriodoMuerto
             )
         }
     }
+
     data class ImportResult(
-    val exito: Boolean,
-    val mensaje: String,
-    val pv: PuntoVenta? = null,
-    val creados: Int = 0,
-    val actualizados: Int = 0,
-    val errores: Int = 0
-)
+        val exito: Boolean,
+        val mensaje: String,
+        val pv: PuntoVenta? = null,
+        val creados: Int = 0,
+        val actualizados: Int = 0,
+        val errores: Int = 0,
+        val huboPeriodoMuerto: Boolean = false,
+        val ventasPeriodoMuerto: Int = 0
+    )
 
     // ============================================================
 // NOTIFICACIONES DE LICENCIA
@@ -349,21 +413,34 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
      */
     suspend fun generarNotificacionSinPuntoVenta() {
         val pv = puntoVentaDao.obtenerActivo()
+        val tipo = Notificacion.TIPO_SIN_PUNTO_VENTA
+        val prefs = PreferencesManager(context)
 
         if (pv == null) {
-            // No hay PV → crear notificación si no existe
-            crearNotificacionSiNoExiste(
-                Notificacion.TIPO_SIN_PUNTO_VENTA,
-                "⚠️ No hay punto de venta registrado.\n\n" +
-                        "Para sincronizar la app, importa un archivo IPV desde la app admin.\n\n" +
-                        "Ve al menú → Importar IPV"
+            // No hay PV → generar solo si pasaron 24h
+            val existente = notificaciones.buscarActivaPorTipo(tipo)
+
+            if (existente != null && !prefs.puedeGenerarNotificacion(tipo)) return
+
+            existente?.let { notificaciones.eliminar(it.id) }
+
+            notificaciones.insertar(
+                Notificacion(
+                    tipo = tipo,
+                    mensaje = "⚠️ No hay punto de venta registrado.\n\n" +
+                            "Para sincronizar la app, importa un archivo IPV desde la app admin.\n\n" +
+                            "Ve al menú → Importar IPV"
+                )
             )
+            prefs.marcarNotificacionGenerada(tipo)
         } else {
             // Sí hay PV → eliminar notificación si existe
-            val notif = notificaciones.buscarActivaPorTipo(Notificacion.TIPO_SIN_PUNTO_VENTA)
+            val notif = notificaciones.buscarActivaPorTipo(tipo)
             if (notif != null) {
                 notificaciones.eliminar(notif.id)
             }
+            // ✅ Limpiar el timestamp para que si vuelve a no haber PV, se genere de inmediato
+            prefs.limpiarTimestampNotificacion(tipo)
         }
     }
 
@@ -378,17 +455,23 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
         val isFreeTrial = LicenseManager.isFreeTrial(context)
         val license = LicenseManager.loadLicense(context)
 
-        // Si no hay licencia, no mostrar nada (se maneja con el sistema de activación)
         if (license.isNullOrBlank() || expiration == 0L) return
 
-        // Formatear fecha de expiración
+        val tipo = Notificacion.TIPO_LICENCIA_DIARIA
+        val existente = notificaciones.buscarActivaPorTipo(tipo)
+
+        // ✅ Si ya existe y NO han pasado 24h → no regenerar
+        if (existente != null && !PreferencesManager(context).puedeGenerarNotificacion(tipo)) {
+            return
+        }
+
+        // ✅ Borrar la existente si hay
+        existente?.let { notificaciones.eliminar(it.id) }
+
         val fechaExpiracion = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault())
             .format(java.util.Date(expiration))
-
-        // Determinar tipo de licencia
         val tipoLicencia = if (isFreeTrial) "Gratuita" else "Pagada"
 
-        // Mensaje
         val mensaje = if (daysRemaining > 0) {
             "📋 Estado de licencia\n\n" +
                     "Tipo: $tipoLicencia\n" +
@@ -399,25 +482,9 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
                     "Renueva para continuar usando la app."
         }
 
-        // ✅ Buscar notificación diaria existente y actualizarla
-        val notifExistente = notificaciones.buscarActivaPorTipo(Notificacion.TIPO_LICENCIA_DIARIA)
-
-        if (notifExistente != null) {
-            // ✅ Actualizar la existente con el nuevo mensaje
-            // Marcar la vieja como eliminada y crear una nueva
-            notificaciones.eliminar(notifExistente.id)
-        }
-
-        // ✅ Crear la nueva notificación diaria
-        notificaciones.insertar(
-            Notificacion(
-                tipo = Notificacion.TIPO_LICENCIA_DIARIA,
-                mensaje = mensaje
-            )
-        )
+        notificaciones.insertar(Notificacion(tipo = tipo, mensaje = mensaje))
+        PreferencesManager(context).marcarNotificacionGenerada(tipo)
     }
-
-
 
     /**
      * Genera una notificación si hay ventas sin exportar.
@@ -426,27 +493,26 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
      */
     suspend fun generarNotificacionIPBNoExportado() {
         val prefs = PreferencesManager(context)
-        val ultimaExportacion = prefs.obtenerUltimaExportacionIPB()
+        val tipo = Notificacion.TIPO_IPB_NO_EXPORTADO
 
-        // ✅ Buscar ventas desde la última exportación (o desde el inicio si nunca se exportó)
+        val ultimaExportacion = prefs.obtenerUltimaExportacionIPB()
         val desde = if (ultimaExportacion == 0L) {
-            // Nunca se ha exportado → buscar desde el inicio de la app
-            // Considerar solo los últimos 30 días para no escanear toda la historia
             System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000)
         } else {
             ultimaExportacion
         }
-
         val ahora = System.currentTimeMillis()
 
-        // ✅ Contar ventas directas + cuentas cerradas desde la última exportación
         val ventasDirectas = ventas.listarDelDia(desde, ahora)
         val cuentasCerradas = cuentas.cuentasCerradasDelDia(desde, ahora)
-
         val totalVentas = ventasDirectas.size + cuentasCerradas.size
 
         if (totalVentas > 0) {
-            // ✅ HAY ventas sin exportar → mostrar notificación
+            val existente = notificaciones.buscarActivaPorTipo(tipo)
+            if (existente != null && !prefs.puedeGenerarNotificacion(tipo)) return
+
+            existente?.let { notificaciones.eliminar(it.id) }
+
             val mensaje = if (ultimaExportacion == 0L) {
                 "⚠️ Tienes $totalVentas venta(s) sin exportar.\n\n" +
                         "Exporta el informe diario desde:\n" +
@@ -459,66 +525,130 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
                         "Menú → IPB → Exportar"
             }
 
-            // ✅ Eliminar el existente y crear uno nuevo con el mensaje actualizado
-            val notifExistente = notificaciones.buscarActivaPorTipo(Notificacion.TIPO_IPB_NO_EXPORTADO)
-            if (notifExistente != null) {
-                notificaciones.eliminar(notifExistente.id)
-            }
-
-            notificaciones.insertar(
-                Notificacion(
-                    tipo = Notificacion.TIPO_IPB_NO_EXPORTADO,
-                    mensaje = mensaje
-                )
-            )
+            notificaciones.insertar(Notificacion(tipo = tipo, mensaje = mensaje))
+            prefs.marcarNotificacionGenerada(tipo)
         } else {
-            // ✅ NO hay ventas sin exportar → eliminar notificación si existe
-            val notif = notificaciones.buscarActivaPorTipo(Notificacion.TIPO_IPB_NO_EXPORTADO)
+            val notif = notificaciones.buscarActivaPorTipo(tipo)
             if (notif != null) {
                 notificaciones.eliminar(notif.id)
             }
+            prefs.limpiarTimestampNotificacion(tipo)
         }
     }
 
     suspend fun eliminarProducto(producto: Producto) = productos.eliminar(producto)
+
     fun observarProductos(): Flow<List<Producto>> = productos.observarTodos()
+
     fun obtenerTodosLosProductos(): Flow<List<Producto>> = productos.obtenerTodos()
+
     suspend fun insertarProducto(producto: Producto): Long = guardarProducto(producto).id
+
     suspend fun actualizarProducto(producto: Producto) {
         guardarProducto(producto)
     }
+
     suspend fun buscarProductoPorCodigo(codigo: String): Producto? = productos.buscarPorCodigo(codigo)
+
     suspend fun existeCodigoDuplicado(codigo: String, id: Long): Boolean = codigo.isNotBlank() && productos.existeCodigoDuplicado(codigo, id) > 0
+
     suspend fun verificarCodigoDuplicado(codigo: String): Boolean = codigo.isNotBlank() && productos.existeCodigo(codigo) > 0
+
     fun obtenerProductosAgotados(): Flow<List<Producto>> = productos.obtenerAgotados()
+
     fun productosSinCodigo(): Flow<List<Producto>> = productos.obtenerProductosSinCodigo()
+
     fun productosBajoInventario(limite: Int = 5): Flow<List<Producto>> = productos.observarProductosBajoInventario(limite)
+
     fun cantidadTransferenciasHoy(): Flow<Int> = finales.observarCantidadPorMetodoDia("TRANSFERENCIA", DateUtils.inicioDia(), DateUtils.finDia())
-    fun hayNotificaciones(): Flow<Boolean> = combine(notificaciones.observarCantidadNoLeidas(), notificaciones.observarCantidadNoEliminadas()) { noLeidas, noEliminadas -> noLeidas > 0 || noEliminadas > 0 }
+
+    fun hayNotificaciones(): Flow<Boolean> = notificaciones.observarCantidadNoLeidas()
+        .map { noLeidas -> noLeidas > 0 }
+
     fun observarNotificaciones(): Flow<List<Notificacion>> = notificaciones.observarNoEliminadas()
+
     suspend fun marcarNotificacionesLeidas(ids: List<Long>) = notificaciones.marcarLeidas(ids)
+
     suspend fun eliminarNotificacion(id: Long) = notificaciones.eliminar(id)
+
     suspend fun eliminarNotificaciones(ids: List<Long>) = notificaciones.eliminar(ids)
+
     suspend fun generarNotificacionesSistema() {
+        val prefs = PreferencesManager(context)
+
+        // ✅ Bajo inventario
         val bajoStock = productos.listarTodos().filter { it.inventario < 5 }
-        if (bajoStock.isNotEmpty()) crearNotificacionSiNoExiste(Notificacion.TIPO_BAJO_INVENTARIO, "Productos con inventario menor a 5 unidades: ${bajoStock.joinToString { it.nombre }}")
+        if (bajoStock.isNotEmpty()) {
+            val tipo = Notificacion.TIPO_BAJO_INVENTARIO
+            val existente = notificaciones.buscarActivaPorTipo(tipo)
+            if (existente == null || prefs.puedeGenerarNotificacion(tipo)) {
+                existente?.let { notificaciones.eliminar(it.id) }
+                notificaciones.insertar(Notificacion(
+                    tipo = tipo,
+                    mensaje = "Productos con inventario menor a 5 unidades: ${bajoStock.joinToString { it.nombre }}"
+                ))
+                prefs.marcarNotificacionGenerada(tipo)
+            }
+        } else {
+            notificaciones.buscarActivaPorTipo(Notificacion.TIPO_BAJO_INVENTARIO)?.let {
+                notificaciones.eliminar(it.id)
+            }
+            prefs.limpiarTimestampNotificacion(Notificacion.TIPO_BAJO_INVENTARIO)
+        }
+
+        // ✅ Cuentas abiertas
         val abiertas = cuentas.contarAbiertas()
-        if (abiertas > 6) crearNotificacionSiNoExiste(Notificacion.TIPO_CUENTAS_ABIERTAS, "Hay $abiertas cuentas abiertas simultáneamente")
+        if (abiertas > 6) {
+            val tipo = Notificacion.TIPO_CUENTAS_ABIERTAS
+            val existente = notificaciones.buscarActivaPorTipo(tipo)
+            if (existente == null || prefs.puedeGenerarNotificacion(tipo)) {
+                existente?.let { notificaciones.eliminar(it.id) }
+                notificaciones.insertar(Notificacion(
+                    tipo = tipo,
+                    mensaje = "Hay $abiertas cuentas abiertas simultáneamente"
+                ))
+                prefs.marcarNotificacionGenerada(tipo)
+            }
+        } else {
+            notificaciones.buscarActivaPorTipo(Notificacion.TIPO_CUENTAS_ABIERTAS)?.let {
+                notificaciones.eliminar(it.id)
+            }
+            prefs.limpiarTimestampNotificacion(Notificacion.TIPO_CUENTAS_ABIERTAS)
+        }
+
+        // ✅ Transferencias
         val transferencias = finales.contarPorMetodoDia("TRANSFERENCIA", DateUtils.inicioDia(), DateUtils.finDia())
-        if (transferencias > 6) crearNotificacionSiNoExiste(Notificacion.TIPO_TRANSFERENCIAS_DIA, "Hay $transferencias cuentas pagadas por transferencia hoy")
+        if (transferencias > 6) {
+            val tipo = Notificacion.TIPO_TRANSFERENCIAS_DIA
+            val existente = notificaciones.buscarActivaPorTipo(tipo)
+            if (existente == null || prefs.puedeGenerarNotificacion(tipo)) {
+                existente?.let { notificaciones.eliminar(it.id) }
+                notificaciones.insertar(Notificacion(
+                    tipo = tipo,
+                    mensaje = "Hay $transferencias cuentas pagadas por transferencia hoy"
+                ))
+                prefs.marcarNotificacionGenerada(tipo)
+            }
+        } else {
+            notificaciones.buscarActivaPorTipo(Notificacion.TIPO_TRANSFERENCIAS_DIA)?.let {
+                notificaciones.eliminar(it.id)
+            }
+            prefs.limpiarTimestampNotificacion(Notificacion.TIPO_TRANSFERENCIAS_DIA)
+        }
     }
+
     fun productosAgotados(): Flow<Int> = productos.observarProductosAgotados()
+
     suspend fun listarProductos(): List<Producto> = productos.listarTodos()
 
     private suspend fun crearNotificacionSiNoExiste(tipo: String, mensaje: String) {
         if (notificaciones.buscarActivaPorTipo(tipo) == null) notificaciones.insertar(Notificacion(tipo = tipo, mensaje = mensaje))
     }
 
-
-
     private fun normalizar(texto: String): String = Normalizer.normalize(texto.trim(), Normalizer.Form.NFD).replace("\\p{Mn}+".toRegex(), "").lowercase()
 
     private fun inicioDia(fecha: Long): Long = Calendar.getInstance().apply { timeInMillis = fecha; set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
+
     private fun finDia(fecha: Long): Long = Calendar.getInstance().apply { timeInMillis = fecha; set(Calendar.HOUR_OF_DAY, 23); set(Calendar.MINUTE, 59); set(Calendar.SECOND, 59); set(Calendar.MILLISECOND, 999) }.timeInMillis
 
     companion object {
@@ -533,6 +663,7 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
             consecutivo++
         }
     }
+
     suspend fun registrarVentaDirecta(producto: Producto, cantidad: Int = 1) {
         require(cantidad in 1..99) { "La cantidad debe estar entre 1 y 99" }
         val actualizado = productos.buscarPorId(producto.id) ?: producto
@@ -545,6 +676,7 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
             // NO descontamos inventario
         }
     }
+
     suspend fun crearCuenta(nombreCliente: String, telefono: String?, mesa: String? = null, recordarCuenta: Boolean = true): Long {
         val nombreNormalizado = nombreCliente.trim().ifBlank { "Cliente" }
 
@@ -601,6 +733,7 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
             )
         )
     }
+
     suspend fun agregarProductoACuenta(cuentaId: Long, producto: Producto, cantidad: Int) {
         require(cantidad in 1..99) { "La cantidad debe estar entre 1 y 99" }
         val actualizado = productos.buscarPorId(producto.id) ?: producto
@@ -657,6 +790,7 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
     private suspend fun recalcularTotal(cuentaId: Long) {
         cuentas.actualizarTotal(cuentaId, detalles.totalCuenta(cuentaId))
     }
+
     suspend fun cerrarCuenta(cuentaId: Long, metodoPago: String, observaciones: String?) {
         val cuenta = cuentas.obtener(cuentaId) ?: error("Cuenta no encontrada")
         val total = detalles.totalCuenta(cuentaId)
@@ -664,6 +798,8 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
         cuentas.actualizar(cuenta.copy(estado = Cuenta.ESTADO_CERRADA, fechaCierre = cierre, total = total))
         finales.insertar(VentaFinal(cuentaId = cuentaId, totalVenta = total, metodoPago = metodoPago, fechaCierre = cierre, observaciones = observaciones))
     }
+
+
     suspend fun obtenerResumenVentasDia(fecha: Long): List<ResumenProducto> {
         val inicio = inicioDia(fecha)
         val fin = finDia(fecha)
@@ -723,18 +859,34 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
         }.sortedBy { it.nombre }
     }
 
+    // ============================================================
+// PRODUCTOS — activos / inactivos
+// ============================================================
+
+    fun observarProductosActivos(): Flow<List<Producto>> = productos.observarActivos()
+    fun observarProductosInactivos(): Flow<List<Producto>> = productos.observarInactivos()
+
+    /** El cliente solo puede ACTIVAR (no inactivar). */
+    suspend fun activarProducto(id: Long) = productos.activar(id)
+
 
     suspend fun obtenerCuentaConDetalles(cuentaId: Long): CuentaConDetalles? = cuentas.obtenerCuentaConDetalles(cuentaId)
+
     suspend fun obtenerCuenta(cuentaId: Long): Cuenta? = cuentas.obtener(cuentaId)
+
     suspend fun eliminarCuentaVacia(cuentaId: Long) {
         val cuenta = cuentas.obtener(cuentaId) ?: error("Cuenta no encontrada")
         require(cuenta.estado == Cuenta.ESTADO_ABIERTA) { "Solo se pueden eliminar cuentas abiertas" }
         require(cuenta.total == 0.0) { "Solo se pueden eliminar cuentas sin productos" }
         cuentas.eliminar(cuenta)
     }
+
     suspend fun obtenerVentaFinal(cuentaId: Long): VentaFinal? = finales.obtenerPorCuenta(cuentaId)
+
     suspend fun ventasDirectasDia(inicio: Long, fin: Long): List<VentaDirecta> = ventas.listarDelDia(inicio, fin)
+
     suspend fun cuentasCerradasDia(inicio: Long, fin: Long): List<CuentaConDetalles> = cuentas.cuentasCerradasDelDia(inicio, fin)
+
     suspend fun actualizarStockDesdeIPB(productoIPB: ProductoIPB) {
         val producto = productos.buscarPorId(productoIPB.id) ?: error("Producto no encontrado: ${productoIPB.nombre}")
         // Establecer el stock final como nuevo inventario (reiniciar vendidos a 0)
@@ -745,4 +897,64 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
             )
         )
     }
+
+    // ============================================================
+// RESETEO DE LA APP
+// ============================================================
+
+    /**
+     * Resetea la app borrando el historial de uso.
+     *
+     * NO borra:
+     * - Clientes
+     * - Punto de Venta
+     * - Licencia
+     * - Configuración de usuario (sonido, vibrar, modo, etc.)
+     *
+     * Borra (en orden respetando FKs):
+     * 1. detalle_cuenta (FK a cuentas y productos)
+     * 2. ventas_finales (FK a cuentas)
+     * 3. cuentas
+     * 4. ventas_directas (FK a productos)
+     * 5. productos
+     * 6. notificaciones
+     * 7. ipv_importados
+     *
+     * También limpia SharedPreferences selectivamente.
+     */
+    suspend fun resetearApp(): ResetResult {
+        return try {
+            db.withTransaction {
+                // 1. Detalles de cuentas (FK a cuentas y productos)
+                detalles.eliminarTodos()
+                // 2. Ventas finales (FK a cuentas)
+                finales.eliminarTodas()
+                // 3. Cuentas
+                cuentas.eliminarTodas()
+                // 4. Ventas directas (FK a productos)
+                ventas.eliminarTodas()
+                // 5. Productos
+                productos.eliminarTodos()
+                // 6. Notificaciones
+                notificaciones.eliminarTodas()
+                // 7. Clientes
+                clientes.eliminarTodos()
+                // 8. Historial de IPV importados
+                db.ipvImportadoDao().eliminarTodos()
+            }
+
+            // 8. Limpiar SharedPreferences (fuera de la transacción de Room)
+            PreferencesManager(context).limpiarParaReset()
+
+            ResetResult(exito = true, mensaje = "App reseteada correctamente")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error al resetear la app", e)
+            ResetResult(exito = false, mensaje = e.message ?: "Error desconocido al resetear")
+        }
+    }
+
+    data class ResetResult(
+        val exito: Boolean,
+        val mensaje: String
+    )
 }

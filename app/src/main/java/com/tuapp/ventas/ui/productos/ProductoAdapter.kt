@@ -1,6 +1,7 @@
 package com.tuapp.ventas.ui.productos
 
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
@@ -11,7 +12,8 @@ import com.tuapp.ventas.utils.DateUtils
 
 class ProductoAdapter(
     private val onEditar: (Producto) -> Unit,
-    private val onEliminar: (Producto) -> Unit
+    private val onEliminar: (Producto) -> Unit,
+    private val onActivar: (Producto) -> Unit
 ) : ListAdapter<Producto, ProductoAdapter.VH>(Diff) {
 
     object Diff : DiffUtil.ItemCallback<Producto>() {
@@ -30,10 +32,26 @@ class ProductoAdapter(
             val codigo = producto.codigoBarras.ifBlank { "S/C" }
             val etiquetaCodigo = if (producto.tipoProducto == Producto.TIPO_MANUAL) "$codigo (manual)" else codigo
             val stockDisponible = producto.inventario - producto.vendidos
+
             txtNombre.text = producto.nombre
-            txtDetalle.text = "Código: $etiquetaCodigo · Precio: ${DateUtils.moneda(producto.precio)} · Stock: $stockDisponible · Vendidos: ${producto.vendidos}"
+            val sufijo = if (producto.inactivo) " · INACTIVO" else ""
+            txtDetalle.text = "Código: $etiquetaCodigo · Precio: ${DateUtils.moneda(producto.precio)} · Stock: $stockDisponible · Vendidos: ${producto.vendidos}$sufijo"
+
+            if (producto.inactivo) {
+                // Solo Activar
+                btnEditar.visibility = View.GONE
+                btnEliminar.visibility = View.GONE
+                btnActivar.visibility = View.VISIBLE
+            } else {
+                // Editar + Eliminar (el cliente NO puede inactivar)
+                btnEditar.visibility = View.VISIBLE
+                btnEliminar.visibility = View.VISIBLE
+                btnActivar.visibility = View.GONE
+            }
+
             btnEditar.setOnClickListener { onEditar(producto) }
             btnEliminar.setOnClickListener { onEliminar(producto) }
+            btnActivar.setOnClickListener { onActivar(producto) }
         }
     }
 }

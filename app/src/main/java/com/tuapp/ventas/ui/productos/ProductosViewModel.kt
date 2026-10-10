@@ -1,10 +1,11 @@
 package com.tuapp.ventas.ui.productos
 
+import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.asLiveData
+import androidx.lifecycle.switchMap
 import androidx.lifecycle.viewModelScope
 import com.tuapp.ventas.data.model.Producto
 import com.tuapp.ventas.data.repository.VentasRepository
@@ -12,8 +13,20 @@ import kotlinx.coroutines.launch
 
 /** ViewModel de administración CRUD de productos. */
 class ProductosViewModel(private val repo: VentasRepository) : ViewModel() {
-    val productos = repo.obtenerTodosLosProductos().asLiveData()
+
+    private val _mostrandoInactivos = MutableLiveData(false)
+    val mostrandoInactivos: LiveData<Boolean> = _mostrandoInactivos
+
+    val productos: LiveData<List<Producto>> = _mostrandoInactivos.switchMap { mostrar ->
+        if (mostrar) repo.observarProductosInactivos().asLiveData()
+        else repo.observarProductosActivos().asLiveData()
+    }
+
     val mensaje = MutableLiveData<String>()
+
+    fun setMostrandoInactivos(valor: Boolean) {
+        if (_mostrandoInactivos.value != valor) _mostrandoInactivos.value = valor
+    }
 
     suspend fun verificarCodigoDuplicado(codigo: String): Boolean = repo.verificarCodigoDuplicado(codigo)
 
@@ -24,7 +37,6 @@ class ProductosViewModel(private val repo: VentasRepository) : ViewModel() {
                 error("Ya existe un producto con ese código")
             }
             val normalizado = producto.copy(codigoBarras = codigo)
-            Log.d(TAG, "Guardando producto: esManual=${normalizado.esManual}, tipo=${normalizado.tipoProducto}, codigo=${normalizado.codigoBarras}")
             repo.guardarProducto(normalizado)
         }.onSuccess {
             mensaje.value = "Producto guardado"
@@ -39,8 +51,10 @@ class ProductosViewModel(private val repo: VentasRepository) : ViewModel() {
             .onFailure { mensaje.value = it.message ?: "No se pudo eliminar el producto" }
     }
 
-    companion object {
-        private const val TAG = "ProductosViewModel"
+    fun activar(producto: Producto) = viewModelScope.launch {
+        runCatching { repo.activarProducto(producto.id) }
+            .onSuccess { mensaje.value = "Producto activado" }
+            .onFailure { mensaje.value = it.message ?: "No se pudo activar el producto" }
     }
 
     fun generarCodigoManualSugerido(): String {

@@ -35,4 +35,7 @@ interface NotificacionDao {
 
     @Query("UPDATE notificaciones SET eliminada = 1 WHERE id IN (:ids)")
     suspend fun eliminar(ids: List<Long>)
+
+    @Query("DELETE FROM notificaciones")
+    suspend fun eliminarTodas()
 }

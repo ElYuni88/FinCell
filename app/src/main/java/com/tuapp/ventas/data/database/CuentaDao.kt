@@ -52,4 +52,7 @@ interface CuentaDao {
     @Transaction @Query("SELECT * FROM cuentas WHERE estado = 'CERRADA' AND fecha_cierre BETWEEN :inicio AND :fin ORDER BY fecha_cierre ASC") suspend fun cuentasCerradasDelDia(inicio: Long, fin: Long): List<CuentaConDetalles>
     @Query("SELECT COALESCE(SUM(total), 0) FROM cuentas WHERE estado = 'CERRADA' AND fecha_cierre BETWEEN :inicio AND :fin") fun observarTotalCerradasDia(inicio: Long, fin: Long): Flow<Double>
     @Query("SELECT COUNT(*) FROM cuentas WHERE estado = 'CERRADA' AND fecha_cierre BETWEEN :inicio AND :fin") fun observarCantidadCerradasDia(inicio: Long, fin: Long): Flow<Int>
+
+    @Query("DELETE FROM cuentas")
+    suspend fun eliminarTodas()
 }

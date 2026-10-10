@@ -30,7 +30,7 @@ import com.tuapp.ventas.utils.TextUtils
 class ProductosActivity : BaseActivity() {
     private lateinit var binding: ActivityProductosBinding
     private val viewModel: ProductosViewModel by viewModels { ProductosViewModelFactory((application as VentasApplication).repository) }
-    private val adapter = ProductoAdapter(::mostrarDialogoEditar, ::confirmarEliminar)
+    private val adapter = ProductoAdapter(::mostrarDialogoEditar, ::confirmarEliminar, ::confirmarActivar)
     private var productosCompletos: List<Producto> = emptyList()
 
     private val scanLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -74,6 +74,10 @@ class ProductosActivity : BaseActivity() {
                 else -> false
             }
         }
+        // ✅ Switch mostrar inactivos
+        swMostrarInactivos.setOnCheckedChangeListener { _, checked ->
+            viewModel.setMostrandoInactivos(checked)
+        }
         inputBuscarProductos.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = filtrarProductos(s?.toString().orEmpty())
@@ -82,7 +86,10 @@ class ProductosActivity : BaseActivity() {
     }
 
     private fun observarDatos() {
-        viewModel.productos.observe(this) { productos -> productosCompletos = productos.sortedBy { it.nombre.lowercase() }; filtrarProductos(binding.inputBuscarProductos.text?.toString().orEmpty()) }
+        viewModel.productos.observe(this) { productos ->
+            productosCompletos = productos.sortedBy { it.nombre.lowercase() }
+            filtrarProductos(binding.inputBuscarProductos.text?.toString().orEmpty())
+        }
         viewModel.mensaje.observe(this) { toast(it) }
     }
 
@@ -123,14 +130,11 @@ class ProductosActivity : BaseActivity() {
         dialogBinding.inputCodigo.setText(codigoInicial)
         dialogBinding.inputCodigo.isEnabled = codigoEditable
 
-        // Restringir entrada a solo números (solo si es editable)
         if (codigoEditable) {
             dialogBinding.inputCodigo.filters = arrayOf(
                 InputFilter { source, start, end, dest, dstart, dend ->
                     for (i in start until end) {
-                        if (!Character.isDigit(source[i])) {
-                            return@InputFilter ""
-                        }
+                        if (!Character.isDigit(source[i])) return@InputFilter ""
                     }
                     null
                 }
@@ -142,22 +146,17 @@ class ProductosActivity : BaseActivity() {
         dialogBinding.inputNombre.setText(producto?.nombre.orEmpty())
         dialogBinding.inputPrecio.setText(producto?.precio?.toString().orEmpty())
 
-        // --- Configurar visibilidad según nuevo/edición ---
         val stockDisponible = if (producto != null) {
             (producto.inventario - producto.vendidos).coerceAtLeast(0)
-        } else {
-            0
-        }
+        } else 0
 
         if (producto == null) {
-            // ✅ NUEVO PRODUCTO: mostrar inventario, ocultar entrada y stock actual
             dialogBinding.tvStockActual.visibility = View.GONE
             dialogBinding.inputEntradaStock.visibility = View.GONE
             dialogBinding.inputInventario.visibility = View.VISIBLE
             dialogBinding.inputInventario.setText("0")
             dialogBinding.inputInventario.hint = "Cantidad en inventario"
         } else {
-            // ✅ EDICIÓN: mostrar stock actual y entrada, ocultar inventario
             dialogBinding.tvStockActual.visibility = View.VISIBLE
             dialogBinding.tvStockActual.text = "Stock actual: $stockDisponible"
             dialogBinding.inputEntradaStock.visibility = View.VISIBLE
@@ -175,12 +174,10 @@ class ProductosActivity : BaseActivity() {
                 val precio = dialogBinding.inputPrecio.text?.toString()?.toDoubleOrNull()
                 val codigo = dialogBinding.inputCodigo.text?.toString()?.trim().orEmpty()
 
-                // Validaciones
                 if (nombre.isBlank() || precio == null || precio < 0.0) {
                     toast("Nombre y precio válidos son requeridos")
                     return@setPositiveButton
                 }
-
                 if (esManualForzado && codigo.isBlank()) {
                     toast("El código no puede estar vacío")
                     return@setPositiveButton
@@ -190,9 +187,7 @@ class ProductosActivity : BaseActivity() {
                     producto.codigoBarras
                 } else if (codigo.isBlank() && producto == null && !esManualForzado) {
                     viewModel.generarCodigoManualSugerido()
-                } else {
-                    codigo
-                }
+                } else codigo
 
                 if (esManualForzado && !codigoFinal.all { it.isDigit() }) {
                     toast("El código solo debe contener números")
@@ -202,26 +197,15 @@ class ProductosActivity : BaseActivity() {
                 val tipo = if (codigoFinal.startsWith("MANUAL_", ignoreCase = true)) Producto.TIPO_MANUAL else Producto.TIPO_CODIGO_BARRAS
                 val base = producto ?: Producto(nombre = nombre, precio = precio)
 
-                // --- Calcular el nuevo inventario según el caso ---
                 val nuevoInventario = if (producto != null) {
-                    // EDICIÓN: sumar entrada al inventario actual
                     val entradaStr = dialogBinding.inputEntradaStock.text?.toString()?.trim()
-                    val entrada = if (!entradaStr.isNullOrEmpty()) {
-                        entradaStr.toIntOrNull() ?: 0
-                    } else {
-                        0
-                    }
+                    val entrada = if (!entradaStr.isNullOrEmpty()) entradaStr.toIntOrNull() ?: 0 else 0
                     (producto.inventario + entrada).coerceAtLeast(0)
                 } else {
-                    // NUEVO PRODUCTO: usar el valor del campo inventario
                     dialogBinding.inputInventario.text?.toString()?.toIntOrNull() ?: 0
                 }
 
-                val esManualFinal = if (esManualForzado) {
-                    true
-                } else {
-                    producto?.esManual ?: (tipo == Producto.TIPO_MANUAL)
-                }
+                val esManualFinal = if (esManualForzado) true else producto?.esManual ?: (tipo == Producto.TIPO_MANUAL)
 
                 viewModel.guardar(
                     base.copy(
@@ -244,6 +228,15 @@ class ProductosActivity : BaseActivity() {
             .setMessage("¿Eliminar ${producto.nombre}?$advertenciaVentas")
             .setNegativeButton("Cancelar", null)
             .setPositiveButton("Eliminar") { _, _ -> viewModel.eliminar(producto) }
+            .show()
+    }
+
+    private fun confirmarActivar(producto: Producto) {
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Activar producto")
+            .setMessage("¿Activar \"${producto.nombre}\"?\n\nVolverá a estar disponible para la venta.")
+            .setNegativeButton("Cancelar", null)
+            .setPositiveButton("Activar") { _, _ -> viewModel.activar(producto) }
             .show()
     }
 

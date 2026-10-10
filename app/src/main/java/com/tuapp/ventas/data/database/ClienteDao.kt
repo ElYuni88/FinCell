@@ -12,4 +12,7 @@ interface ClienteDao {
     @Query("SELECT * FROM clientes WHERE nombre LIKE '%' || :query || '%' ORDER BY es_frecuente DESC, nombre ASC LIMIT 10")
     suspend fun buscarPorNombre(query: String): List<Cliente>
     @Update suspend fun actualizar(cliente: Cliente)
+
+    @Query("DELETE FROM clientes")
+    suspend fun eliminarTodos()
 }

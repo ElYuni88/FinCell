@@ -17,6 +17,7 @@ import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
@@ -32,10 +33,12 @@ import com.tuapp.ventas.ui.simple.VentaDirectaDialog
 import com.tuapp.ventas.ui.venta.OperacionesActivity
 import com.tuapp.ventas.utils.PreferencesManager
 import com.tuapp.ventas.utils.SoundUtils
+import kotlinx.coroutines.launch
 
 class EscaneoContinuoActivity : AppCompatActivity() {
     private lateinit var binding: ActivityEscaneoContinuoBinding
     private val viewModel: EscaneoContinuoViewModel by viewModels { EscaneoContinuoViewModelFactory((application as VentasApplication).repository) }
+    private val repo by lazy { (application as VentasApplication).repository }
     private var cameraProvider: ProcessCameraProvider? = null
     private var imageAnalysis: ImageAnalysis? = null
     private val scanner = BarcodeScanning.getClient()
@@ -64,7 +67,10 @@ class EscaneoContinuoActivity : AppCompatActivity() {
     private fun observarDatos() {
         viewModel.cantidadProductos.observe(this) { binding.tvContador.text = "Productos: $it" }
         viewModel.productoEscaneado.observe(this) { producto ->
-            producto?.let { viewModel.consumirProductoEscaneado(); mostrarDialogoCantidad(it) }
+            producto?.let {
+                viewModel.consumirProductoEscaneado()
+                manejarProductoEncontrado(it)
+            }
         }
         viewModel.codigoNoEncontrado.observe(this) { codigo ->
             codigo?.let { viewModel.consumirCodigoNoEncontrado(); manejarProductoNoEncontrado(it) }
@@ -81,6 +87,48 @@ class EscaneoContinuoActivity : AppCompatActivity() {
             dialogoAltaProducto?.getButton(AlertDialog.BUTTON_POSITIVE)?.isEnabled = true
             Toast.makeText(this, it, Toast.LENGTH_LONG).show()
         }
+    }
+
+    /**
+     * ✅ Punto clave: si el producto escaneado está inactivo,
+     * mostramos un diálogo para activarlo antes de continuar.
+     */
+    private fun manejarProductoEncontrado(producto: Producto) {
+        if (producto.inactivo) {
+            mostrarDialogoReactivar(producto)
+        } else {
+            mostrarDialogoCantidad(producto)
+        }
+    }
+
+    private fun mostrarDialogoReactivar(producto: Producto) {
+        pausadoPorDialogo = true
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Producto inactivo")
+            .setMessage(
+                "\"${producto.nombre}\" está inactivo (lo desactivó el admin).\n\n" +
+                        "¿Quieres activarlo y continuar con la venta?"
+            )
+            .setPositiveButton("Activar") { _, _ ->
+                lifecycleScope.launch {
+                    runCatching { repo.activarProducto(producto.id) }
+                        .onSuccess {
+                            // Refrescamos la copia local y seguimos con la venta
+                            mostrarDialogoCantidad(producto.copy(inactivo = false))
+                        }
+                        .onFailure {
+                            Toast.makeText(
+                                this@EscaneoContinuoActivity,
+                                "No se pudo activar: ${it.message}",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            reanudarEscaneo()
+                        }
+                }
+            }
+            .setNegativeButton("No") { _, _ -> reanudarEscaneo() }
+            .setCancelable(false)
+            .show()
     }
 
     private fun mostrarDialogoCantidad(producto: Producto) {

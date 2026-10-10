@@ -15,4 +15,7 @@ interface IpvImportadoDao {
 
     @Query("SELECT * FROM ipv_importados WHERE firma = :firma LIMIT 1")
     suspend fun buscarPorFirma(firma: String): IpvImportado?
+
+    @Query("DELETE FROM ipv_importados")
+    suspend fun eliminarTodos()
 }

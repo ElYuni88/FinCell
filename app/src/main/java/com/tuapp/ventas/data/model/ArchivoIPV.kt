@@ -5,14 +5,11 @@ import com.google.gson.annotations.SerializedName
 /**
  * Archivo IPV: sincronización Admin → Cliente.
  *
- * Dos usos:
- * 1. Sincronización inicial: el Admin asigna el PV al cliente (productos vacíos o catálogo completo).
- * 2. Exportación tras auditoría: el Admin envía productos aprobados con precios e inventarios finales.
- *
- * El campo `firma` contiene el SHA-256 generado con SECRET_IPV para verificar autenticidad.
+ * ⚠️ VERSIÓN 1.1 — se añadió `inactivo` a ProductoIPV.
+ *    El orden y los @SerializedName deben ser IDÉNTICOS al Admin o la firma fallará.
  */
 data class ArchivoIPV(
-    @SerializedName("version") val version: String = "1.0",
+    @SerializedName("version") val version: String = "1.1",
     @SerializedName("fecha_exportacion") val fechaExportacion: Long = System.currentTimeMillis(),
     @SerializedName("punto_venta") val puntoVenta: PuntoVentaExport,
     @SerializedName("productos") val productos: List<ProductoIPV> = emptyList(),
@@ -20,10 +17,6 @@ data class ArchivoIPV(
     @SerializedName("firma") val firma: String = ""
 )
 
-/**
- * Punto de Venta en formato de exportación (JSON).
- * NO es una entidad Room. La entidad es `PuntoVenta`.
- */
 data class PuntoVentaExport(
     @SerializedName("codigo") val codigo: String,
     @SerializedName("nombre") val nombre: String,
@@ -34,23 +27,18 @@ data class PuntoVentaExport(
 )
 
 /**
- * Producto para importar/exportar en IPV.
- * NO es una entidad Room. La entidad es `Producto`.
- *
- * ⚠️ Los nombres de los campos deben coincidir EXACTAMENTE con los del Admin,
- *    porque la firma SHA-256 se calcula sobre el JSON serializado.
+ * ⚠️ IMPORTANTE: el orden de los campos y sus @SerializedName deben coincidir
+ *    EXACTAMENTE con la clase ProductoIPV del Admin. Cualquier diferencia
+ *    cambia el JSON y rompe la firma SHA-256.
  */
 data class ProductoIPV(
     @SerializedName("codigo_barras") val codigoBarras: String,
     @SerializedName("nombre") val nombre: String,
     @SerializedName("precio") val precio: Double,
-    @SerializedName("inventario") val inventario: Int
+    @SerializedName("inventario") val inventario: Int,
+    @SerializedName("inactivo") val inactivo: Boolean = false
 )
 
-/**
- * Convierte un ProductoIPV (transportado en JSON) a la entidad Room `Producto`.
- * Como el Admin no maneja `esManual` ni `tipoProducto`, se asume producto con código de barras.
- */
 fun ProductoIPV.toProducto(): Producto {
     return Producto(
         codigoBarras = this.codigoBarras,
@@ -58,13 +46,11 @@ fun ProductoIPV.toProducto(): Producto {
         precio = this.precio,
         inventario = this.inventario,
         esManual = false,
-        tipoProducto = Producto.TIPO_CODIGO_BARRAS
+        tipoProducto = Producto.TIPO_CODIGO_BARRAS,
+        inactivo = this.inactivo
     )
 }
 
-/**
- * Convierte una entidad `PuntoVentaExport` (JSON) a la entidad Room `PuntoVenta`.
- */
 fun PuntoVentaExport.toPuntoVenta(): PuntoVenta {
     return PuntoVenta(
         codigo = this.codigo,
@@ -76,10 +62,6 @@ fun PuntoVentaExport.toPuntoVenta(): PuntoVenta {
     )
 }
 
-/**
- * Convierte una entidad `PuntoVenta` (Room) a `PuntoVentaExport` (JSON).
- * Usado por ExportarIPBActivity para armar el IPB.
- */
 fun PuntoVenta.toPuntoVentaExport(): PuntoVentaExport {
     return PuntoVentaExport(
         codigo = this.codigo,

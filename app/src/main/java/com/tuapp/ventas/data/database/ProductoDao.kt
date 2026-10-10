@@ -6,24 +6,84 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ProductoDao {
-    @Query("SELECT * FROM productos WHERE codigo_barras = :codigo LIMIT 1") suspend fun buscarPorCodigo(codigo: String): Producto?
-    @Query("SELECT * FROM productos WHERE id = :id LIMIT 1") suspend fun buscarPorId(id: Long): Producto?
-    @Query("SELECT * FROM productos ORDER BY nombre ASC") fun observarTodos(): Flow<List<Producto>>
-    @Query("SELECT * FROM productos ORDER BY nombre ASC") fun obtenerTodos(): Flow<List<Producto>>
-    @Query("SELECT * FROM productos ORDER BY nombre") suspend fun listarTodos(): List<Producto>
-    @Query("SELECT * FROM productos WHERE esManual = 1 ORDER BY nombre ASC") fun obtenerProductosManuales(): Flow<List<Producto>>
-    @Query("SELECT * FROM productos WHERE esManual = 1 ORDER BY nombre ASC") fun obtenerProductosSinCodigo(): Flow<List<Producto>>
-    @Query("SELECT * FROM productos WHERE esManual = 1 ORDER BY nombre ASC") suspend fun listarProductosSinCodigo(): List<Producto>
-    @Query("SELECT * FROM productos WHERE esManual = 1 ORDER BY nombre ASC") suspend fun listarManuales(): List<Producto>
-    @Query("SELECT * FROM productos WHERE esManual = 1 AND LOWER(nombre) LIKE '%' || LOWER(:query) || '%' ORDER BY nombre ASC LIMIT 10") suspend fun buscarManualesPorNombre(query: String): List<Producto>
-    @Query("SELECT * FROM productos WHERE (inventario - vendidos) < :limite ORDER BY (inventario - vendidos) ASC, nombre ASC") fun observarProductosBajoInventario(limite: Int = 5): Flow<List<Producto>>
-    @Query("SELECT COUNT(*) FROM productos WHERE inventario = 0") fun observarProductosAgotados(): Flow<Int>
-    @Query("SELECT * FROM productos WHERE inventario = 0 ORDER BY nombre ASC") fun obtenerAgotados(): Flow<List<Producto>>
-    @Insert(onConflict = OnConflictStrategy.ABORT) suspend fun insertar(producto: Producto): Long
-    @Update suspend fun actualizar(producto: Producto)
-    @Delete suspend fun eliminar(producto: Producto)
-    @Query("SELECT COUNT(*) FROM productos WHERE codigo_barras = :codigo AND id != :id") suspend fun existeCodigoDuplicado(codigo: String, id: Long): Int
-    @Query("SELECT COUNT(*) FROM productos WHERE codigo_barras = :codigo") suspend fun existeCodigo(codigo: String): Int
-    @Query("UPDATE productos SET inventario = MAX(inventario - :cantidad, 0) WHERE id = :productoId") suspend fun descontarInventario(productoId: Long, cantidad: Int)
-    @Query("UPDATE productos SET vendidos = vendidos + :cantidad WHERE id = :productoId") suspend fun incrementarVendidos(productoId: Long, cantidad: Int)
+    @Query("SELECT * FROM productos WHERE codigo_barras = :codigo LIMIT 1")
+    suspend fun buscarPorCodigo(codigo: String): Producto?
+
+    @Query("SELECT * FROM productos WHERE id = :id LIMIT 1")
+    suspend fun buscarPorId(id: Long): Producto?
+
+    @Query("SELECT * FROM productos ORDER BY nombre ASC")
+    fun observarTodos(): Flow<List<Producto>>
+
+    @Query("SELECT * FROM productos ORDER BY nombre ASC")
+    fun obtenerTodos(): Flow<List<Producto>>
+
+    @Query("SELECT * FROM productos ORDER BY nombre")
+    suspend fun listarTodos(): List<Producto>
+
+    // ============================================================
+    // ACTIVOS / INACTIVOS (nuevos)
+    // ============================================================
+
+    @Query("SELECT * FROM productos WHERE inactivo = 0 ORDER BY nombre ASC")
+    fun observarActivos(): Flow<List<Producto>>
+
+    @Query("SELECT * FROM productos WHERE inactivo = 1 ORDER BY nombre ASC")
+    fun observarInactivos(): Flow<List<Producto>>
+
+    /** Solo activa. El cliente NO inactiva (eso lo hace el admin). */
+    @Query("UPDATE productos SET inactivo = 0 WHERE id = :id")
+    suspend fun activar(id: Long)
+
+    // ============================================================
+    // MANUALES
+    // ============================================================
+
+    @Query("SELECT * FROM productos WHERE esManual = 1 ORDER BY nombre ASC")
+    fun obtenerProductosManuales(): Flow<List<Producto>>
+
+    @Query("SELECT * FROM productos WHERE esManual = 1 ORDER BY nombre ASC")
+    fun obtenerProductosSinCodigo(): Flow<List<Producto>>
+
+    @Query("SELECT * FROM productos WHERE esManual = 1 ORDER BY nombre ASC")
+    suspend fun listarProductosSinCodigo(): List<Producto>
+
+    @Query("SELECT * FROM productos WHERE esManual = 1 ORDER BY nombre ASC")
+    suspend fun listarManuales(): List<Producto>
+
+    @Query("SELECT * FROM productos WHERE esManual = 1 AND inactivo = 0 AND LOWER(nombre) LIKE '%' || LOWER(:query) || '%' ORDER BY nombre ASC LIMIT 10")
+    suspend fun buscarManualesPorNombre(query: String): List<Producto>
+
+    @Query("SELECT * FROM productos WHERE (inventario - vendidos) < :limite ORDER BY (inventario - vendidos) ASC, nombre ASC")
+    fun observarProductosBajoInventario(limite: Int = 5): Flow<List<Producto>>
+
+    @Query("SELECT COUNT(*) FROM productos WHERE inventario = 0")
+    fun observarProductosAgotados(): Flow<Int>
+
+    @Query("SELECT * FROM productos WHERE inventario = 0 ORDER BY nombre ASC")
+    fun obtenerAgotados(): Flow<List<Producto>>
+
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertar(producto: Producto): Long
+
+    @Update
+    suspend fun actualizar(producto: Producto)
+
+    @Delete
+    suspend fun eliminar(producto: Producto)
+
+    @Query("SELECT COUNT(*) FROM productos WHERE codigo_barras = :codigo AND id != :id")
+    suspend fun existeCodigoDuplicado(codigo: String, id: Long): Int
+
+    @Query("SELECT COUNT(*) FROM productos WHERE codigo_barras = :codigo")
+    suspend fun existeCodigo(codigo: String): Int
+
+    @Query("UPDATE productos SET inventario = MAX(inventario - :cantidad, 0) WHERE id = :productoId")
+    suspend fun descontarInventario(productoId: Long, cantidad: Int)
+
+    @Query("UPDATE productos SET vendidos = vendidos + :cantidad WHERE id = :productoId")
+    suspend fun incrementarVendidos(productoId: Long, cantidad: Int)
+
+    @Query("DELETE FROM productos")
+    suspend fun eliminarTodos()
 }

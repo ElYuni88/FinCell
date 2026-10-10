@@ -190,7 +190,112 @@ class PreferencesManager(context: Context) {
         return (System.currentTimeMillis() - ultima) > unDiaMs
     }
 
+    // ================================================================
+// ✅ PERIODO MUERTO (entre exportación e importación del IPV)
+// ================================================================
+
+    /**
+     * Guarda el timestamp del inicio del periodo muerto.
+     * Se llama al exportar exitosamente el IPB.
+     * Si ya había un periodo muerto activo, se sobrescribe (opción A).
+     */
+    fun guardarInicioPeriodoMuerto(timestamp: Long) {
+        prefs.edit().putLong("periodo_muerto_inicio", timestamp).apply()
+    }
+
+    /**
+     * Obtiene el timestamp del inicio del periodo muerto.
+     * Devuelve 0 si no hay periodo muerto activo.
+     */
+    fun obtenerInicioPeriodoMuerto(): Long {
+        return prefs.getLong("periodo_muerto_inicio", 0L)
+    }
+
+    /**
+     * Limpia el periodo muerto (se llama al importar el IPV).
+     */
+    fun limpiarInicioPeriodoMuerto() {
+        prefs.edit().remove("periodo_muerto_inicio").apply()
+    }
+
+    /**
+     * Verifica si hay un periodo muerto activo.
+     */
+    fun estaEnPeriodoMuerto(): Boolean {
+        return obtenerInicioPeriodoMuerto() > 0L
+    }
+
     // Mantenemos la clave privada por si acaso (ya no se usa)
     @Suppress("unused")
     private fun claveGastos(fecha: String): String = "gastos_ipb_$fecha"
+
+
+    // ================================================================
+// ✅ CONTROL DE NOTIFICACIONES (una vez al día)
+// ================================================================
+
+    private val unDiaMs = 24 * 60 * 60 * 1000L
+
+    /**
+     * Verifica si ha pasado al menos 24h desde la última vez que se generó
+     * una notificación de este tipo.
+     * Si nunca se generó, devuelve true.
+     */
+    fun puedeGenerarNotificacion(tipo: String): Boolean {
+        val ultimaVez = prefs.getLong("notif_last_$tipo", 0L)
+        if (ultimaVez == 0L) return true
+        return (System.currentTimeMillis() - ultimaVez) >= unDiaMs
+    }
+
+    /**
+     * Guarda el timestamp actual como "última generación" de este tipo.
+     */
+    fun marcarNotificacionGenerada(tipo: String) {
+        prefs.edit().putLong("notif_last_$tipo", System.currentTimeMillis()).apply()
+    }
+
+    /**
+     * Limpia el timestamp de una notificación para que la próxima vez
+     * que se cumpla la condición se genere de inmediato.
+     */
+    fun limpiarTimestampNotificacion(tipo: String) {
+        prefs.edit().remove("notif_last_$tipo").apply()
+    }
+
+    // ================================================================
+// ✅ RESETEO DE LA APP
+// ================================================================
+
+    /**
+     * Limpia SOLO las preferencias relacionadas con historial de uso.
+     * Conserva:
+     * - codigo_punto_venta
+     * - modo_actual, modo_default
+     * - sonido, vibrar, confirmar_cuenta, backup_auto
+     * - categorias_ajuste
+     *
+     * Borra:
+     * - cuenta_seleccionada
+     * - tooltip_modo
+     * - ajustes_dia_* (todas)
+     * - gastos_ipb_* (legacy)
+     * - ultima_exportacion_ipb
+     */
+    fun limpiarParaReset() {
+        val editor = prefs.edit()
+
+        // Borrar claves directas
+        editor.remove("cuenta_seleccionada")
+        editor.remove("tooltip_modo")
+        editor.remove("ultima_exportacion_ipb")
+        editor.remove("periodo_muerto_inicio")
+
+        // Borrar ajustes por día (prefijo "ajustes_dia_")
+        prefs.all.keys
+            .filter { it.startsWith("ajustes_dia_") || it.startsWith("gastos_ipb_") }
+            .forEach { editor.remove(it)
+            }
+
+        editor.apply()
+    }
 }
