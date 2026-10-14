@@ -57,6 +57,8 @@ class ExportarIPBActivity : BaseActivity() {
             val cuentasCerradas = repo.cuentasCerradasDia(inicio, fin)
 
             // Obtener productos (estos son globales, no cambian por fecha)
+            // ✅ Se exportan TODOS (activos + inactivos), con el flag `inactivo` puesto.
+            // El admin lo usa para detectar qué productos activó el cliente durante el día.
             val productos = repo.listarProductos().map {
                 ProductoIPB(
                     id = it.id,
@@ -64,7 +66,8 @@ class ExportarIPBActivity : BaseActivity() {
                     codigoBarras = it.codigoBarras,
                     precio = it.precio,
                     inventario = it.inventario,
-                    vendidos = it.vendidos
+                    vendidos = it.vendidos,
+                    inactivo = it.inactivo
                 )
             }
 
@@ -161,6 +164,9 @@ class ExportarIPBActivity : BaseActivity() {
             prefs.guardarUltimaExportacionIPB(System.currentTimeMillis())
             // ✅ NUEVO: marcar inicio del periodo muerto (sobrescribe si había uno)
             prefs.guardarInicioPeriodoMuerto(System.currentTimeMillis())
+            // ✅ NUEVO: crear snapshot del inventario con la fecha del IPB exportado
+            val repo = (application as VentasApplication).repository
+            repo.crearSnapshotDelDia(fecha)
             Toast.makeText(
                 this@ExportarIPBActivity,
                 "IPB exportado en Descargas",

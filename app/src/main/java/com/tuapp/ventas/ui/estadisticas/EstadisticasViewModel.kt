@@ -25,8 +25,8 @@ class EstadisticasViewModel(private val repo: VentasRepository, private val cont
         liveData(Dispatchers.IO) { emit(repo.obtenerResumenVentasDia(fecha)) }
     }
 
-    val existenciaDia: LiveData<List<ExistenciaProducto>> = _fechaSeleccionada.switchMap {
-        liveData(Dispatchers.IO) { emit(repo.obtenerExistenciaDia()) }
+    val existenciaDia: LiveData<List<ExistenciaProducto>> = _fechaSeleccionada.switchMap { fecha ->
+        liveData(Dispatchers.IO) { emit(repo.obtenerExistenciaDia(fecha)) }
     }
 
     val totalSimple = repo.totalVentasDirectasHoy().asLiveData()

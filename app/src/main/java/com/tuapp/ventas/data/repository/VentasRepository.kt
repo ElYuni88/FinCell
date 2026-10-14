@@ -62,7 +62,8 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
     suspend fun buscarProductosManualesPorNombre(query: String): List<Producto> {
         val normalizada = normalizar(query)
         if (normalizada.length < 2) return emptyList()
-        return productos.listarManuales().filter { normalizar(it.nombre).contains(normalizada) }.sortedBy { it.nombre }.take(10)
+        // ✅ Solo productos ACTIVOS (query ya filtra inactivo = 0 en el DAO)
+        return productos.buscarManualesPorNombre(normalizada)
     }
 
     suspend fun buscarClientesPorNombre(query: String): List<Cliente> = clientes.buscarPorNombre(query)
@@ -172,10 +173,7 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
      * 3. Si es sincronización inicial, se puede crear el PV.
      * 4. Si el mismo archivo ya se importó (misma firma), se rechaza.
      */
-    suspend fun importarIPV(
-        archivoIPV: ArchivoIPV,
-        nombreArchivo: String = "ipv_desconocido.ipv"
-    ): ImportResult {
+    suspend fun importarIPV(archivoIPV: ArchivoIPV, nombreArchivo: String = "ipv_desconocido.ipv"): ImportResult {
         return db.withTransaction {
             // 1. Validar firma
             val firmaValida = com.tuapp.ventas.utils.IpvFirmador.verificar(
@@ -226,6 +224,13 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
                     )
                 }
                 pvExistente
+            }
+
+            // ✅ Snapshot pre-importación (solo si NO hay snapshot del día actual)
+            val fechaHoy = System.currentTimeMillis()
+            if (!existeSnapshotDelDia(fechaHoy)) {
+                crearSnapshotDelDia(fechaHoy)
+                Log.d(TAG, "Snapshot pre-importación creado")
             }
 
             // 4. ✅ Calcular ventas del periodo muerto
@@ -849,14 +854,39 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
         return mapa.values.sortedBy { it.nombre }
     }
 
-    suspend fun obtenerExistenciaDia(): List<ExistenciaProducto> {
-        return productos.listarTodos().map { producto ->
-            ExistenciaProducto(
-                nombre = producto.nombre,
-                stockDisponible = producto.inventario - producto.vendidos,
-                precio = producto.precio
-            )
-        }.sortedBy { it.nombre }
+    /**
+     * Obtiene la existencia de productos para la fecha indicada.
+     *
+     * Si hay snapshot de esa fecha → usa el snapshot histórico.
+     * Si NO hay snapshot → cae al stock actual (marcado como no histórico).
+     */
+    suspend fun obtenerExistenciaDia(fecha: Long = System.currentTimeMillis()): List<ExistenciaProducto> {
+        val fechaStr = DateUtils.fechaArchivo(fecha)
+        val snapshot = db.snapshotInventarioDao().obtenerPorFecha(fechaStr)
+
+        return if (snapshot.isNotEmpty()) {
+            // ✅ Hay snapshot histórico
+            snapshot.map { s ->
+                ExistenciaProducto(
+                    nombre = s.nombre,
+                    stockDisponible = (s.inventario - s.vendidos).coerceAtLeast(0),
+                    precio = s.precio,
+                    esHistorico = true,
+                    fechaSnapshot = s.fecha
+                )
+            }.sortedBy { it.nombre }
+        } else {
+            // ⚠️ Sin snapshot → fallback al stock actual
+            productos.listarTodos().map { p ->
+                ExistenciaProducto(
+                    nombre = p.nombre,
+                    stockDisponible = (p.inventario - p.vendidos).coerceAtLeast(0),
+                    precio = p.precio,
+                    esHistorico = false,
+                    fechaSnapshot = null
+                )
+            }.sortedBy { it.nombre }
+        }
     }
 
     // ============================================================
@@ -896,6 +926,57 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
                 vendidos = 0
             )
         )
+    }
+
+
+    // ============================================================
+// SNAPSHOTS DE INVENTARIO
+// ============================================================
+
+    /**
+     * Crea un snapshot del inventario del día indicado (por defecto, hoy).
+     * Si ya existe un snapshot del mismo día, lo reemplaza (OnConflictStrategy.REPLACE).
+     *
+     * @return cantidad de productos guardados en el snapshot
+     */
+    suspend fun crearSnapshotDelDia(fecha: Long = System.currentTimeMillis()): Int {
+        return try {
+            val fechaStr = DateUtils.fechaArchivo(fecha)
+            val todos = productos.listarTodos()
+            if (todos.isEmpty()) return 0
+
+            val snapshots = todos.map { p ->
+                SnapshotInventario(
+                    fecha = fechaStr,
+                    productoId = p.id,
+                    nombre = p.nombre,
+                    codigoBarras = p.codigoBarras,
+                    precio = p.precio,
+                    inventario = p.inventario,
+                    vendidos = p.vendidos,
+                    timestamp = System.currentTimeMillis()
+                )
+            }
+
+            // Eliminar snapshot previo del mismo día y guardar el nuevo
+            // (aunque con REPLACE se manejaría, borrar evita residuos de productos eliminados)
+            db.snapshotInventarioDao().eliminarPorFecha(fechaStr)
+            db.snapshotInventarioDao().insertarTodos(snapshots)
+
+            Log.d(TAG, "Snapshot del $fechaStr creado con ${snapshots.size} productos")
+            snapshots.size
+        } catch (e: Exception) {
+            Log.e(TAG, "Error al crear snapshot del día", e)
+            0
+        }
+    }
+
+    /**
+     * Verifica si ya existe un snapshot del día indicado (por defecto, hoy).
+     */
+    suspend fun existeSnapshotDelDia(fecha: Long = System.currentTimeMillis()): Boolean {
+        val fechaStr = DateUtils.fechaArchivo(fecha)
+        return db.snapshotInventarioDao().contarPorFecha(fechaStr) > 0
     }
 
     // ============================================================
@@ -941,9 +1022,11 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
                 clientes.eliminarTodos()
                 // 8. Historial de IPV importados
                 db.ipvImportadoDao().eliminarTodos()
+                // 9. Historial de estadisticas
+                db.snapshotInventarioDao().eliminarTodos()
             }
 
-            // 8. Limpiar SharedPreferences (fuera de la transacción de Room)
+            // 10. Limpiar SharedPreferences (fuera de la transacción de Room)
             PreferencesManager(context).limpiarParaReset()
 
             ResetResult(exito = true, mensaje = "App reseteada correctamente")

@@ -59,6 +59,14 @@ class VentasApplication : Application() {
             if (diaNotificacion != null && daysRemaining > 0) {
                 mostrarNotificacionSistema(diaNotificacion, daysRemaining.toInt())
             }
+
+            try {
+                if (!repository.existeSnapshotDelDia()) {
+                    repository.crearSnapshotDelDia()
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("VentasApplication", "Error creando snapshot de respaldo", e)
+            }
         }
     }
 

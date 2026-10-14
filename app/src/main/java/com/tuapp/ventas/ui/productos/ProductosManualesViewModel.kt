@@ -26,7 +26,8 @@ class ProductosManualesViewModel(private val repo: VentasRepository) : ViewModel
     // ============================================================
     // PRODUCTOS
     // ============================================================
-    private val todosLosProductos = repo.obtenerTodosLosProductos().asLiveData()
+    // ✅ Solo productos activos (los inactivos no aparecen en venta manual)
+    private val todosLosProductos = repo.observarProductosActivos().asLiveData()
     private val query = MutableLiveData("")
 
     val productosFiltrados: LiveData<List<Producto>> = combine(
