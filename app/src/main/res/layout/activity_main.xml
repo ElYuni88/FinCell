@@ -27,6 +27,40 @@
             app:titleTextColor="@android:color/white">
         </com.google.android.material.appbar.MaterialToolbar>
 
+        <!-- ✅ NUEVO: Banner de estado del periodo -->
+        <LinearLayout
+            android:id="@+id/layoutBannerEstado"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_banner_periodo_abierto"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="14dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <TextView
+                android:id="@+id/txtBannerEstado"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="✅ PERIODO ABIERTO"
+                android:textColor="@android:color/white"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/txtBannerAccion"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textColor="@android:color/white"
+                android:textSize="12sp"
+                android:textStyle="italic" />
+        </LinearLayout>
+
         <!-- ScrollView con todo tu contenido existente -->
         <ScrollView
             android:layout_width="match_parent"

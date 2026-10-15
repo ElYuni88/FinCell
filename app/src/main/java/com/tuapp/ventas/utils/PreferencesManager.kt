@@ -222,7 +222,7 @@ class PreferencesManager(context: Context) {
      * Verifica si hay un periodo muerto activo.
      */
     fun estaEnPeriodoMuerto(): Boolean {
-        return obtenerInicioPeriodoMuerto() > 0L
+        return estadoPeriodo == com.tuapp.ventas.data.model.EstadoPeriodo.CERRADO
     }
 
     // Mantenemos la clave privada por si acaso (ya no se usa)
@@ -262,6 +262,62 @@ class PreferencesManager(context: Context) {
         prefs.edit().remove("notif_last_$tipo").apply()
     }
 
+
+    // ================================================================
+// ✅ ESTADO DEL PERIODO DE VENTAS
+// ================================================================
+
+    /**
+     * Estado actual del periodo de ventas.
+     * Por defecto es ABIERTO.
+     */
+    var estadoPeriodo: com.tuapp.ventas.data.model.EstadoPeriodo
+        get() = com.tuapp.ventas.data.model.EstadoPeriodo.fromNombre(
+            prefs.getString("estado_periodo", null)
+        )
+        set(value) = prefs.edit().putString("estado_periodo", value.name).apply()
+
+    /**
+     * Fecha/hora en que se cerró el último periodo.
+     * Coincide con el inicio del periodo muerto.
+     * 0 si nunca se ha cerrado.
+     */
+    var fechaCierrePeriodo: Long
+        get() = prefs.getLong("fecha_cierre_periodo", 0L)
+        set(value) = prefs.edit().putLong("fecha_cierre_periodo", value).apply()
+
+    /**
+     * Nombre del archivo IPB exportado al cerrar el periodo.
+     * Sirve para intentar borrarlo al revertir.
+     * Vacío si no hay.
+     */
+    var nombreArchivoExportado: String
+        get() = prefs.getString("nombre_archivo_exportado", "") ?: ""
+        set(value) = prefs.edit().putString("nombre_archivo_exportado", value).apply()
+
+    /**
+     * Limpia todo lo relacionado con el estado del periodo:
+     * - Estado → ABIERTO
+     * - Fecha de cierre → 0
+     * - Nombre del archivo exportado → ""
+     * - Marca de periodo muerto → eliminada
+     */
+    fun limpiarEstadoPeriodo() {
+        prefs.edit().apply {
+            putString("estado_periodo", com.tuapp.ventas.data.model.EstadoPeriodo.ABIERTO.name)
+            remove("fecha_cierre_periodo")
+            remove("nombre_archivo_exportado")
+            remove("periodo_muerto_inicio")
+            apply()
+        }
+    }
+
+    /**
+     * Verifica si una clave existe en SharedPreferences.
+     * Útil para detectar "primera vez".
+     */
+    fun tieneClave(clave: String): Boolean = prefs.contains(clave)
+
     // ================================================================
 // ✅ RESETEO DE LA APP
 // ================================================================
@@ -289,6 +345,10 @@ class PreferencesManager(context: Context) {
         editor.remove("tooltip_modo")
         editor.remove("ultima_exportacion_ipb")
         editor.remove("periodo_muerto_inicio")
+        // ✅ NUEVO: limpiar estado del periodo
+        editor.remove("estado_periodo")
+        editor.remove("fecha_cierre_periodo")
+        editor.remove("nombre_archivo_exportado")
 
         // Borrar ajustes por día (prefijo "ajustes_dia_")
         prefs.all.keys

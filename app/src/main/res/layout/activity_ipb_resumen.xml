@@ -15,6 +15,39 @@
         app:title="IPB - Resumen del día"
         app:titleTextColor="@android:color/white" />
 
+    <!-- ✅ NUEVO: Banner de estado del periodo -->
+    <LinearLayout
+        android:id="@+id/layoutBannerEstado"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="12dp"
+        android:background="@drawable/bg_banner_periodo_abierto"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="14dp"
+        android:clickable="true"
+        android:focusable="true">
+
+        <TextView
+            android:id="@+id/txtBannerEstado"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="✅ PERIODO ABIERTO"
+            android:textColor="@android:color/white"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/txtBannerAccion"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textColor="@android:color/white"
+            android:textSize="12sp"
+            android:textStyle="italic" />
+    </LinearLayout>
+
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -114,7 +147,6 @@
                     android:text="📊 Totales"
                     android:textAppearance="@style/TextAppearance.FinSell.Title" />
 
-                <!-- Ventas -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -137,7 +169,6 @@
                         android:textStyle="bold" />
                 </LinearLayout>
 
-                <!-- Gastos -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -160,7 +191,6 @@
                         android:textStyle="bold" />
                 </LinearLayout>
 
-                <!-- Otros ingresos -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -183,14 +213,12 @@
                         android:textStyle="bold" />
                 </LinearLayout>
 
-                <!-- Separador -->
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
                     android:layout_marginVertical="8dp"
                     android:background="@color/outline_variant" />
 
-                <!-- Total Neto -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -242,7 +270,7 @@
             android:layout_marginStart="8dp"
             android:layout_weight="1"
             android:backgroundTint="@color/pos_red"
-            android:text="Exportar"
+            android:text="🔒 Cerrar y Exportar"
             android:textColor="@android:color/white" />
     </LinearLayout>
 </LinearLayout>

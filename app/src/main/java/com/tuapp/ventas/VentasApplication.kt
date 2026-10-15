@@ -67,6 +67,36 @@ class VentasApplication : Application() {
             } catch (e: Exception) {
                 android.util.Log.e("VentasApplication", "Error creando snapshot de respaldo", e)
             }
+
+            // ✅ NUEVO: inicializar estado del periodo
+            inicializarEstadoPeriodo()
+        }
+    }
+
+    /**
+     * Inicializa el estado del periodo al arrancar la app.
+     *
+     * Reglas:
+     * - Si el estado guardado es CERRADO, se respeta (estamos en periodo muerto).
+     * - Si no hay estado guardado o es ABIERTO, se asegura que sea ABIERTO.
+     *
+     * ⚠️ NO crea snapshots automáticamente. Solo se crean al cerrar el periodo.
+     */
+    private fun inicializarEstadoPeriodo() {
+        try {
+            val prefs = com.tuapp.ventas.utils.PreferencesManager(this)
+            val estado = prefs.estadoPeriodo
+
+            // Si no hay estado guardado, el getter ya devuelve ABIERTO por defecto.
+            // Solo nos aseguramos de que la primera vez quede explícito.
+            if (!prefs.tieneClave("estado_periodo")) {
+                prefs.estadoPeriodo = com.tuapp.ventas.data.model.EstadoPeriodo.ABIERTO
+                android.util.Log.d("VentasApplication", "Estado de periodo inicializado → ABIERTO")
+            } else {
+                android.util.Log.d("VentasApplication", "Estado de periodo cargado: $estado")
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("VentasApplication", "Error inicializando estado de periodo", e)
         }
     }
 

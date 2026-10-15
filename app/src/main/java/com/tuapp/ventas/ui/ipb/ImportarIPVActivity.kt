@@ -12,6 +12,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.tuapp.ventas.utils.PreferencesManager
 import com.tuapp.ventas.VentasApplication
 import com.tuapp.ventas.data.model.ArchivoIPV
+import com.tuapp.ventas.data.model.EstadoPeriodo
 import com.tuapp.ventas.databinding.ActivityImportarIpbBinding
 import com.tuapp.ventas.utils.DateUtils
 import kotlinx.coroutines.Dispatchers
@@ -112,11 +113,11 @@ class ImportarIPVActivity : AppCompatActivity() {
         val archivo = archivoIPV ?: return
         val productos = archivo.productos
 
-        // ✅ Detectar si hay periodo muerto o si es una importación "sospechosa"
         val prefs = PreferencesManager(this)
-        val estaEnPeriodoMuerto = prefs.estaEnPeriodoMuerto()
+        val estado = prefs.estadoPeriodo
+        val estaCerrado = estado == EstadoPeriodo.CERRADO
         val ultimaExportacion = prefs.obtenerUltimaExportacionIPB()
-        val nuncaExporto = ultimaExportacion == 0L && !archivo.esSincronizacionInicial
+        val nuncaExporto = ultimaExportacion == 0L && !archivo.esSincronizacionInicial && !estaCerrado
 
         val tipoMensaje = if (archivo.esSincronizacionInicial) {
             if (productos.isEmpty()) {
@@ -129,10 +130,11 @@ class ImportarIPVActivity : AppCompatActivity() {
             "Se actualizarán ${productos.size} productos."
         }
 
-        // ✅ Bloque de advertencias
+        // ✅ Advertencias según el estado
         val advertencia = when {
-            estaEnPeriodoMuerto -> {
-                "\n\n📊 Se aplicarán las ventas del periodo muerto (desde tu última exportación)."
+            estaCerrado -> {
+                "\n\n🔓 AL IMPORTAR SE REABRIRÁ EL PERIODO DE VENTAS.\n\n" +
+                        "Esto significa que podrás volver a vender y exportar normalmente."
             }
             nuncaExporto -> {
                 "\n\n⚠️ ADVERTENCIA: Estás importando sin haber exportado el IPB antes.\n\n" +
@@ -143,8 +145,10 @@ class ImportarIPVActivity : AppCompatActivity() {
             else -> ""
         }
 
+        val titulo = if (estaCerrado) "🔓 Reabrir periodo e importar" else "Confirmar importación IPV"
+
         MaterialAlertDialogBuilder(this)
-            .setTitle("Confirmar importación IPV")
+            .setTitle(titulo)
             .setMessage("""
         $tipoMensaje
         

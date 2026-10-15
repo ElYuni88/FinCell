@@ -175,6 +175,12 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
      */
     suspend fun importarIPV(archivoIPV: ArchivoIPV, nombreArchivo: String = "ipv_desconocido.ipv"): ImportResult {
         return db.withTransaction {
+            val prefs = PreferencesManager(context)
+
+            // ✅ Capturar estado ANTES de empezar (para saber si estaba CERRADO)
+            val estadoAntes = prefs.estadoPeriodo
+            val estabaCerrado = estadoAntes == EstadoPeriodo.CERRADO
+
             // 1. Validar firma
             val firmaValida = com.tuapp.ventas.utils.IpvFirmador.verificar(
                 codigoPv = archivoIPV.puntoVenta.codigo,
@@ -226,15 +232,7 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
                 pvExistente
             }
 
-            // ✅ Snapshot pre-importación (solo si NO hay snapshot del día actual)
-            val fechaHoy = System.currentTimeMillis()
-            if (!existeSnapshotDelDia(fechaHoy)) {
-                crearSnapshotDelDia(fechaHoy)
-                Log.d(TAG, "Snapshot pre-importación creado")
-            }
-
-            // 4. ✅ Calcular ventas del periodo muerto
-            val prefs = PreferencesManager(context)
+            // 4. Calcular ventas del periodo muerto
             val inicioPeriodoMuerto = prefs.obtenerInicioPeriodoMuerto()
             val huboPeriodoMuerto = inicioPeriodoMuerto > 0L
 
@@ -243,7 +241,6 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
                     .associate { it.codigoBarras to it.cantidad }
                 val cuentas = detalles.contarVentasCuentasPorCodigoDesde(inicioPeriodoMuerto)
                     .associate { it.codigoBarras to it.cantidad }
-                // Combinar sumando cantidades por código
                 (directas.keys + cuentas.keys).associateWith { codigo ->
                     (directas[codigo] ?: 0) + (cuentas[codigo] ?: 0)
                 }
@@ -262,7 +259,6 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
                     val vendidosPeriodo = ventasPeriodoMuerto[productoIPV.codigoBarras] ?: 0
 
                     if (existente == null) {
-                        // ✅ Crear producto nuevo
                         val nuevo = Producto(
                             codigoBarras = productoIPV.codigoBarras,
                             nombre = productoIPV.nombre,
@@ -276,13 +272,10 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
                         productos.insertar(nuevo)
                         creados++
                     } else {
-                        // ✅ Actualizar producto existente
-                        // Se mantiene esManual y tipoProducto (el admin no los conoce)
                         val actualizado = existente.copy(
                             nombre = productoIPV.nombre,
                             precio = productoIPV.precio,
                             inventario = productoIPV.inventario,
-                            // ✅ Reemplaza (NO suma) con las ventas del periodo muerto
                             vendidos = vendidosPeriodo,
                             inactivo = productoIPV.inactivo
                         )
@@ -295,11 +288,19 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
                 }
             }
 
-            // 6. ✅ Borrar todas las notificaciones (se regeneran solas)
+            // 6. Borrar notificaciones (se regeneran solas)
             notificaciones.eliminarTodas()
 
-            // 7. ✅ Limpiar periodo muerto
-            prefs.limpiarInicioPeriodoMuerto()
+            // 7. ✅ REABRIR PERIODO
+            // - Si estaba CERRADO → limpiar todo el estado (vuelve a ABIERTO)
+            // - Si estaba ABIERTO → solo limpiar periodo muerto por seguridad
+            if (estabaCerrado) {
+                prefs.limpiarEstadoPeriodo()
+                Log.d(TAG, "✅ Periodo REABIERTO tras importación (estaba CERRADO)")
+            } else {
+                prefs.limpiarInicioPeriodoMuerto()
+                Log.d(TAG, "Importación sin cierre previo. Periodo muerto limpiado por seguridad.")
+            }
 
             // 8. Registrar en historial
             db.ipvImportadoDao().insertar(
@@ -328,6 +329,10 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
                     appendLine()
                     appendLine("📊 Ventas del periodo muerto aplicadas: $totalVentasPeriodoMuerto")
                 }
+                if (estabaCerrado) {
+                    appendLine()
+                    appendLine("🔓 Periodo REABIERTO. Ya puedes vender y exportar de nuevo.")
+                }
             }.trim()
 
             ImportResult(
@@ -338,7 +343,8 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
                 actualizados = actualizados,
                 errores = errores,
                 huboPeriodoMuerto = huboPeriodoMuerto,
-                ventasPeriodoMuerto = totalVentasPeriodoMuerto
+                ventasPeriodoMuerto = totalVentasPeriodoMuerto,
+                estabaCerrado = estabaCerrado
             )
         }
     }
@@ -351,7 +357,8 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
         val actualizados: Int = 0,
         val errores: Int = 0,
         val huboPeriodoMuerto: Boolean = false,
-        val ventasPeriodoMuerto: Int = 0
+        val ventasPeriodoMuerto: Int = 0,
+        val estabaCerrado: Boolean = false
     )
 
     // ============================================================
@@ -978,6 +985,179 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
         val fechaStr = DateUtils.fechaArchivo(fecha)
         return db.snapshotInventarioDao().contarPorFecha(fechaStr) > 0
     }
+
+
+    // ============================================================
+// ✅ ESTADO DEL PERIODO DE VENTAS
+// ============================================================
+
+    /**
+     * Retorna el estado actual del periodo.
+     */
+    fun obtenerEstadoPeriodo(): EstadoPeriodo =
+        PreferencesManager(context).estadoPeriodo
+
+    /**
+     * Indica si estamos en periodo muerto (estado CERRADO).
+     */
+    fun estaEnPeriodoMuerto(): Boolean =
+        PreferencesManager(context).estadoPeriodo == EstadoPeriodo.CERRADO
+
+    /**
+     * Cierra el periodo actual.
+     *
+     * Acciones:
+     * 1. Valida que no haya cuentas abiertas.
+     * 2. Crea snapshot del inventario actual con la fecha dada.
+     * 3. Marca el inicio del periodo muerto (fecha de cierre).
+     * 4. Cambia el estado a CERRADO.
+     *
+     * ⚠️ NO exporta el IPB. La exportación la hace ExportarIPBActivity después
+     *    de llamar a este método (o fallar y revertir).
+     *
+     * @param fecha fecha del cierre (por defecto: ahora)
+     */
+    suspend fun cerrarPeriodo(fecha: Long = System.currentTimeMillis()): ResultadoCierre {
+        return try {
+            // 1. Validar cuentas abiertas
+            val cuentasAbiertas = cuentas.contarAbiertas()
+            if (cuentasAbiertas > 0) {
+                return ResultadoCierre(
+                    exito = false,
+                    mensaje = "Hay $cuentasAbiertas cuenta(s) abierta(s). Ciérralas antes de cerrar el periodo.",
+                    cuentasAbiertas = cuentasAbiertas
+                )
+            }
+
+            // 2. Snapshot del inventario actual
+            crearSnapshotDelDia(fecha)
+
+            // 3. Marcar periodo muerto y estado
+            val prefs = PreferencesManager(context)
+            prefs.guardarInicioPeriodoMuerto(fecha)
+            prefs.fechaCierrePeriodo = fecha
+            prefs.estadoPeriodo = EstadoPeriodo.CERRADO
+
+            Log.d(TAG, "Periodo cerrado en fecha $fecha")
+
+            ResultadoCierre(exito = true, mensaje = "Periodo cerrado correctamente")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error al cerrar periodo", e)
+            ResultadoCierre(
+                exito = false,
+                mensaje = e.message ?: "Error desconocido al cerrar periodo"
+            )
+        }
+    }
+
+    /**
+     * Revierte el cierre del periodo (reabre).
+     *
+     * Acciones:
+     * 1. Intenta borrar el archivo .ipb exportado (silenciosamente si falla).
+     * 2. Borra los snapshots del día del cierre.
+     * 3. Limpia el estado del periodo (estado → ABIERTO, fechas, marca periodo muerto).
+     *
+     * NO borra las ventas que se hicieron durante el periodo muerto: vuelven
+     * a pertenecer al periodo reabierto.
+     */
+    suspend fun revertirCierre(): ResultadoReversion {
+        return try {
+            val prefs = PreferencesManager(context)
+            val fechaCierre = prefs.fechaCierrePeriodo
+            val nombreArchivo = prefs.nombreArchivoExportado
+
+            // 1. Intentar borrar el archivo .ipb exportado (silenciosamente)
+            var archivoBorrado = false
+            if (nombreArchivo.isNotBlank()) {
+                archivoBorrado = intentarBorrarArchivoExportado(nombreArchivo)
+                Log.d(TAG, "Borrado de archivo '$nombreArchivo': $archivoBorrado")
+            }
+
+            // 2. Borrar snapshots del día de cierre
+            if (fechaCierre > 0L) {
+                val fechaStr = DateUtils.fechaArchivo(fechaCierre)
+                db.snapshotInventarioDao().eliminarPorFecha(fechaStr)
+                Log.d(TAG, "Snapshots del $fechaStr eliminados")
+            }
+
+            // 3. Limpiar estado
+            prefs.limpiarEstadoPeriodo()
+
+            Log.d(TAG, "Periodo revertido. Estado → ABIERTO")
+
+            ResultadoReversion(
+                exito = true,
+                mensaje = "Periodo reabierto correctamente",
+                archivoBorrado = archivoBorrado
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Error al revertir cierre", e)
+            ResultadoReversion(
+                exito = false,
+                mensaje = e.message ?: "Error desconocido al revertir"
+            )
+        }
+    }
+
+    /**
+     * Intenta borrar el archivo .ipb de Descargas.
+     * Devuelve true si se borró, false si no se pudo (o no existía).
+     * No lanza excepciones: si algo falla, se ignora silenciosamente.
+     */
+    private fun intentarBorrarArchivoExportado(nombre: String): Boolean {
+        return try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                // Android 10+: usar MediaStore
+                val collection = android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI
+                val projection = arrayOf(android.provider.MediaStore.MediaColumns._ID)
+                val selection = "${android.provider.MediaStore.MediaColumns.DISPLAY_NAME} = ?"
+                val args = arrayOf(nombre)
+
+                val cursor = context.contentResolver.query(collection, projection, selection, args, null)
+                val id = cursor?.use {
+                    if (it.moveToFirst()) {
+                        it.getLong(it.getColumnIndexOrThrow(android.provider.MediaStore.MediaColumns._ID))
+                    } else null
+                }
+                cursor?.close()
+
+                if (id == null) return false
+
+                val uri = android.content.ContentUris.withAppendedId(
+                    android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, id
+                )
+                val borrados = context.contentResolver.delete(uri, null, null)
+                borrados > 0
+            } else {
+                // Android 9 o inferior: acceso directo
+                val dir = android.os.Environment.getExternalStoragePublicDirectory(
+                    android.os.Environment.DIRECTORY_DOWNLOADS
+                )
+                val archivo = java.io.File(dir, nombre)
+                if (archivo.exists()) archivo.delete() else false
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "No se pudo borrar el archivo '$nombre': ${e.message}")
+            false
+        }
+    }
+
+// ============================================================
+// ✅ RESULTADOS
+// ============================================================
+
+    data class ResultadoCierre(
+        val exito: Boolean,
+        val mensaje: String,
+        val cuentasAbiertas: Int = 0
+    )
+
+    data class ResultadoReversion(
+        val exito: Boolean,
+        val mensaje: String,
+        val archivoBorrado: Boolean = false
+    )
 
     // ============================================================
 // RESETEO DE LA APP

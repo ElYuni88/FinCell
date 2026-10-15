@@ -9,6 +9,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.tabs.TabLayout
 import com.tuapp.ventas.data.model.AjusteDia
 import com.tuapp.ventas.data.model.CategoriaAjuste
+import com.tuapp.ventas.data.model.EstadoPeriodo
 import com.tuapp.ventas.databinding.ActivityAjustarIpbBinding
 import com.tuapp.ventas.databinding.DialogAgregarGastoBinding
 import com.tuapp.ventas.utils.DateUtils
@@ -42,6 +43,22 @@ class AjustarIPBActivity : AppCompatActivity() {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         supportActionBar?.title = "Ajustar IPV"
         prefs = PreferencesManager(this)
+
+        // ✅ VALIDACIÓN: no se puede ajustar si el periodo está cerrado
+        if (prefs.estadoPeriodo == EstadoPeriodo.CERRADO) {
+            MaterialAlertDialogBuilder(this)
+                .setTitle("🔒 Periodo cerrado")
+                .setMessage(
+                    "No puedes ajustar los gastos e ingresos mientras el periodo esté cerrado.\n\n" +
+                            "El periodo se reabre al importar el IPV del admin.\n\n" +
+                            "Si te equivocaste al cerrar, puedes revertir el cierre desde:\n" +
+                            "Menú → Configuraciones → Revertir cierre"
+                )
+                .setPositiveButton("Entendido") { _, _ -> finish() }
+                .setCancelable(false)
+                .show()
+            return
+        }
 
         // ✅ CAMBIO 2: Log para verificar qué fecha está usando
         android.util.Log.d("AjustarIPB", "Fecha seleccionada: $fecha ($fechaSeleccionada)")
@@ -147,10 +164,17 @@ class AjustarIPBActivity : AppCompatActivity() {
     }
 
     private fun guardarTodosLosAjustes() {
+        // ✅ Validación extra: no debería llegar aquí con periodo cerrado (por el onCreate)
+        // pero por seguridad la dejamos también aquí
+        if (prefs.estadoPeriodo == EstadoPeriodo.CERRADO) {
+            Toast.makeText(this, "🔒 No se puede guardar: el periodo está cerrado", Toast.LENGTH_SHORT).show()
+            finish()
+            return
+        }
+
         guardarCambiosDelAdapter()
         val todosLosAjustes = ajustesGastos + ajustesIngresos
 
-        // ✅ CAMBIO 4: Log para ver qué se está guardando
         android.util.Log.d("AjustarIPB", "=== GUARDANDO ===")
         android.util.Log.d("AjustarIPB", "Fecha: '$fecha'")
         android.util.Log.d("AjustarIPB", "Total ajustes: ${todosLosAjustes.size}")
@@ -235,7 +259,6 @@ class AjustarIPBActivity : AppCompatActivity() {
         return true
     }
 
-    // ✅ CAMBIO 5: Agregar la constante EXTRA_FECHA_SELECCIONADA
     companion object {
         const val EXTRA_FECHA_SELECCIONADA = "extra_fecha_seleccionada"
     }

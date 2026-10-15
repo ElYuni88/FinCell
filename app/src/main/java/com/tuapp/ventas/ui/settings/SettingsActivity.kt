@@ -4,6 +4,7 @@ import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.text.InputType
+import android.view.View
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.Toast
@@ -11,6 +12,7 @@ import androidx.lifecycle.lifecycleScope
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.tuapp.ventas.R
 import com.tuapp.ventas.VentasApplication
+import com.tuapp.ventas.data.model.EstadoPeriodo
 import com.tuapp.ventas.databinding.ActivitySettingsBinding
 import com.tuapp.ventas.ui.base.BaseActivity
 import com.tuapp.ventas.ui.main.MainActivity
@@ -30,6 +32,7 @@ class SettingsActivity : BaseActivity() {
         prefs = PreferencesManager(this)
 
         cargar()
+        actualizarVisibilidadRevertir()
 
         binding.btnGuardar.setOnClickListener {
             guardar()
@@ -40,6 +43,11 @@ class SettingsActivity : BaseActivity() {
 
         binding.btnResetearApp.setOnClickListener {
             mostrarPrimeraConfirmacion()
+        }
+
+        // ✅ NUEVO: Botón revertir cierre de periodo
+        binding.btnRevertirPeriodo.setOnClickListener {
+            confirmarReversion()
         }
     }
 
@@ -62,6 +70,132 @@ class SettingsActivity : BaseActivity() {
             binding.radioSimple.isChecked -> "SIMPLE"
             binding.radioCuenta.isChecked -> "CUENTA"
             else -> "RECORDAR"
+        }
+    }
+
+    // ============================================================
+    // REVERTIR CIERRE DE PERIODO
+    // ============================================================
+
+    private fun actualizarVisibilidadRevertir() {
+        binding.btnRevertirPeriodo.visibility =
+            if (prefs.estadoPeriodo == EstadoPeriodo.CERRADO) View.VISIBLE else View.GONE
+    }
+
+    private fun confirmarReversion() {
+        val archivo = prefs.nombreArchivoExportado.ifBlank { "(sin archivo)" }
+        val fecha = if (prefs.fechaCierrePeriodo > 0L) {
+            java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault())
+                .format(java.util.Date(prefs.fechaCierrePeriodo))
+        } else {
+            "(sin fecha)"
+        }
+
+        val mensaje = """
+            ⚠️ REVERTIR CIERRE DE PERIODO
+
+            Esto hará lo siguiente:
+            • Reabrir el periodo de ventas
+            • Borrar los snapshots del inventario generados en el cierre
+            • Intentar borrar el archivo exportado:
+              $archivo
+            • Las ventas del periodo muerto volverán a pertenecer
+              al periodo reabierto
+
+            ⚠️ El archivo puede NO borrarse si ya lo moviste o lo compartiste.
+
+            Datos del cierre actual:
+            • Fecha: $fecha
+
+            ¿Deseas continuar?
+        """.trimIndent()
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle("🔓 Revertir cierre")
+            .setMessage(mensaje)
+            .setNegativeButton("Cancelar", null)
+            .setPositiveButton("Continuar") { _, _ ->
+                mostrarConfirmacionFinal()
+            }
+            .show()
+    }
+
+    private fun mostrarConfirmacionFinal() {
+        val input = EditText(this).apply {
+            hint = "Escribe REVERTIR en mayúsculas"
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS
+            setPadding(40, 30, 40, 30)
+        }
+
+        val container = FrameLayout(this).apply {
+            setPadding(40, 20, 40, 0)
+            addView(input)
+        }
+
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setTitle("⚠️ Confirmación final")
+            .setMessage("Para confirmar, escribe la palabra REVERTIR:")
+            .setView(container)
+            .setNegativeButton("Cancelar", null)
+            .setPositiveButton("REVERTIR") { _, _ ->
+                val texto = input.text.toString().trim()
+                if (texto != "REVERTIR") {
+                    Toast.makeText(
+                        this,
+                        "❌ Debes escribir REVERTIR exactamente para confirmar",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    return@setPositiveButton
+                }
+                ejecutarReversion()
+            }
+            .create()
+
+        dialog.setOnShowListener {
+            dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE)
+                .setTextColor(Color.parseColor("#F44336"))
+            dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_NEGATIVE)
+                .setTextColor(Color.parseColor("#666666"))
+            input.requestFocus()
+        }
+        dialog.show()
+    }
+
+    private fun ejecutarReversion() {
+        lifecycleScope.launch {
+            try {
+                val repo = (application as VentasApplication).repository
+                val resultado = repo.revertirCierre()
+
+                if (resultado.exito) {
+                    val extraArchivo = if (resultado.archivoBorrado) {
+                        "\nArchivo exportado: borrado ✅"
+                    } else {
+                        "\nArchivo exportado: no se pudo borrar ⚠️"
+                    }
+
+                    Toast.makeText(
+                        this@SettingsActivity,
+                        "✅ ${resultado.mensaje}$extraArchivo",
+                        Toast.LENGTH_LONG
+                    ).show()
+
+                    // Actualizar visibilidad del botón (ya no debe verse)
+                    actualizarVisibilidadRevertir()
+                } else {
+                    Toast.makeText(
+                        this@SettingsActivity,
+                        "❌ ${resultado.mensaje}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(
+                    this@SettingsActivity,
+                    "❌ Error al revertir: ${e.message}",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
         }
     }
 
@@ -109,7 +243,6 @@ class SettingsActivity : BaseActivity() {
     }
 
     private fun mostrarSegundaConfirmacion() {
-        // Input para escribir "RESET"
         val input = EditText(this).apply {
             hint = "Escribe RESET en mayúsculas"
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS
@@ -174,7 +307,6 @@ class SettingsActivity : BaseActivity() {
                         Toast.LENGTH_LONG
                     ).show()
 
-                    // Ir a la pantalla de inicio limpia
                     val intent = Intent(this@SettingsActivity, MainActivity::class.java).apply {
                         addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
                     }

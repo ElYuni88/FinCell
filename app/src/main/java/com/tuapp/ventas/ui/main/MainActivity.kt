@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
+import com.tuapp.ventas.data.model.EstadoPeriodo
 import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -112,6 +113,32 @@ class MainActivity : BaseActivity() {
         if (!prefs.tooltipModoMostrado) { Toast.makeText(this, "Cambia entre venta directa y cuentas sin perder datos", Toast.LENGTH_LONG).show(); prefs.tooltipModoMostrado = true }
     }
 
+    override fun onResume() {
+        super.onResume()
+        actualizarBannerEstado()
+    }
+
+    /**
+     * Actualiza el banner de estado del periodo.
+     * Debe llamarse en onResume para reflejar cambios desde otras pantallas.
+     */
+    private fun actualizarBannerEstado() {
+        if (!::prefs.isInitialized) return
+
+        when (prefs.estadoPeriodo) {
+            EstadoPeriodo.ABIERTO -> {
+                binding.layoutBannerEstado.setBackgroundResource(R.drawable.bg_banner_periodo_abierto)
+                binding.txtBannerEstado.text = "✅ PERIODO ABIERTO"
+                binding.txtBannerAccion.text = ""
+            }
+            EstadoPeriodo.CERRADO -> {
+                binding.layoutBannerEstado.setBackgroundResource(R.drawable.bg_banner_periodo_cerrado)
+                binding.txtBannerEstado.text = "🔒 PERIODO CERRADO"
+                binding.txtBannerAccion.text = "Toca para importar IPV →"
+            }
+        }
+    }
+
     private fun manejarNavegacionPrincipal(itemId: Int): Boolean = when (itemId) {
         R.id.nav_scan -> { if (modo == ModoOperacion.SIMPLE)
                                 solicitarCamara()
@@ -151,6 +178,19 @@ class MainActivity : BaseActivity() {
         binding.recyclerCuentas.adapter = cuentasAdapter
     }
     private fun configurarClicks() = with(binding) {
+        // ✅ NUEVO: Click del banner de estado
+        layoutBannerEstado.setOnClickListener {
+            when (prefs.estadoPeriodo) {
+                EstadoPeriodo.ABIERTO -> {
+                    // Ir a IPB Resumen (para cerrar y exportar)
+                    startActivity(Intent(this@MainActivity, IPBResumenActivity::class.java))
+                }
+                EstadoPeriodo.CERRADO -> {
+                    // Ir a importar IPV
+                    startActivity(Intent(this@MainActivity, ImportarIPVActivity::class.java))
+                }
+            }
+        }
         chipSimple.setOnClickListener { cambiarModo(ModoOperacion.SIMPLE) }
         chipCuenta.setOnClickListener { cambiarModo(ModoOperacion.CUENTA) }
         //btnEscanearSimple.setOnClickListener { startActivity(Intent(this@MainActivity, OperacionesActivity::class.java)) }

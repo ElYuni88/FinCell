@@ -13,6 +13,7 @@ import com.tuapp.ventas.VentasApplication
 import com.tuapp.ventas.data.model.ArchivoIPB
 import com.tuapp.ventas.data.model.ClienteRecurrenteIPB
 import com.tuapp.ventas.data.model.CuentaIPB
+import com.tuapp.ventas.data.model.EstadoPeriodo
 import com.tuapp.ventas.data.model.Gasto
 import com.tuapp.ventas.data.model.ProductoCuentaIPB
 import com.tuapp.ventas.data.model.ProductoIPB
@@ -32,33 +33,27 @@ class ExportarIPBActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val sobrescribir = intent.getBooleanExtra(EXTRA_SOBRESCRIBIR, false)
-
-        // ✅ NUEVO: Obtener la fecha seleccionada. Si no viene, usar hoy.
         val fechaSeleccionada = intent.getLongExtra(EXTRA_FECHA_SELECCIONADA, System.currentTimeMillis())
 
         exportar(sobrescribir, fechaSeleccionada)
     }
 
     private fun exportar(sobrescribir: Boolean, fecha: Long) = lifecycleScope.launch {
+        var nombreArchivo = ""
+
         runCatching {
             val repo = (application as VentasApplication).repository
             val prefs = PreferencesManager(this@ExportarIPBActivity)
 
-            // ✅ CAMBIO: Usar la fecha seleccionada en lugar de System.currentTimeMillis()
             val inicio = DateUtils.inicioDia(fecha)
             val fin = DateUtils.finDia(fecha)
             val fechaStr = DateUtils.fechaArchivo(fecha)
 
-            // ✅ Obtener Punto de Venta activo
             val pv = repo.obtenerPuntoVentaActivo()
             val pvExport = pv?.toPuntoVentaExport()
 
-            // ✅ Obtener cuentas cerradas DE LA FECHA SELECCIONADA
             val cuentasCerradas = repo.cuentasCerradasDia(inicio, fin)
 
-            // Obtener productos (estos son globales, no cambian por fecha)
-            // ✅ Se exportan TODOS (activos + inactivos), con el flag `inactivo` puesto.
-            // El admin lo usa para detectar qué productos activó el cliente durante el día.
             val productos = repo.listarProductos().map {
                 ProductoIPB(
                     id = it.id,
@@ -71,21 +66,17 @@ class ExportarIPBActivity : BaseActivity() {
                 )
             }
 
-            // Obtener ventas DE LA FECHA SELECCIONADA
             val ventas = repo.ventasDirectasDia(inicio, fin)
 
-            // ✅ Obtener gastos e ingresos DE LA FECHA SELECCIONADA
             val gastos = prefs.obtenerGastosActivosDia(fechaStr)
                 .map { Gasto(categoria = it.nombre, monto = it.monto) }
             val ingresos = prefs.obtenerIngresosActivosDia(fechaStr)
                 .map { Gasto(categoria = it.nombre, monto = it.monto) }
 
-            // ✅ Construir lista de CuentaIPB con detalle completo
             val cuentasIPB = cuentasCerradas.map { cuentaConDetalles ->
                 val cuenta = cuentaConDetalles.cuenta
                 val cliente = cuentaConDetalles.cliente
 
-                // Obtener método de pago desde VentaFinal
                 val ventaFinal = repo.obtenerVentaFinal(cuenta.id)
                 val metodoPago = ventaFinal?.metodoPago ?: "EFECTIVO"
 
@@ -115,7 +106,6 @@ class ExportarIPBActivity : BaseActivity() {
                 )
             }
 
-            // Calcular totales
             val totalVentas = ventas.sumOf { it.precio }
             val totalCuentas = cuentasCerradas.sumOf { it.cuenta.total }
             val totalGeneral = totalVentas + totalCuentas
@@ -123,7 +113,6 @@ class ExportarIPBActivity : BaseActivity() {
             val totalIngresos = ingresos.sumOf { it.monto }
             val resumenClientes = calcularResumenClientes(cuentasIPB)
 
-            // ✅ Crear archivo IPB con TODOS los datos
             val archivo = ArchivoIPB(
                 fecha = fechaStr,
                 timestamp = System.currentTimeMillis(),
@@ -145,33 +134,41 @@ class ExportarIPBActivity : BaseActivity() {
                 )
             )
 
-            // ✅ 1. Serializar a JSON minificado
             val json = Gson().toJson(archivo)
-
-            // ✅ 2. Comprimir con GZIP
             val bytesComprimidos = comprimirConGzip(json)
 
-            // ✅ 3. Guardar como .ipb con la fecha seleccionada
-            val nombre = "ipb_${fechaStr}.ipb"
-            guardarBinario(nombre, bytesComprimidos, sobrescribir)
+            nombreArchivo = "ipb_${fechaStr}.ipb"
+            guardarBinario(nombreArchivo, bytesComprimidos, sobrescribir)
 
             android.util.Log.d(
                 "ExportarIPB",
                 "Fecha: $fechaStr | Original: ${json.toByteArray().size} bytes | Comprimido: ${bytesComprimidos.size} bytes"
             )
         }.onSuccess {
+            // ✅ Guardar nombre del archivo + fecha de exportación
             val prefs = PreferencesManager(this@ExportarIPBActivity)
             prefs.guardarUltimaExportacionIPB(System.currentTimeMillis())
-            // ✅ NUEVO: marcar inicio del periodo muerto (sobrescribe si había uno)
-            prefs.guardarInicioPeriodoMuerto(System.currentTimeMillis())
-            // ✅ NUEVO: crear snapshot del inventario con la fecha del IPB exportado
+            prefs.nombreArchivoExportado = nombreArchivo
+
+            // ✅ Cerrar el periodo (crea snapshot + cambia estado a CERRADO + marca periodo muerto)
             val repo = (application as VentasApplication).repository
-            repo.crearSnapshotDelDia(fecha)
-            Toast.makeText(
-                this@ExportarIPBActivity,
-                "IPB exportado en Descargas",
-                Toast.LENGTH_LONG
-            ).show()
+            val resultado = repo.cerrarPeriodo(fecha)
+
+            if (resultado.exito) {
+                Toast.makeText(
+                    this@ExportarIPBActivity,
+                    "🔒 Periodo cerrado y exportado\n\n" +
+                            "Esperando el IPV del admin para reabrir.",
+                    Toast.LENGTH_LONG
+                ).show()
+            } else {
+                // ⚠️ El archivo se exportó pero no se pudo cerrar el periodo
+                Toast.makeText(
+                    this@ExportarIPBActivity,
+                    "⚠️ IPB exportado, pero no se pudo cerrar el periodo:\n${resultado.mensaje}",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
             finish()
         }.onFailure { e ->
             Toast.makeText(
@@ -183,9 +180,6 @@ class ExportarIPBActivity : BaseActivity() {
         }
     }
 
-    /**
-     * Calcula estadísticas de clientes a partir de las cuentas del día.
-     */
     private fun calcularResumenClientes(cuentas: List<CuentaIPB>): ResumenClientesIPB {
         val porCliente = cuentas.groupBy { it.clienteId to it.nombreCliente }
 
@@ -283,6 +277,6 @@ class ExportarIPBActivity : BaseActivity() {
 
     companion object {
         const val EXTRA_SOBRESCRIBIR = "extra_sobrescribir"
-        const val EXTRA_FECHA_SELECCIONADA = "extra_fecha_seleccionada"  // ✅ NUEVO
+        const val EXTRA_FECHA_SELECCIONADA = "extra_fecha_seleccionada"
     }
 }
