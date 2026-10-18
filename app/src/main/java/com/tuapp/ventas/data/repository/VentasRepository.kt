@@ -753,12 +753,38 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
         require(cantidad <= stockDisponible) { "Stock insuficiente. Disponible: $stockDisponible" }
         val cuenta = cuentas.obtener(cuentaId) ?: error("Cuenta no encontrada")
         require(cuenta.estado == Cuenta.ESTADO_ABIERTA) { "No se puede modificar una cuenta cerrada" }
-        val subtotal = producto.precio * cantidad
-        detalles.insertar(DetalleCuenta(cuentaId = cuentaId, productoId = producto.id, cantidad = cantidad, precioUnitario = producto.precio, subtotal = subtotal))
-        // solo incrementamos vendidos
-        productos.incrementarVendidos(producto.id, cantidad)
-        // NO descontamos inventario
-        recalcularTotal(cuentaId)
+
+        db.withTransaction {
+            // ✅ NUEVO: verificar si ya existe un detalle del mismo producto en la cuenta
+            val existente = detalles.buscarPorCuentaYProducto(cuentaId, producto.id)
+
+            if (existente != null) {
+                // Fusionar: sumar cantidad al detalle existente
+                // (conservamos el precioUnitario y la fechaAgregado del existente;
+                //  actualizarCantidad recalcula el subtotal)
+                val nuevaCantidad = (existente.cantidad + cantidad).coerceAtMost(99)
+                detalles.actualizarCantidad(existente.id, nuevaCantidad)
+                Log.d(TAG, "🟢 Detalle fusionado: producto=${producto.nombre}, cantidad=$nuevaCantidad")
+            } else {
+                // Insertar nuevo detalle
+                val subtotal = producto.precio * cantidad
+                detalles.insertar(
+                    DetalleCuenta(
+                        cuentaId = cuentaId,
+                        productoId = producto.id,
+                        cantidad = cantidad,
+                        precioUnitario = producto.precio,
+                        subtotal = subtotal
+                    )
+                )
+                Log.d(TAG, "🔵 Detalle insertado: producto=${producto.nombre}, cantidad=$cantidad")
+            }
+
+            // solo incrementamos vendidos
+            productos.incrementarVendidos(producto.id, cantidad)
+            // NO descontamos inventario
+            recalcularTotal(cuentaId)
+        }
     }
 
     suspend fun actualizarCantidadDetalle(detalleId: Long, nuevaCantidad: Int) {
@@ -1158,6 +1184,66 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
         val mensaje: String,
         val archivoBorrado: Boolean = false
     )
+
+
+    // ============================================================
+// ✅ FUSIÓN RETROACTIVA DE DETALLES DUPLICADOS
+// ============================================================
+
+    /**
+     * Fusiona los detalles duplicados de una cuenta.
+     *
+     * Si una cuenta tiene múltiples DetalleCuenta del mismo producto
+     * (por ejemplo, por versiones anteriores que no fusionaban),
+     * los agrupa en una sola línea.
+     *
+     * Reglas:
+     * - Se conserva el registro con `fechaAgregado` más antiguo (y menor id como desempate).
+     * - Se suma la cantidad total.
+     * - Se conserva el `precioUnitario` del registro más antiguo.
+     * - Se recalcula `subtotal = cantidadTotal * precioUnitarioAntiguo`.
+     * - Se eliminan los registros duplicados.
+     *
+     * Se ejecuta de forma transparente al abrir la cuenta.
+     */
+    suspend fun fusionarDetallesDuplicados(cuentaId: Long) {
+        db.withTransaction {
+            val todos = detalles.listarPorCuenta(cuentaId)
+            if (todos.size < 2) return@withTransaction
+
+            // Agrupar por productoId
+            val porProducto = todos.groupBy { it.productoId }
+
+            var fusionesRealizadas = 0
+            porProducto.forEach { (_, lista) ->
+                if (lista.size <= 1) return@forEach
+
+                // El más antiguo (menor fechaAgregado, y menor id como desempate)
+                val masAntiguo = lista.minWithOrNull(
+                    compareBy({ it.fechaAgregado }, { it.id })
+                ) ?: return@forEach
+
+                // Sumar cantidades
+                val cantidadTotal = lista.sumOf { it.cantidad }.coerceAtMost(99)
+
+                // Actualizar el más antiguo con la cantidad total
+                // (actualizarCantidad recalcula subtotal = precio_unitario * cantidad)
+                detalles.actualizarCantidad(masAntiguo.id, cantidadTotal)
+
+                // Eliminar los demás
+                lista.filter { it.id != masAntiguo.id }.forEach { duplicado ->
+                    detalles.eliminar(duplicado.id)
+                }
+
+                fusionesRealizadas++
+            }
+
+            if (fusionesRealizadas > 0) {
+                recalcularTotal(cuentaId)
+                Log.d(TAG, "Fusión retroactiva: $fusionesRealizadas producto(s) fusionado(s) en cuenta $cuentaId")
+            }
+        }
+    }
 
     // ============================================================
 // RESETEO DE LA APP

@@ -19,7 +19,11 @@ class AccountDetailViewModel(private val repo: VentasRepository, private val cue
     val mensaje = MutableLiveData<String>()
     val codigoProductoNuevo = MutableLiveData<String?>()
 
-    init { cargarVentaFinal() }
+    init {
+        cargarVentaFinal()
+        // ✅ NUEVO: fusionar detalles duplicados al abrir la cuenta
+        fusionarDetallesDuplicados()
+    }
 
     fun procesarEscaneoDirecto(codigo: String) = viewModelScope.launch {
         try {
@@ -78,6 +82,16 @@ class AccountDetailViewModel(private val repo: VentasRepository, private val cue
     }
 
     fun cargarVentaFinal() = viewModelScope.launch { _ventaFinal.value = repo.obtenerVentaFinal(cuentaId) }
+
+
+    /**
+     * Fusiona retroactivamente los detalles duplicados del mismo producto.
+     * Se ejecuta al abrir la cuenta para limpiar datos de versiones anteriores.
+     */
+    private fun fusionarDetallesDuplicados() = viewModelScope.launch {
+        runCatching { repo.fusionarDetallesDuplicados(cuentaId) }
+            .onFailure { Log.e(TAG, "Error al fusionar detalles duplicados", it) }
+    }
 
     companion object { private const val TAG = "AccountDetailVM" }
 }

@@ -52,6 +52,14 @@ class VentaMultipleViewModel(private val repo: VentasRepository) : ViewModel() {
         _productosAcumulados.value = _productosAcumulados.value.orEmpty().filterNot { it.producto.id == item.producto.id }
     }
 
+    /**
+     * ✅ NUEVO: limpia todos los productos acumulados.
+     * Se usa al "Cancelar operación".
+     */
+    fun limpiarCarrito() {
+        _productosAcumulados.value = emptyList()
+    }
+
     fun procesarEscaneo(codigo: String) = viewModelScope.launch {
         Log.d(TAG, "procesarEscaneo: $codigo")
         val producto = repo.buscarProducto(codigo)

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
@@ -31,7 +32,21 @@
         android:hint="Código de barras"
         android:padding="12dp"
         android:singleLine="true"
-        android:fontFamily="monospace"/>
+        android:fontFamily="monospace"
+        android:inputType="textCapCharacters" />
+
+    <!-- ✅ NUEVO: Aviso de validación (oculto por defecto) -->
+    <TextView
+        android:id="@+id/tvAviso"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:padding="10dp"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        tools:text="⚠️ El código ya está registrado como: \"
+     />
 
     <!-- Nombre -->
     <EditText
@@ -56,7 +71,7 @@
         android:padding="12dp"
         android:singleLine="true"/>
 
-    <!-- ✅ NUEVO: Stock actual (solo lectura, visible solo en edición) -->
+    <!-- Stock actual (solo lectura, visible solo en edición) -->
     <TextView
         android:id="@+id/tvStockActual"
         android:layout_width="match_parent"
@@ -68,7 +83,7 @@
         android:textAppearance="@style/TextAppearance.FinSell.Secondary"
         android:visibility="gone" />
 
-    <!-- ✅ NUEVO: Entrada de stock (visible solo en edición) -->
+    <!-- Entrada de stock (visible solo en edición) -->
     <EditText
         android:id="@+id/inputEntradaStock"
         android:layout_width="match_parent"
@@ -81,7 +96,7 @@
         android:singleLine="true"
         android:visibility="gone" />
 
-    <!-- ⚠️ Campo original: inventario (visible en creación de nuevo producto) -->
+    <!-- Campo original: inventario (visible en creación de nuevo producto) -->
     <EditText
         android:id="@+id/inputInventario"
         android:layout_width="match_parent"

@@ -11,16 +11,30 @@ import com.tuapp.ventas.databinding.DialogProductoNoEncontradoBinding
 class ProductoNoEncontradoDialogFragment : DialogFragment() {
     var onDarEntrada: ((String) -> Unit)? = null
     var onProductoCreado: ((Producto) -> Unit)? = null
+
+    // ✅ NUEVO: callback cuando el usuario cancela
+    var onCancelar: (() -> Unit)? = null
+
     private val codigo: String by lazy { requireArguments().getString(ARG_CODIGO).orEmpty() }
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val binding = DialogProductoNoEncontradoBinding.inflate(LayoutInflater.from(requireContext()))
         binding.txtCodigoBarras.text = codigo
+
         binding.btnDarEntrada.setOnClickListener {
             dismiss()
             onDarEntrada?.invoke(codigo)
         }
-        binding.btnCancelar.setOnClickListener { dismiss() }
+
+        binding.btnCancelar.setOnClickListener {
+            dismiss()
+            // ✅ NUEVO: notificar al llamador para que reanude el escaneo
+            onCancelar?.invoke()
+        }
+
+        // ✅ Evitar que se cierre accidentalmente al tocar fuera
+        isCancelable = false
+
         return MaterialAlertDialogBuilder(requireContext())
             .setView(binding.root)
             .create()

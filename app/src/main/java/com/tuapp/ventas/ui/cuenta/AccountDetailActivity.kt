@@ -14,6 +14,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.DefaultItemAnimator
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -27,9 +28,10 @@ import com.tuapp.ventas.ui.cuenta.adapters.DetalleCuentaAdapter
 import com.tuapp.ventas.ui.scanner.BarcodeScannerActivity
 import com.tuapp.ventas.databinding.DialogAgregarProductoBinding
 import com.tuapp.ventas.ui.common.ProductoNoEncontradoDialogFragment
-import com.tuapp.ventas.ui.simple.AgregarProductoManualDialog
+import com.tuapp.ventas.utils.CodigoBarrasUtils
 import com.tuapp.ventas.utils.DateUtils
 import com.tuapp.ventas.utils.SoundUtils
+import com.tuapp.ventas.utils.ValidadorCodigoProducto
 import java.io.File
 
 /** Pantalla de cuenta abierta editable o cuenta cerrada en modo solo lectura. */
@@ -38,6 +40,7 @@ class AccountDetailActivity : AppCompatActivity() {
     private val cuentaId by lazy { intent.getLongExtra(EXTRA_CUENTA_ID, -1L) }
     private val viewModel: AccountDetailViewModel by viewModels { AccountDetailViewModelFactory((application as VentasApplication).repository, cuentaId) }
     private var adapter = crearAdapter(soloLectura = false)
+    private val repo by lazy { (application as VentasApplication).repository }
 
     private val scanLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val codigo = result.data?.getStringExtra(BarcodeScannerActivity.EXTRA_BARCODE).orEmpty()
@@ -209,29 +212,69 @@ class AccountDetailActivity : AppCompatActivity() {
     }
 
     private fun mostrarDialogoAltaProductoEscaneado(codigo: String) {
+        val codigoNormalizado = CodigoBarrasUtils.normalizar(codigo)
+        if (codigoNormalizado.isBlank()) {
+            toast("El código de barras no puede estar vacío")
+            return
+        }
+
         val dialogBinding = DialogAgregarProductoBinding.inflate(layoutInflater)
-        dialogBinding.inputCodigo.setText(codigo)
+        dialogBinding.inputCodigo.setText(codigoNormalizado)
         dialogBinding.inputCodigo.isEnabled = false
         dialogBinding.inputInventario.hint = "Cantidad en inventario"
-        MaterialAlertDialogBuilder(this)
+
+        val dialog = MaterialAlertDialogBuilder(this)
             .setTitle("Agregar producto escaneado")
             .setView(dialogBinding.root)
             .setNegativeButton("Cancelar", null)
-            .setPositiveButton("Guardar y agregar") { _, _ ->
+            .setPositiveButton("Guardar y agregar", null)
+            .create()
+
+        dialog.setOnShowListener {
+            val botonGuardar = dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE)
+            var codigoValido = false
+
+            ValidadorCodigoProducto.configurar(
+                binding = dialogBinding,
+                repo = repo,
+                scope = lifecycleScope,
+                campoEditable = false,
+                onEstadoCambiado = { estado ->
+                    codigoValido = estado is ValidadorCodigoProducto.Estado.Valido ||
+                            estado is ValidadorCodigoProducto.Estado.SoloLetras
+                    botonGuardar.isEnabled = codigoValido
+                }
+            )
+
+            botonGuardar.setOnClickListener {
+                if (!codigoValido) {
+                    toast("Corrige el código antes de guardar")
+                    return@setOnClickListener
+                }
                 val nombre = dialogBinding.inputNombre.text?.toString()?.trim().orEmpty()
                 val precio = dialogBinding.inputPrecio.text?.toString()?.toDoubleOrNull()
                 val cantidadInventario = dialogBinding.inputInventario.text?.toString()?.toIntOrNull() ?: 1
                 if (nombre.isBlank() || precio == null || precio < 0.0 || cantidadInventario < 0) {
                     toast("Nombre, precio y cantidad en inventario válidos son requeridos")
-                } else {
-                    viewModel.crearProductoYAgregar(codigo = codigo, nombre = nombre, precio = precio, cantidad = 1, inventario = cantidadInventario)
+                    return@setOnClickListener
                 }
+                botonGuardar.isEnabled = false
+                viewModel.crearProductoYAgregar(
+                    codigo = codigoNormalizado,
+                    nombre = nombre,
+                    precio = precio,
+                    cantidad = 1,
+                    inventario = cantidadInventario
+                )
+                dialog.dismiss()
             }
-            .show()
+        }
+        dialog.show()
     }
 
     private fun solicitarCamara() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) abrirScanner() else cameraPermission.launch(Manifest.permission.CAMERA)
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) abrirScanner()
+        else cameraPermission.launch(Manifest.permission.CAMERA)
     }
 
     private fun abrirScanner() = scanLauncher.launch(Intent(this, BarcodeScannerActivity::class.java))

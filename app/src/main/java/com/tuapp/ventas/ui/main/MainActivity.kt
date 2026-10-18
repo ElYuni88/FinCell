@@ -40,10 +40,12 @@ import com.tuapp.ventas.ui.scanner.BarcodeScannerActivity
 import com.tuapp.ventas.ui.settings.SettingsActivity
 import com.tuapp.ventas.ui.simple.VentaDirectaDialog
 import com.tuapp.ventas.ui.venta.OperacionesActivity
+import com.tuapp.ventas.utils.CodigoBarrasUtils
 import com.tuapp.ventas.utils.DateUtils
 import com.tuapp.ventas.utils.LicenseManager
 import com.tuapp.ventas.utils.PreferencesManager
 import com.tuapp.ventas.utils.SoundUtils
+import com.tuapp.ventas.utils.ValidadorCodigoProducto
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -62,30 +64,28 @@ class MainActivity : BaseActivity() {
     private val viewModel: MainViewModel by viewModels { MainViewModelFactory((application as VentasApplication).repository) }
     private val ventasAdapter = VentasRecientesAdapter()
     private lateinit var cuentasAdapter: CuentasActivasAdapter
+    private val repo by lazy { (application as VentasApplication).repository }
     private enum class ScanFlow { VENTA, ALTA_PRODUCTO }
     private var scanFlow = ScanFlow.VENTA
+
     private val scanLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val codigo = result.data?.getStringExtra(BarcodeScannerActivity.EXTRA_BARCODE).orEmpty()
         if (codigo.isNotBlank()) {
             if (prefs.sonidoEscaneo) SoundUtils.beep()
             if (prefs.vibrarEscaneo) SoundUtils.vibrar(this)
 
-            // 🔥 Bifurcar según el flujo
             if (scanFlow == ScanFlow.ALTA_PRODUCTO) {
-                // Flujo de alta de producto (sin venta)
                 viewModel.procesarEscaneoAlta(codigo)
             } else {
-                // Flujo de venta (normal)
                 manejarEscaneo(codigo)
             }
-            scanFlow = ScanFlow.VENTA // Reiniciar al flujo por defecto
+            scanFlow = ScanFlow.VENTA
         }
     }
     private val cameraPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { if (it) abrirScanner() else Toast.makeText(this, "Permiso de cámara requerido", Toast.LENGTH_LONG).show() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Verificar licencia
         if (!LicenseManager.hasValidLicense(this)) {
             startActivity(Intent(this, LicenseActivity::class.java))
             finish()
@@ -118,10 +118,6 @@ class MainActivity : BaseActivity() {
         actualizarBannerEstado()
     }
 
-    /**
-     * Actualiza el banner de estado del periodo.
-     * Debe llamarse en onResume para reflejar cambios desde otras pantallas.
-     */
     private fun actualizarBannerEstado() {
         if (!::prefs.isInitialized) return
 
@@ -141,12 +137,11 @@ class MainActivity : BaseActivity() {
 
     private fun manejarNavegacionPrincipal(itemId: Int): Boolean = when (itemId) {
         R.id.nav_scan -> { if (modo == ModoOperacion.SIMPLE)
-                                solicitarCamara()
-                           else solicitarCamara(); true }
+            solicitarCamara()
+        else solicitarCamara(); true }
         R.id.nav_productos, R.id.menu_productos -> { startActivity(Intent(this, ProductosActivity::class.java)); true }
         R.id.nav_estadisticas, R.id.menu_estadisticas -> { startActivity(Intent(this, EstadisticasActivity::class.java)); true }
-        R.id.nav_importar_ipb, R.id.menu_importar_ipb -> { startActivity(Intent(this,
-            ImportarIPVActivity::class.java)); true}
+        R.id.nav_importar_ipb, R.id.menu_importar_ipb -> { startActivity(Intent(this, ImportarIPVActivity::class.java)); true}
         R.id.nav_exportar_ipb, R.id.menu_exportar_ipb -> { startActivity(Intent(this, IPBResumenActivity::class.java)); true }
         R.id.menu_configuraciones -> { startActivity(Intent(this, SettingsActivity::class.java)); true }
         else -> false
@@ -177,23 +172,20 @@ class MainActivity : BaseActivity() {
         binding.recyclerCuentas.layoutManager = LinearLayoutManager(this)
         binding.recyclerCuentas.adapter = cuentasAdapter
     }
+
     private fun configurarClicks() = with(binding) {
-        // ✅ NUEVO: Click del banner de estado
         layoutBannerEstado.setOnClickListener {
             when (prefs.estadoPeriodo) {
                 EstadoPeriodo.ABIERTO -> {
-                    // Ir a IPB Resumen (para cerrar y exportar)
                     startActivity(Intent(this@MainActivity, IPBResumenActivity::class.java))
                 }
                 EstadoPeriodo.CERRADO -> {
-                    // Ir a importar IPV
                     startActivity(Intent(this@MainActivity, ImportarIPVActivity::class.java))
                 }
             }
         }
         chipSimple.setOnClickListener { cambiarModo(ModoOperacion.SIMPLE) }
         chipCuenta.setOnClickListener { cambiarModo(ModoOperacion.CUENTA) }
-        //btnEscanearSimple.setOnClickListener { startActivity(Intent(this@MainActivity, OperacionesActivity::class.java)) }
         btnEscanearSimple.setOnClickListener { scanFlow = ScanFlow.VENTA; solicitarCamara() }
         btnEscanearCuenta.visibility = View.GONE
         btnVerCuenta.visibility = View.GONE
@@ -207,6 +199,7 @@ class MainActivity : BaseActivity() {
         txtFechaCuenta.setOnClickListener { mostrarSelectorFecha() }
         bottomNavigation.setOnItemSelectedListener { item -> manejarNavegacionPrincipal(item.itemId) }
     }
+
     private fun observarDatos() {
         viewModel.ventasHoy.observe(this) { ventasAdapter.submitList(it); binding.txtUltimaVenta.text = it.firstOrNull()?.let { v -> "${v.nombreProducto} - ${DateUtils.moneda(v.precio)}" } ?: "Sin ventas todavía" }
         viewModel.totalSimple.observe(this) { binding.txtTotalDia.text = DateUtils.moneda(it) }
@@ -235,7 +228,9 @@ class MainActivity : BaseActivity() {
         }
         viewModel.productoCreadoParaVenta.observe(this) { it?.let(::mostrarDialogoProducto) }
     }
+
     private fun cambiarModo(nuevo: ModoOperacion) { modo = nuevo; prefs.modoActual = nuevo; renderModo() }
+
     private fun mostrarSelectorFecha() {
         val cal = Calendar.getInstance().apply { timeInMillis = viewModel.fechaSeleccionada.value ?: System.currentTimeMillis() }
         DatePickerDialog(this, { _, y, m, d ->
@@ -263,11 +258,13 @@ class MainActivity : BaseActivity() {
         val cb = Calendar.getInstance().apply { timeInMillis = b }
         return ca.get(Calendar.YEAR) == cb.get(Calendar.YEAR) && ca.get(Calendar.DAY_OF_YEAR) == cb.get(Calendar.DAY_OF_YEAR)
     }
+
     private fun renderModo() = with(binding) {
         chipSimple.isChecked = modo == ModoOperacion.SIMPLE; chipCuenta.isChecked = modo == ModoOperacion.CUENTA
         panelSimple.visibility = if (modo == ModoOperacion.SIMPLE) View.VISIBLE else View.GONE
         panelCuenta.visibility = if (modo == ModoOperacion.CUENTA) View.VISIBLE else View.GONE
     }
+
     private fun solicitarCamara() { if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) abrirScanner() else cameraPermission.launch(Manifest.permission.CAMERA) }
     private fun abrirScanner() {
         if (scanFlow == ScanFlow.VENTA && modo == ModoOperacion.SIMPLE) {
@@ -292,14 +289,12 @@ class MainActivity : BaseActivity() {
     private fun mostrarDialogoAgregarManual() {
         when (modo) {
             ModoOperacion.SIMPLE -> {
-                // Modo Simple: abrir la actividad sin cuenta
                 val intent = Intent(this, ProductosManualesActivity::class.java).apply {
                     putExtra(ProductosManualesActivity.EXTRA_MODO, ModoOperacion.SIMPLE)
                 }
                 startActivity(intent)
             }
             ModoOperacion.CUENTA -> {
-                // Modo Cuenta: verificar que haya una cuenta seleccionada
                 val cuentaId = prefs.cuentaSeleccionadaId
                 if (cuentaId <= 0) {
                     Toast.makeText(this, "Seleccione una cuenta primero", Toast.LENGTH_SHORT).show()
@@ -314,17 +309,27 @@ class MainActivity : BaseActivity() {
         }
     }
 
-    private fun mostrarDialogoProducto(producto: Producto) { VentaDirectaDialog().apply { this.producto = producto; this.modo = this@MainActivity.modo; onConfirmar = { p,_,_,_,cantidad -> if (modo == ModoOperacion.SIMPLE) viewModel.registrarVentaDirecta(p!!, cantidad) else viewModel.agregarACuenta(p!!, cantidad) }; onVerCuenta = { val id = prefs.cuentaSeleccionadaId; if (id > 0) startActivity(Intent(this@MainActivity, AccountDetailActivity::class.java).putExtra(AccountDetailActivity.EXTRA_CUENTA_ID, id)) } }.show(supportFragmentManager, "venta") }
+    private fun mostrarDialogoProducto(producto: Producto) {
+        VentaDirectaDialog().apply {
+            this.producto = producto
+            this.modo = this@MainActivity.modo
+            onConfirmar = { p, _, _, _, cantidad ->
+                if (modo == ModoOperacion.SIMPLE) viewModel.registrarVentaDirecta(p!!, cantidad)
+                else viewModel.agregarACuenta(p!!, cantidad)
+            }
+            onVerCuenta = {
+                val id = prefs.cuentaSeleccionadaId
+                if (id > 0) startActivity(Intent(this@MainActivity, AccountDetailActivity::class.java).putExtra(AccountDetailActivity.EXTRA_CUENTA_ID, id))
+            }
+        }.show(supportFragmentManager, "venta")
+    }
 
     private fun manejarEscaneo(codigo: String) {
         lifecycleScope.launch {
-            val repo = (application as VentasApplication).repository
             val producto = repo.buscarProducto(codigo)
             if (producto == null) {
                 ProductoNoEncontradoDialogFragment.newInstance(codigo).apply {
-                    onDarEntrada = { codigoEscaneado ->
-                        mostrarDialogoAltaProductoEscaneado(codigoEscaneado)
-                    }
+                    onDarEntrada = { codigoEscaneado -> mostrarDialogoAltaProductoEscaneado(codigoEscaneado) }
                 }.show(supportFragmentManager, "producto_no_encontrado")
             } else {
                 mostrarDialogoCantidadConSeguir(producto)
@@ -332,26 +337,21 @@ class MainActivity : BaseActivity() {
         }
     }
 
-
     private fun mostrarDialogoCantidadConSeguir(producto: Producto) {
         VentaDirectaDialog().apply {
             this.producto = producto
             this.modo = ModoOperacion.SIMPLE
             this.mostrarBotonSeguir = true
             onConfirmar = { p, _, _, _, cantidad ->
-                Log.d("MainActivity", "onConfirmar: ${p?.nombre}")
                 viewModel.registrarVentaDirecta(p ?: producto, cantidad)
             }
             onSeguirEscaneando = { p, _, _, _, cantidad ->
-                Log.d("MainActivity", "onSeguirEscaneando: ${p?.nombre} x$cantidad")
                 abrirOperacionesConProducto(p ?: producto, cantidad)
             }
         }.show(supportFragmentManager, "venta_directa")
     }
 
-
     private fun abrirOperacionesConProducto(producto: Producto, cantidad: Int) {
-        Log.d("MainActivity", "abrirOperacionesConProducto: ${producto.nombre}")
         val intent = Intent(this, OperacionesActivity::class.java).apply {
             putExtra(OperacionesActivity.EXTRA_PRODUCTO_INICIAL, producto)
             putExtra(OperacionesActivity.EXTRA_CANTIDAD_INICIAL, cantidad)
@@ -367,6 +367,7 @@ class MainActivity : BaseActivity() {
             .setPositiveButton("Eliminar") { _, _ -> viewModel.eliminarCuentaVacia(cuentaId) }
             .show()
     }
+
     private fun mostrarDialogoNuevoProducto(codigo: String) {
         ProductoNoEncontradoDialogFragment.newInstance(codigo).apply {
             onDarEntrada = { codigoEscaneado -> mostrarDialogoAltaProductoEscaneado(codigoEscaneado) }
@@ -374,24 +375,57 @@ class MainActivity : BaseActivity() {
     }
 
     private fun mostrarDialogoAltaProductoEscaneado(codigo: String, abrirVentaAlGuardar: Boolean = true) {
+        val codigoNormalizado = CodigoBarrasUtils.normalizar(codigo)
+        if (codigoNormalizado.isBlank()) {
+            Toast.makeText(this, "El código de barras no puede estar vacío", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         val dialogBinding = com.tuapp.ventas.databinding.DialogAgregarProductoBinding.inflate(layoutInflater)
-        dialogBinding.inputCodigo.setText(codigo)
+        dialogBinding.inputCodigo.setText(codigoNormalizado)
         dialogBinding.inputCodigo.isEnabled = false
         dialogBinding.inputInventario.hint = "Cantidad en inventario"
-        MaterialAlertDialogBuilder(this)
+
+        val dialog = MaterialAlertDialogBuilder(this)
             .setTitle("Agregar producto escaneado")
             .setView(dialogBinding.root)
             .setNegativeButton("Cancelar", null)
-            .setPositiveButton("Guardar") { _, _ ->
+            .setPositiveButton("Guardar", null)
+            .create()
+
+        dialog.setOnShowListener {
+            val botonGuardar = dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE)
+            var codigoValido = false
+
+            ValidadorCodigoProducto.configurar(
+                binding = dialogBinding,
+                repo = repo,
+                scope = lifecycleScope,
+                campoEditable = false,
+                onEstadoCambiado = { estado ->
+                    codigoValido = estado is ValidadorCodigoProducto.Estado.Valido ||
+                            estado is ValidadorCodigoProducto.Estado.SoloLetras
+                    botonGuardar.isEnabled = codigoValido
+                }
+            )
+
+            botonGuardar.setOnClickListener {
+                if (!codigoValido) {
+                    Toast.makeText(this, "Corrige el código antes de guardar", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
                 val nombre = dialogBinding.inputNombre.text?.toString()?.trim().orEmpty()
                 val precio = dialogBinding.inputPrecio.text?.toString()?.toDoubleOrNull()
                 val cantidad = dialogBinding.inputInventario.text?.toString()?.toIntOrNull() ?: 1
                 if (nombre.isBlank() || precio == null || precio < 0.0 || cantidad < 0) {
                     Toast.makeText(this, "Nombre, precio y cantidad en inventario válidos son requeridos", Toast.LENGTH_SHORT).show()
-                } else {
-                    viewModel.crearProductoEscaneado(codigo, nombre, precio, cantidad, abrirVentaAlGuardar)
+                    return@setOnClickListener
                 }
+                botonGuardar.isEnabled = false
+                viewModel.crearProductoEscaneado(codigoNormalizado, nombre, precio, cantidad, abrirVentaAlGuardar)
+                dialog.dismiss()
             }
-            .show()
+        }
+        dialog.show()
     }
 }

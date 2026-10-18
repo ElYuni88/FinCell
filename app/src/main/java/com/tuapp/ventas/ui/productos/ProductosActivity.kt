@@ -4,15 +4,14 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
-import android.view.View
 import android.text.Editable
-import android.text.InputFilter
 import android.text.TextWatcher
+import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import com.tuapp.ventas.ui.base.BaseActivity
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.tuapp.ventas.R
@@ -20,11 +19,13 @@ import com.tuapp.ventas.VentasApplication
 import com.tuapp.ventas.data.model.Producto
 import com.tuapp.ventas.databinding.ActivityProductosBinding
 import com.tuapp.ventas.databinding.DialogAgregarProductoBinding
+import com.tuapp.ventas.ui.base.BaseActivity
 import com.tuapp.ventas.ui.exportar.ExportarIPBActivity
 import com.tuapp.ventas.ui.estadisticas.EstadisticasActivity
 import com.tuapp.ventas.ui.main.MainActivity
 import com.tuapp.ventas.ui.scanner.BarcodeScannerActivity
 import com.tuapp.ventas.utils.TextUtils
+import com.tuapp.ventas.utils.ValidadorCodigoProducto
 
 /** Pantalla de gestión de productos con alta por escáner, alta manual, edición y eliminación. */
 class ProductosActivity : BaseActivity() {
@@ -74,7 +75,6 @@ class ProductosActivity : BaseActivity() {
                 else -> false
             }
         }
-        // ✅ Switch mostrar inactivos
         swMostrarInactivos.setOnCheckedChangeListener { _, checked ->
             viewModel.setMostrandoInactivos(checked)
         }
@@ -101,12 +101,14 @@ class ProductosActivity : BaseActivity() {
     private fun abrirScanner() = scanLauncher.launch(Intent(this, BarcodeScannerActivity::class.java))
 
     private fun mostrarDialogoAgregar(codigoEscaneado: String?, esManual: Boolean = true) {
+        // ✅ CORRECCIÓN: Si viene del escáner, esManual debe ser false
+        val esManualReal = if (codigoEscaneado.isNullOrBlank()) esManual else false
         mostrarDialogoProducto(
             titulo = if (codigoEscaneado == null) "Agregar producto manual" else "Agregar producto escaneado",
             producto = null,
             codigoInicial = codigoEscaneado.orEmpty(),
             codigoEditable = codigoEscaneado == null,
-            esManualForzado = esManual
+            esManualForzado = esManualReal
         )
     }
 
@@ -130,18 +132,8 @@ class ProductosActivity : BaseActivity() {
         dialogBinding.inputCodigo.setText(codigoInicial)
         dialogBinding.inputCodigo.isEnabled = codigoEditable
 
-        if (codigoEditable) {
-            dialogBinding.inputCodigo.filters = arrayOf(
-                InputFilter { source, start, end, dest, dstart, dend ->
-                    for (i in start until end) {
-                        if (!Character.isDigit(source[i])) return@InputFilter ""
-                    }
-                    null
-                }
-            )
-        } else {
-            dialogBinding.inputCodigo.filters = arrayOf()
-        }
+        // ❌ Se elimina el InputFilter que solo permitía números.
+        // Ahora se permiten letras, números y guion medio.
 
         dialogBinding.inputNombre.setText(producto?.nombre.orEmpty())
         dialogBinding.inputPrecio.setText(producto?.precio?.toString().orEmpty())
@@ -165,22 +157,60 @@ class ProductosActivity : BaseActivity() {
             dialogBinding.inputInventario.visibility = View.GONE
         }
 
-        MaterialAlertDialogBuilder(this)
+        // ✅ Variable local para saber si el código es válido actualmente
+        var codigoValido = false
+
+        val dialog = MaterialAlertDialogBuilder(this)
             .setTitle(titulo)
             .setView(dialogBinding.root)
             .setNegativeButton("Cancelar", null)
-            .setPositiveButton("Guardar") { _, _ ->
+            .setPositiveButton("Guardar", null)
+            .create()
+
+        dialog.setOnShowListener {
+            val botonGuardar = dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE)
+
+            // ✅ Configurar validación reactiva
+            val repo = (application as VentasApplication).repository
+            ValidadorCodigoProducto.configurar(
+                binding = dialogBinding,
+                repo = repo,
+                scope = lifecycleScope,
+                productoOriginalId = producto?.id,
+                campoEditable = codigoEditable,
+                onEstadoCambiado = { estado ->
+                    codigoValido = estado is ValidadorCodigoProducto.Estado.Valido ||
+                            estado is ValidadorCodigoProducto.Estado.SoloLetras
+                    botonGuardar.isEnabled = codigoValido
+                },
+                onCodigoNormalizado = { nuevoCodigo ->
+                    // Actualizar el campo visible sin disparar el watcher de nuevo
+                    if (dialogBinding.inputCodigo.text?.toString() != nuevoCodigo) {
+                        dialogBinding.inputCodigo.setText(nuevoCodigo)
+                        dialogBinding.inputCodigo.setSelection(nuevoCodigo.length)
+                    }
+                }
+            )
+
+            // ✅ Click del botón Guardar
+            botonGuardar.setOnClickListener {
+                if (!codigoValido) {
+                    toast("Corrige el código antes de guardar")
+                    return@setOnClickListener
+                }
+
                 val nombre = dialogBinding.inputNombre.text?.toString()?.trim().orEmpty()
                 val precio = dialogBinding.inputPrecio.text?.toString()?.toDoubleOrNull()
-                val codigo = dialogBinding.inputCodigo.text?.toString()?.trim().orEmpty()
+                val codigo = com.tuapp.ventas.utils.CodigoBarrasUtils
+                    .normalizar(dialogBinding.inputCodigo.text?.toString().orEmpty())
 
                 if (nombre.isBlank() || precio == null || precio < 0.0) {
                     toast("Nombre y precio válidos son requeridos")
-                    return@setPositiveButton
+                    return@setOnClickListener
                 }
                 if (esManualForzado && codigo.isBlank()) {
                     toast("El código no puede estar vacío")
-                    return@setPositiveButton
+                    return@setOnClickListener
                 }
 
                 val codigoFinal = if (codigo.isBlank() && producto != null) {
@@ -188,11 +218,6 @@ class ProductosActivity : BaseActivity() {
                 } else if (codigo.isBlank() && producto == null && !esManualForzado) {
                     viewModel.generarCodigoManualSugerido()
                 } else codigo
-
-                if (esManualForzado && !codigoFinal.all { it.isDigit() }) {
-                    toast("El código solo debe contener números")
-                    return@setPositiveButton
-                }
 
                 val tipo = if (codigoFinal.startsWith("MANUAL_", ignoreCase = true)) Producto.TIPO_MANUAL else Producto.TIPO_CODIGO_BARRAS
                 val base = producto ?: Producto(nombre = nombre, precio = precio)
@@ -217,8 +242,11 @@ class ProductosActivity : BaseActivity() {
                         esManual = esManualFinal
                     )
                 )
+                dialog.dismiss()
             }
-            .show()
+        }
+
+        dialog.show()
     }
 
     private fun confirmarEliminar(producto: Producto) {

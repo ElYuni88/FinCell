@@ -19,20 +19,23 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.mlkit.vision.barcode.common.Barcode
+import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
 import com.tuapp.ventas.VentasApplication
 import com.tuapp.ventas.data.model.ModoOperacion
 import com.tuapp.ventas.data.model.Producto
-import com.tuapp.ventas.data.model.VentaItem
 import androidx.appcompat.app.AlertDialog
 import com.tuapp.ventas.databinding.ActivityEscaneoContinuoBinding
 import com.tuapp.ventas.databinding.DialogAgregarProductoBinding
 import com.tuapp.ventas.ui.common.ProductoNoEncontradoDialogFragment
 import com.tuapp.ventas.ui.simple.VentaDirectaDialog
 import com.tuapp.ventas.ui.venta.OperacionesActivity
+import com.tuapp.ventas.utils.CodigoBarrasUtils
 import com.tuapp.ventas.utils.PreferencesManager
 import com.tuapp.ventas.utils.SoundUtils
+import com.tuapp.ventas.utils.ValidadorCodigoProducto
 import kotlinx.coroutines.launch
 
 class EscaneoContinuoActivity : AppCompatActivity() {
@@ -41,7 +44,25 @@ class EscaneoContinuoActivity : AppCompatActivity() {
     private val repo by lazy { (application as VentasApplication).repository }
     private var cameraProvider: ProcessCameraProvider? = null
     private var imageAnalysis: ImageAnalysis? = null
-    private val scanner = BarcodeScanning.getClient()
+
+    // ✅ MEJORA: Limitar formatos de ML Kit a códigos de barras de productos.
+    // Esto evita leer QRs, PDF417, Aztec, etc. que causan falsas lecturas.
+    private val scanner = BarcodeScanning.getClient(
+        BarcodeScannerOptions.Builder()
+            .setBarcodeFormats(
+                Barcode.FORMAT_EAN_13,
+                Barcode.FORMAT_EAN_8,
+                Barcode.FORMAT_UPC_A,
+                Barcode.FORMAT_UPC_E,
+                Barcode.FORMAT_CODE_128,
+                Barcode.FORMAT_CODE_39,
+                Barcode.FORMAT_CODE_93,
+                Barcode.FORMAT_ITF,
+                Barcode.FORMAT_CODABAR
+            )
+            .build()
+    )
+
     private lateinit var prefs: PreferencesManager
     private var pausadoPorDialogo = false
     private var ultimoCodigo: String? = null
@@ -89,10 +110,6 @@ class EscaneoContinuoActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * ✅ Punto clave: si el producto escaneado está inactivo,
-     * mostramos un diálogo para activarlo antes de continuar.
-     */
     private fun manejarProductoEncontrado(producto: Producto) {
         if (producto.inactivo) {
             mostrarDialogoReactivar(producto)
@@ -113,7 +130,6 @@ class EscaneoContinuoActivity : AppCompatActivity() {
                 lifecycleScope.launch {
                     runCatching { repo.activarProducto(producto.id) }
                         .onSuccess {
-                            // Refrescamos la copia local y seguimos con la venta
                             mostrarDialogoCantidad(producto.copy(inactivo = false))
                         }
                         .onFailure {
@@ -150,11 +166,13 @@ class EscaneoContinuoActivity : AppCompatActivity() {
         pausadoPorDialogo = true
         ProductoNoEncontradoDialogFragment.newInstance(codigo).apply {
             onDarEntrada = { codigoEscaneado -> mostrarDialogoAltaProducto(codigoEscaneado) }
+            // ✅ NUEVO: si cancela, reanudar el escaneo
+            onCancelar = { reanudarEscaneo() }
         }.show(supportFragmentManager, "producto_no_encontrado")
     }
 
     private fun mostrarDialogoAltaProducto(codigo: String) {
-        val codigoNormalizado = codigo.trim()
+        val codigoNormalizado = CodigoBarrasUtils.normalizar(codigo)
         if (codigoNormalizado.isBlank()) {
             Toast.makeText(this, "El código de barras no puede estar vacío", Toast.LENGTH_LONG).show()
             reanudarEscaneo()
@@ -165,6 +183,7 @@ class EscaneoContinuoActivity : AppCompatActivity() {
         dialogBinding.inputCodigo.setText(codigoNormalizado)
         dialogBinding.inputCodigo.isEnabled = false
         dialogBinding.inputInventario.hint = "Cantidad en inventario"
+
         val dialog = MaterialAlertDialogBuilder(this)
             .setTitle("Agregar producto escaneado")
             .setView(dialogBinding.root)
@@ -173,15 +192,43 @@ class EscaneoContinuoActivity : AppCompatActivity() {
             .create()
 
         dialog.setOnShowListener {
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val botonGuardar = dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+            var codigoValido = false
+
+            ValidadorCodigoProducto.configurar(
+                binding = dialogBinding,
+                repo = repo,
+                scope = lifecycleScope,
+                campoEditable = false,
+                onEstadoCambiado = { estado ->
+                    codigoValido = estado is ValidadorCodigoProducto.Estado.Valido ||
+                            estado is ValidadorCodigoProducto.Estado.SoloLetras
+                    botonGuardar.isEnabled = codigoValido
+                }
+            )
+
+            botonGuardar.setOnClickListener {
+                if (!codigoValido) {
+                    Toast.makeText(
+                        this@EscaneoContinuoActivity,
+                        "Corrige el código antes de guardar",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    return@setOnClickListener
+                }
+
                 val nombre = dialogBinding.inputNombre.text?.toString()?.trim().orEmpty()
                 val precio = dialogBinding.inputPrecio.text?.toString()?.toDoubleOrNull()
                 val inventario = dialogBinding.inputInventario.text?.toString()?.toIntOrNull() ?: 1
                 if (nombre.isBlank() || precio == null || precio < 0.0 || inventario < 0) {
-                    Toast.makeText(this, "Nombre, precio e inventario válidos son requeridos", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        this@EscaneoContinuoActivity,
+                        "Nombre, precio e inventario válidos son requeridos",
+                        Toast.LENGTH_SHORT
+                    ).show()
                     return@setOnClickListener
                 }
-                dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
+                botonGuardar.isEnabled = false
                 viewModel.crearProductoEscaneado(codigoNormalizado, nombre, precio, inventario)
             }
         }
@@ -190,14 +237,39 @@ class EscaneoContinuoActivity : AppCompatActivity() {
         dialog.show()
     }
 
-    private fun reanudarEscaneo() { pausadoPorDialogo = false }
+    /**
+     * ✅ Reanuda el escaneo tras cerrar cualquier diálogo.
+     * También resetea el último código para permitir leer el mismo código de nuevo.
+     */
+    private fun reanudarEscaneo() {
+        pausadoPorDialogo = false
+        // ✅ Resetear el último código para que el mismo se pueda escanear de nuevo inmediatamente
+        ultimoCodigo = null
+        ultimoCodigoMs = 0L
+    }
 
+    /**
+     * Finaliza el escaneo.
+     * - Sin productos → cierra la activity y vuelve a MainActivity.
+     * - Con productos → va a OperacionesActivity (o devuelve los productos al llamador).
+     */
     private fun finalizarEscaneo() {
         val productos = viewModel.obtenerProductosAcumulados()
-        if (productos.isEmpty()) { Toast.makeText(this, "No se escaneó ningún producto", Toast.LENGTH_SHORT).show(); return }
+
+        if (productos.isEmpty()) {
+            // ✅ Sin productos: cerrar la pantalla y volver al origen
+            finish()
+            return
+        }
+
         val data = Intent().putExtra(EXTRA_PRODUCTOS_ACUMULADOS, productos)
-        if (modoAgregar) { setResult(RESULT_OK, data); finish() }
-        else { startActivity(Intent(this, OperacionesActivity::class.java).putExtra(OperacionesActivity.EXTRA_PRODUCTOS_ACUMULADOS, productos)); finish() }
+        if (modoAgregar) {
+            setResult(RESULT_OK, data)
+            finish()
+        } else {
+            startActivity(Intent(this, OperacionesActivity::class.java).putExtra(OperacionesActivity.EXTRA_PRODUCTOS_ACUMULADOS, productos))
+            finish()
+        }
     }
 
     private fun iniciarCamara() {
@@ -205,11 +277,17 @@ class EscaneoContinuoActivity : AppCompatActivity() {
         providerFuture.addListener({
             cameraProvider = providerFuture.get()
             val preview = Preview.Builder().build().also { it.setSurfaceProvider(binding.previewView.surfaceProvider) }
-            imageAnalysis = ImageAnalysis.Builder().setTargetResolution(Size(1280, 720)).setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST).build().also {
-                it.setAnalyzer(ContextCompat.getMainExecutor(this)) { proxy -> analizarImagen(proxy) }
-            }
-            runCatching { cameraProvider?.unbindAll(); cameraProvider?.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA, preview, imageAnalysis) }
-                .onFailure { Toast.makeText(this, it.message, Toast.LENGTH_LONG).show() }
+            imageAnalysis = ImageAnalysis.Builder()
+                .setTargetResolution(Size(1280, 720))
+                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                .build()
+                .also {
+                    it.setAnalyzer(ContextCompat.getMainExecutor(this)) { proxy -> analizarImagen(proxy) }
+                }
+            runCatching {
+                cameraProvider?.unbindAll()
+                cameraProvider?.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA, preview, imageAnalysis)
+            }.onFailure { Toast.makeText(this, it.message, Toast.LENGTH_LONG).show() }
         }, ContextCompat.getMainExecutor(this))
     }
 
@@ -219,10 +297,19 @@ class EscaneoContinuoActivity : AppCompatActivity() {
         if (pausadoPorDialogo) { image.close(); return }
         scanner.process(InputImage.fromMediaImage(media, image.imageInfo.rotationDegrees))
             .addOnSuccessListener { codes ->
-                val codigo = codes.firstOrNull()?.rawValue.orEmpty()
+                // ✅ Tomar el primer código con longitud razonable
+                val codigo = codes.firstOrNull { !it.rawValue.isNullOrBlank() }?.rawValue.orEmpty()
+                if (codigo.isBlank()) return@addOnSuccessListener
+
+                // ✅ Filtro mínimo: códigos de barras de productos suelen tener 6-14 caracteres
+                // Esto ayuda a descartar lecturas erráticas
+                if (codigo.length < 4) return@addOnSuccessListener
+
                 val ahora = System.currentTimeMillis()
-                if (codigo.isNotBlank() && (codigo != ultimoCodigo || ahora - ultimoCodigoMs > 1500L)) {
-                    ultimoCodigo = codigo; ultimoCodigoMs = ahora; pausadoPorDialogo = true
+                if (codigo != ultimoCodigo || ahora - ultimoCodigoMs > 1500L) {
+                    ultimoCodigo = codigo
+                    ultimoCodigoMs = ahora
+                    pausadoPorDialogo = true
                     if (prefs.sonidoEscaneo) SoundUtils.beep()
                     if (prefs.vibrarEscaneo) SoundUtils.vibrar(this)
                     viewModel.procesarCodigo(codigo)
@@ -230,7 +317,11 @@ class EscaneoContinuoActivity : AppCompatActivity() {
             }.addOnCompleteListener { image.close() }
     }
 
-    override fun onDestroy() { scanner.close(); cameraProvider?.unbindAll(); super.onDestroy() }
+    override fun onDestroy() {
+        scanner.close()
+        cameraProvider?.unbindAll()
+        super.onDestroy()
+    }
 
     companion object {
         const val EXTRA_MODO_AGREGAR = "extra_modo_agregar"

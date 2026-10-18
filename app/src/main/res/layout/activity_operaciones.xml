@@ -86,13 +86,35 @@
                 android:textSize="28sp"
                 android:textStyle="bold" />
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnFinalizarVenta"
+            <!-- ✅ NUEVO: Botones en fila (Finalizar + Cancelar) -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:enabled="false"
-                android:text="Finalizar venta" />
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnCancelarOperacion"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="8dp"
+                    android:layout_weight="1"
+                    android:text="Cancelar"
+                    android:textColor="@color/pos_red"
+                    app:strokeColor="@color/pos_red"
+                    app:icon="@drawable/ic_delete"
+                    app:iconTint="@color/pos_red" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnFinalizarVenta"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:layout_weight="1.4"
+                    android:enabled="false"
+                    android:text="Finalizar venta" />
+            </LinearLayout>
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 </LinearLayout>

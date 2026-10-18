@@ -6,10 +6,18 @@ import com.tuapp.ventas.data.model.DetalleCuenta
 @Dao
 interface DetalleCuentaDao {
     @Insert suspend fun insertar(detalle: DetalleCuenta): Long
-    @Query("UPDATE detalle_cuenta SET cantidad = :cantidad, subtotal = precio_unitario * :cantidad WHERE id = :detalleId") suspend fun actualizarCantidad(detalleId: Long, cantidad: Int)
-    @Query("DELETE FROM detalle_cuenta WHERE id = :detalleId") suspend fun eliminar(detalleId: Long)
-    @Query("SELECT * FROM detalle_cuenta WHERE id = :detalleId") suspend fun obtener(detalleId: Long): DetalleCuenta?
-    @Query("SELECT COALESCE(SUM(subtotal), 0) FROM detalle_cuenta WHERE cuenta_id = :cuentaId") suspend fun totalCuenta(cuentaId: Long): Double
+
+    @Query("UPDATE detalle_cuenta SET cantidad = :cantidad, subtotal = precio_unitario * :cantidad WHERE id = :detalleId")
+    suspend fun actualizarCantidad(detalleId: Long, cantidad: Int)
+
+    @Query("DELETE FROM detalle_cuenta WHERE id = :detalleId")
+    suspend fun eliminar(detalleId: Long)
+
+    @Query("SELECT * FROM detalle_cuenta WHERE id = :detalleId")
+    suspend fun obtener(detalleId: Long): DetalleCuenta?
+
+    @Query("SELECT COALESCE(SUM(subtotal), 0) FROM detalle_cuenta WHERE cuenta_id = :cuentaId")
+    suspend fun totalCuenta(cuentaId: Long): Double
 
     @Query("DELETE FROM detalle_cuenta")
     suspend fun eliminarTodos()
@@ -23,4 +31,25 @@ interface DetalleCuentaDao {
     GROUP BY p.codigo_barras
 """)
     suspend fun contarVentasCuentasPorCodigoDesde(desde: Long): List<com.tuapp.ventas.data.model.ConteoVentasPorCodigo>
+
+    // ============================================================
+    // ✅ NUEVOS MÉTODOS para fusión de detalles duplicados
+    // ============================================================
+
+    /**
+     * Busca un detalle existente para un producto específico en una cuenta.
+     * Sirve para saber si ya hay una línea del mismo producto antes de insertar.
+     */
+    @Query("""
+        SELECT * FROM detalle_cuenta 
+        WHERE cuenta_id = :cuentaId AND producto_id = :productoId 
+        LIMIT 1
+    """)
+    suspend fun buscarPorCuentaYProducto(cuentaId: Long, productoId: Long): DetalleCuenta?
+
+    /**
+     * Lista todos los detalles de una cuenta (para fusiones retroactivas).
+     */
+    @Query("SELECT * FROM detalle_cuenta WHERE cuenta_id = :cuentaId ORDER BY fecha_agregado ASC, id ASC")
+    suspend fun listarPorCuenta(cuentaId: Long): List<DetalleCuenta>
 }
