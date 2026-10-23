@@ -55,4 +55,50 @@ interface CuentaDao {
 
     @Query("DELETE FROM cuentas")
     suspend fun eliminarTodas()
+
+    // ============================================================
+    // ✅ NUEVOS: Filtros separados para Switch "Mostrar cerradas"
+    // ============================================================
+
+    /**
+     * Solo cuentas ABIERTAS de un día.
+     * Ordenadas por fecha de apertura DESC (más recientes primero).
+     */
+    @Query("""
+        SELECT c.id AS id, c.cliente_id AS clienteId,
+               CASE WHEN c.esClienteTemporal = 1 THEN COALESCE(c.nombre_cliente_temporal, 'Cliente temporal') ELSE COALESCE(cl.nombre, 'Cliente') END AS nombreCliente,
+               CASE WHEN c.esClienteTemporal = 1 THEN c.mesa_temporal ELSE cl.mesa END AS mesa,
+               c.fecha_apertura AS fechaApertura, c.fecha_cierre AS fechaCierre,
+               c.estado AS estado, c.total AS total,
+               COALESCE(SUM(d.cantidad), 0) AS cantidadProductos,
+               c.esClienteTemporal AS esClienteTemporal
+        FROM cuentas c
+        LEFT JOIN clientes cl ON cl.id = c.cliente_id
+        LEFT JOIN detalle_cuenta d ON d.cuenta_id = c.id
+        WHERE c.estado = 'ABIERTA' AND c.fecha_apertura BETWEEN :inicio AND :fin
+        GROUP BY c.id
+        ORDER BY c.fecha_apertura DESC
+    """)
+    fun observarResumenCuentasAbiertasPorDia(inicio: Long, fin: Long): Flow<List<CuentaResumen>>
+
+    /**
+     * Solo cuentas CERRADAS de un día.
+     * Ordenadas por fecha de CIERRE DESC (más recientes primero).
+     */
+    @Query("""
+        SELECT c.id AS id, c.cliente_id AS clienteId,
+               CASE WHEN c.esClienteTemporal = 1 THEN COALESCE(c.nombre_cliente_temporal, 'Cliente temporal') ELSE COALESCE(cl.nombre, 'Cliente') END AS nombreCliente,
+               CASE WHEN c.esClienteTemporal = 1 THEN c.mesa_temporal ELSE cl.mesa END AS mesa,
+               c.fecha_apertura AS fechaApertura, c.fecha_cierre AS fechaCierre,
+               c.estado AS estado, c.total AS total,
+               COALESCE(SUM(d.cantidad), 0) AS cantidadProductos,
+               c.esClienteTemporal AS esClienteTemporal
+        FROM cuentas c
+        LEFT JOIN clientes cl ON cl.id = c.cliente_id
+        LEFT JOIN detalle_cuenta d ON d.cuenta_id = c.id
+        WHERE c.estado = 'CERRADA' AND c.fecha_cierre BETWEEN :inicio AND :fin
+        GROUP BY c.id
+        ORDER BY c.fecha_cierre DESC
+    """)
+    fun observarResumenCuentasCerradasPorDia(inicio: Long, fin: Long): Flow<List<CuentaResumen>>
 }

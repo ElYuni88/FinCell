@@ -91,13 +91,14 @@
                 android:textSize="14sp" />
         </LinearLayout>
 
-        <!-- Lista del carrito -->
+        <!-- ✅ FIX: Lista del carrito con minHeight para que se mida correctamente -->
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recyclerCarrito"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:maxHeight="200dp"
-            android:nestedScrollingEnabled="true" />
+            android:minHeight="60dp"
+            android:nestedScrollingEnabled="true"
+            android:paddingVertical="4dp" />
 
         <!-- Botones -->
         <LinearLayout

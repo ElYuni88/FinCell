@@ -13,7 +13,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Configuración"
+            android:text="@string/title_configuracion"
             android:textSize="24sp"
             android:textStyle="bold" />
 
@@ -25,56 +25,56 @@
                 android:id="@+id/radioSimple"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Iniciar en modo simple" />
+                android:text="@string/lbl_iniciar_modo_simple" />
 
             <RadioButton
                 android:id="@+id/radioCuenta"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Iniciar en modo cuenta" />
+                android:text="@string/lbl_iniciar_modo_cuenta" />
 
             <RadioButton
                 android:id="@+id/radioRecordar"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Recordar último modo" />
+                android:text="@string/lbl_recordar_ultimo_modo" />
         </RadioGroup>
 
         <Switch
             android:id="@+id/switchSonido"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Sonido al escanear" />
+            android:text="@string/lbl_sonido_al_escanear" />
 
         <Switch
             android:id="@+id/switchVibrar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Vibrar al escanear" />
+            android:text="@string/lbl_vibrar_al_escanear" />
 
         <Switch
             android:id="@+id/switchConfirmar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Confirmar antes de agregar a cuenta" />
+            android:text="@string/lbl_confirmar_agregar_cuenta" />
 
         <Switch
             android:id="@+id/switchBackup"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Exportar respaldo automático" />
+            android:text="@string/lbl_exportar_respaldo_automatico" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnGuardar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Guardar" />
+            android:text="@string/btn_guardar" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnVolver"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Volver" />
+            android:text="@string/btn_volver" />
 
         <!-- ⚠️ ZONA PELIGROSA: Resetear app -->
         <View
@@ -87,7 +87,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="⚠️ Zona peligrosa"
+            android:text="@string/title_zona_peligrosa"
             android:textColor="@color/colorError"
             android:textSize="16sp"
             android:textStyle="bold" />
@@ -96,7 +96,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="Las acciones de esta sección no se pueden deshacer."
+            android:text="@string/msg_advertencia_zona_peligrosa"
             android:textSize="12sp"
             android:textColor="@color/text_secondary" />
 
@@ -106,7 +106,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:text="🔓 Revertir cierre de periodo"
+            android:text="@string/btn_revertir_cierre_periodo"
             android:textColor="@color/pos_blue"
             app:strokeColor="@color/pos_blue"
             android:visibility="gone" />
@@ -117,7 +117,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:text="🗑️ Resetear app (borrar historial)"
+            android:text="@string/btn_resetear_app"
             android:textColor="@color/colorError"
             app:strokeColor="@color/colorError" />
 

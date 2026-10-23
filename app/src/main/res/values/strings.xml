@@ -7,4 +7,78 @@
     <string name="total_carrito">Total: $0.00</string>
     <string name="cancelar">Cancelar</string>
     <string name="registrar_venta">Registrar venta</string>
+
+    <!-- Configuración -->
+    <string name="title_configuracion">Configuración</string>
+    <string name="lbl_iniciar_modo_simple">Iniciar en modo simple</string>
+    <string name="lbl_iniciar_modo_cuenta">Iniciar en modo cuenta</string>
+    <string name="lbl_recordar_ultimo_modo">Recordar último modo</string>
+    <string name="lbl_sonido_al_escanear">Sonido al escanear</string>
+    <string name="lbl_vibrar_al_escanear">Vibrar al escanear</string>
+    <string name="lbl_confirmar_agregar_cuenta">Confirmar antes de agregar a cuenta</string>
+    <string name="lbl_exportar_respaldo_automatico">Exportar respaldo automático</string>
+    <string name="btn_guardar">Guardar</string>
+    <string name="btn_volver">Volver</string>
+    <string name="title_zona_peligrosa">⚠️ Zona peligrosa</string>
+    <string name="msg_advertencia_zona_peligrosa">Las acciones de esta sección no se pueden deshacer.</string>
+    <string name="btn_revertir_cierre_periodo">🔓 Revertir cierre de periodo</string>
+    <string name="btn_resetear_app">🗑️ Resetear app (borrar historial)</string>
+
+    <!-- Cuenta / Dialog Cerrar Cuenta -->
+    <string name="title_cerrar_cuenta">Cerrar cuenta</string>
+    <string name="btn_cerrar_cuenta">Cerrar cuenta</string>
+    <string name="hint_observaciones">Observaciones</string>
+
+    <!-- Cuenta / Dialog Nuevo Cliente -->
+    <string name="title_nueva_cuenta">Nueva cuenta</string>
+    <string name="btn_crear">Crear</string>
+    <string name="msg_nombre_requerido">El nombre es requerido</string>
+    <string name="hint_nombre_cliente">Nombre del cliente</string>
+    <string name="hint_telefono_opcional">Teléfono opcional</string>
+    <string name="hint_mesa_opcional">Mesa (opcional)</string>
+    <string name="lbl_recordar_cuenta">Recordar cuenta para próximas visitas</string>
+
+    <!-- Detalle de Cuenta / AccountDetailActivity -->
+    <string name="msg_permiso_camara_requerido">Permiso de cámara requerido</string>
+    <string name="lbl_apertura_fecha">Apertura: %1$s</string>
+    <string name="lbl_apertura_cierre_fecha">Apertura: %1$s · Cierre: %2$s</string>
+    <string name="lbl_total">Total: %1$s</string>
+    <string name="lbl_pago_metodo_fecha">Pago: %1$s · %2$s</string>
+    <string name="title_eliminar_producto">Eliminar producto</string>
+    <string name="msg_confirmar_eliminar_producto_cuenta">¿Eliminar %1$s de la cuenta?</string>
+    <string name="msg_impresion_proximamente">La impresión estará disponible próximamente</string>
+    <string name="msg_ticket_guardado_descargas">Ticket guardado en Descargas</string>
+    <string name="msg_error_guardar_ticket">No se pudo guardar el ticket: %1$s</string>
+    <string name="lbl_ticket_asunto">Ticket #%1$s</string>
+    <string name="msg_ticket_venta_adjunto">Ticket de venta adjunto</string>
+    <string name="title_compartir_ticket">Compartir ticket</string>
+    <string name="lbl_cliente_temporal">Cliente temporal</string>
+    <string name="lbl_cliente_no_registrado">%1$s (No registrado)</string>
+    <string name="lbl_mesa_no_especificada">No especificada</string>
+    <string name="msg_codigo_barras_vacio">El código de barras no puede estar vacío</string>
+    <string name="hint_cantidad_inventario">Cantidad en inventario</string>
+    <string name="title_agregar_producto_escaneado">Agregar producto escaneado</string>
+    <string name="btn_guardar_y_agregar">Guardar y agregar</string>
+    <string name="msg_corrige_codigo_antes_guardar">Corrige el código antes de guardar</string>
+    <string name="msg_campos_producto_requeridos">Nombre, precio y cantidad en inventario válidos son requeridos</string>
+    <string name="title_producto_inactivo">Producto inactivo</string>
+    <string name="msg_producto_inactivo_activar">\"%1$s\" está inactivo (lo desactivó el admin).\n\n¿Quieres activarlo y continuar con la venta?</string>
+    <string name="btn_activar">Activar</string>
+    <string name="btn_no">No</string>
+
+    <!-- Notificaciones -->
+    <string name="title_notificaciones">Notificaciones</string>
+    <string name="msg_selecciona_al_menos_una_notificacion">Selecciona al menos una notificación</string>
+    <string name="lbl_sin_notificaciones">Sin notificaciones</string>
+    <string name="lbl_cantidad_notificaciones">%1$d notificaciones</string>
+    <string name="lbl_marcar_todas">Marcar todas</string>
+    <string name="btn_eliminar_seleccionadas">Eliminar seleccionadas</string>
+    <string name="cd_eliminar_notificacion">Eliminar notificación</string>
+
+    <!-- Diálogo Producto No Encontrado -->
+    <string name="title_producto_no_encontrado">Producto no encontrado</string>
+    <string name="btn_dar_entrada">Dar entrada</string>
+
+    <!-- Cuenta Activa / ActiveAccount -->
+    <string name="msg_cuenta_cerrada_correctamente">Cuenta cerrada correctamente</string>
 </resources>

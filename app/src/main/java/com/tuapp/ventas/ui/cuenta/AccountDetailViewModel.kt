@@ -17,6 +17,8 @@ class AccountDetailViewModel(private val repo: VentasRepository, private val cue
     private val _ventaFinal = MutableLiveData<VentaFinal?>()
     val ventaFinal: LiveData<VentaFinal?> = _ventaFinal
     val mensaje = MutableLiveData<String>()
+
+    val productoInactivo = MutableLiveData<Producto?>()
     val codigoProductoNuevo = MutableLiveData<String?>()
 
     init {
@@ -29,14 +31,15 @@ class AccountDetailViewModel(private val repo: VentasRepository, private val cue
         try {
             Log.d(TAG, "Buscando producto con código: $codigo")
             val producto = repo.buscarProducto(codigo)
-            if (producto == null) {
-                codigoProductoNuevo.value = codigo
-                return@launch
+            when {
+                producto == null -> codigoProductoNuevo.value = codigo
+                producto.inactivo -> productoInactivo.value = producto    // ✅ NUEVO
+                else -> {
+                    repo.agregarProductoACuenta(cuentaId, producto, 1)
+                    Log.d(TAG, "${producto.nombre} agregado a la cuenta $cuentaId")
+                    mensaje.value = "${producto.nombre} agregado a la cuenta"
+                }
             }
-
-            repo.agregarProductoACuenta(cuentaId, producto, 1)
-            Log.d(TAG, "${producto.nombre} agregado a la cuenta $cuentaId")
-            mensaje.value = "${producto.nombre} agregado a la cuenta"
         } catch (e: Exception) {
             Log.e(TAG, "Error al procesar escaneo directo", e)
             mensaje.value = "Error: ${e.message ?: "No se pudo agregar"}"
@@ -91,6 +94,22 @@ class AccountDetailViewModel(private val repo: VentasRepository, private val cue
     private fun fusionarDetallesDuplicados() = viewModelScope.launch {
         runCatching { repo.fusionarDetallesDuplicados(cuentaId) }
             .onFailure { Log.e(TAG, "Error al fusionar detalles duplicados", it) }
+    }
+
+    fun consumirProductoInactivo() {
+        productoInactivo.value = null
+    }
+
+    fun activarYAgregar(producto: Producto) = viewModelScope.launch {
+        runCatching {
+            repo.activarProducto(producto.id)
+            repo.agregarProductoACuenta(cuentaId, producto.copy(inactivo = false), 1)
+        }.onSuccess {
+            mensaje.value = "${producto.nombre} activado y agregado a la cuenta"
+            consumirProductoInactivo()
+        }.onFailure {
+            mensaje.value = it.message ?: "No se pudo activar el producto"
+        }
     }
 
     companion object { private const val TAG = "AccountDetailVM" }

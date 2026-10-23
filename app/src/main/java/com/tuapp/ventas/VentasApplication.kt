@@ -95,6 +95,12 @@ class VentasApplication : Application() {
             } else {
                 android.util.Log.d("VentasApplication", "Estado de periodo cargado: $estado")
             }
+
+            // ✅ NUEVO: inicializar inicio de periodo de ventas si no existe
+            if (prefs.obtenerInicioPeriodoVentas() == 0L) {
+                prefs.guardarInicioPeriodoVentas(System.currentTimeMillis())
+                android.util.Log.d("VentasApplication", "inicioPeriodoVentas inicializado a now")
+            }
         } catch (e: Exception) {
             android.util.Log.e("VentasApplication", "Error inicializando estado de periodo", e)
         }

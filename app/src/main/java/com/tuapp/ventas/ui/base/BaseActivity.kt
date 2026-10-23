@@ -41,10 +41,9 @@ abstract class BaseActivity : AppCompatActivity() {
         configurarToolbarYDrawer()
         configurarBottomNavigation()
         configurarNotificaciones()
-        actualizarHeaderMenu()   // ✅ NUEVA LÍNEA
+        actualizarHeaderMenu()
     }
 
-    /** Redirige el contenido de las hijas al FrameLayout común. */
     override fun setContentView(view: View?) {
         if (::baseBinding.isInitialized && view != baseBinding.root) {
             baseBinding.contentFrame.removeAllViews()
@@ -75,8 +74,36 @@ abstract class BaseActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         if (::baseBinding.isInitialized) {
+            // ✅ Solo restaura si la Activity hija quiere la barra base
+            if (shouldShowBaseToolbar()) {
+                restaurarBarraConFade()
+            }
             seleccionarItemActual()
-            actualizarHeaderMenu()   // ✅ Actualizar también al volver (por si cambió el PV)
+            actualizarHeaderMenu()
+        }
+    }
+
+    /**
+     * Permite a las Activities hijas indicar que ellas manejan su propia barra
+     * (ej. EstadisticasActivity). Por defecto, true.
+     */
+    protected open fun shouldShowBaseToolbar(): Boolean = true
+
+    /**
+     * Restaura toolbar y bottomNav con fade-in si estaban ocultos.
+     * Si ya están visibles, no toca nada para no interrumpir animaciones en curso.
+     */
+    private fun restaurarBarraConFade() {
+        val duracion = 150L
+        if (baseBinding.toolbar.visibility == View.GONE) {
+            baseBinding.toolbar.alpha = 0f
+            baseBinding.toolbar.visibility = View.VISIBLE
+            baseBinding.toolbar.animate().alpha(1f).setDuration(duracion).start()
+        }
+        if (baseBinding.bottomNavigation.visibility == View.GONE) {
+            baseBinding.bottomNavigation.alpha = 0f
+            baseBinding.bottomNavigation.visibility = View.VISIBLE
+            baseBinding.bottomNavigation.animate().alpha(1f).setDuration(duracion).start()
         }
     }
 
@@ -107,31 +134,17 @@ abstract class BaseActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Actualiza el header del menú lateral con los datos dinámicos:
-     * - Versión de la app
-     * - Nombre del Punto de Venta registrado
-     */
     private fun actualizarHeaderMenu() {
         val header = baseBinding.navView.getHeaderView(0) ?: return
-
-        // ✅ 1. Actualizar versión en el título
         val txtAppNombre = header.findViewById<TextView>(R.id.txtAppNombre)
         txtAppNombre?.text = "CafePos v${BuildConfig.VERSION_NAME}"
-
-        // ✅ 2. Actualizar nombre del PV
         val txtPVNombre = header.findViewById<TextView>(R.id.txtPVNombre)
 
         lifecycleScope.launch {
             try {
                 val repo = (application as VentasApplication).repository
                 val pv = repo.obtenerPuntoVentaActivo()
-
-                txtPVNombre?.text = if (pv != null) {
-                    pv.nombre
-                } else {
-                    "Sin asignación"
-                }
+                txtPVNombre?.text = if (pv != null) pv.nombre else "Sin asignación"
             } catch (e: Exception) {
                 txtPVNombre?.text = "Sin asignación"
             }
@@ -150,7 +163,6 @@ abstract class BaseActivity : AppCompatActivity() {
                 startActivity(Intent(this, ImportarIPVActivity::class.java))
             }
             R.id.nav_exportar_ipb, R.id.menu_exportar_ipb -> {
-                // Lanzar directamente IPBResumenActivity (no es subclase de BaseActivity, por eso no usamos verificación)
                 startActivity(Intent(this, IPBResumenActivity::class.java))
             }
             R.id.menu_configuraciones -> if (this !is SettingsActivity) startActivity(Intent(this, SettingsActivity::class.java))

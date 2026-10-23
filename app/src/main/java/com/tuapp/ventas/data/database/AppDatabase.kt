@@ -1,6 +1,7 @@
 package com.tuapp.ventas.data.database
 
 import android.content.Context
+import android.util.Log
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
@@ -24,7 +25,7 @@ import kotlinx.coroutines.launch
         IpvImportado::class,
         SnapshotInventario::class],
 
-    version = 11,
+    version = 12,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -212,6 +213,41 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // ============================================================
+        // ✅ NUEVA v11 → v12: inventarioAlInicioPeriodo
+        // ============================================================
+        private val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                Log.d("Migration", "🏗️ Iniciando migración 11 → 12 (inventarioAlInicioPeriodo)")
+
+                // 1. Producto
+                database.execSQL(
+                    "ALTER TABLE productos ADD COLUMN inventario_al_inicio_periodo INTEGER NOT NULL DEFAULT 0"
+                )
+                database.execSQL(
+                    "UPDATE productos SET inventario_al_inicio_periodo = inventario"
+                )
+                val totalProd = database.query("SELECT COUNT(*) FROM productos").use { c ->
+                    c.moveToFirst(); c.getInt(0)
+                }
+                Log.d("Migration", "✅ productos migrados: $totalProd filas (inventario_al_inicio_periodo = inventario)")
+
+                // 2. Snapshot
+                database.execSQL(
+                    "ALTER TABLE snapshots_inventario ADD COLUMN inventario_al_inicio_periodo INTEGER NOT NULL DEFAULT 0"
+                )
+                database.execSQL(
+                    "UPDATE snapshots_inventario SET inventario_al_inicio_periodo = inventario"
+                )
+                val totalSnap = database.query("SELECT COUNT(*) FROM snapshots_inventario").use { c ->
+                    c.moveToFirst(); c.getInt(0)
+                }
+                Log.d("Migration", "✅ snapshots_inventario migrados: $totalSnap filas")
+
+                Log.d("Migration", "🏁 Migración 11 → 12 completada")
+            }
+        }
+
         private fun crearTablaNotificaciones(database: SupportSQLiteDatabase) {
             database.execSQL("""
                 CREATE TABLE IF NOT EXISTS notificaciones (
@@ -255,7 +291,8 @@ abstract class AppDatabase : RoomDatabase() {
                     MIGRATION_7_8,
                     MIGRATION_8_9,
                     MIGRATION_9_10,
-                    MIGRATION_10_11)
+                    MIGRATION_10_11,
+                    MIGRATION_11_12)
                 .addCallback(object : Callback() {
                     override fun onCreate(db: SupportSQLiteDatabase) {
                         super.onCreate(db)

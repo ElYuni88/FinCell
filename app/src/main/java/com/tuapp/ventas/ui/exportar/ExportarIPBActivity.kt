@@ -6,6 +6,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
+import android.util.Log
 import android.widget.Toast
 import androidx.lifecycle.lifecycleScope
 import com.google.gson.Gson
@@ -33,21 +34,30 @@ class ExportarIPBActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val sobrescribir = intent.getBooleanExtra(EXTRA_SOBRESCRIBIR, false)
-        val fechaSeleccionada = intent.getLongExtra(EXTRA_FECHA_SELECCIONADA, System.currentTimeMillis())
-
-        exportar(sobrescribir, fechaSeleccionada)
+        exportar(sobrescribir)
     }
 
-    private fun exportar(sobrescribir: Boolean, fecha: Long) = lifecycleScope.launch {
+    private fun exportar(sobrescribir: Boolean) = lifecycleScope.launch {
         var nombreArchivo = ""
 
         runCatching {
             val repo = (application as VentasApplication).repository
             val prefs = PreferencesManager(this@ExportarIPBActivity)
 
-            val inicio = DateUtils.inicioDia(fecha)
-            val fin = DateUtils.finDia(fecha)
-            val fechaStr = DateUtils.fechaArchivo(fecha)
+            // ✅ RANGO: desde inicio del periodo hasta ahora
+            val inicioPeriodo = prefs.obtenerInicioPeriodoVentas()
+            val inicio = if (inicioPeriodo > 0L) {
+                inicioPeriodo
+            } else {
+                DateUtils.inicioDia(System.currentTimeMillis())
+            }
+            val fin = System.currentTimeMillis()
+            val fechaStr = DateUtils.fechaArchivo(fin)
+
+            Log.d(
+                "ExportarIPB",
+                "Exportando período: inicio=${DateUtils.fechaHora(inicio)} fin=${DateUtils.fechaHora(fin)}"
+            )
 
             val pv = repo.obtenerPuntoVentaActivo()
             val pvExport = pv?.toPuntoVentaExport()
@@ -68,10 +78,9 @@ class ExportarIPBActivity : BaseActivity() {
 
             val ventas = repo.ventasDirectasDia(inicio, fin)
 
-            val gastos = prefs.obtenerGastosActivosDia(fechaStr)
-                .map { Gasto(categoria = it.nombre, monto = it.monto) }
-            val ingresos = prefs.obtenerIngresosActivosDia(fechaStr)
-                .map { Gasto(categoria = it.nombre, monto = it.monto) }
+            // ✅ Gastos e ingresos de TODO el rango del periodo
+            val gastos = prefs.obtenerGastosActivosRango(inicio, fin)
+            val ingresos = prefs.obtenerIngresosActivosRango(inicio, fin)
 
             val cuentasIPB = cuentasCerradas.map { cuentaConDetalles ->
                 val cuenta = cuentaConDetalles.cuenta
@@ -114,7 +123,7 @@ class ExportarIPBActivity : BaseActivity() {
             val resumenClientes = calcularResumenClientes(cuentasIPB)
 
             val archivo = ArchivoIPB(
-                fecha = fechaStr,
+                fecha = fechaStr,   // Fecha del cierre (hoy). El rango se infiere por productos[].vendidos
                 timestamp = System.currentTimeMillis(),
                 puntoVenta = pvExport,
                 productos = productos,
@@ -140,19 +149,18 @@ class ExportarIPBActivity : BaseActivity() {
             nombreArchivo = "ipb_${fechaStr}.ipb"
             guardarBinario(nombreArchivo, bytesComprimidos, sobrescribir)
 
-            android.util.Log.d(
+            Log.d(
                 "ExportarIPB",
-                "Fecha: $fechaStr | Original: ${json.toByteArray().size} bytes | Comprimido: ${bytesComprimidos.size} bytes"
+                "Fecha cierre: $fechaStr | Ventas: ${ventas.size} | Cuentas: ${cuentasCerradas.size} | Original: ${json.toByteArray().size} b | Comprimido: ${bytesComprimidos.size} b"
             )
         }.onSuccess {
-            // ✅ Guardar nombre del archivo + fecha de exportación
             val prefs = PreferencesManager(this@ExportarIPBActivity)
             prefs.guardarUltimaExportacionIPB(System.currentTimeMillis())
             prefs.nombreArchivoExportado = nombreArchivo
 
-            // ✅ Cerrar el periodo (crea snapshot + cambia estado a CERRADO + marca periodo muerto)
+            // ✅ Cerrar el periodo con la fecha de HOY
             val repo = (application as VentasApplication).repository
-            val resultado = repo.cerrarPeriodo(fecha)
+            val resultado = repo.cerrarPeriodo(System.currentTimeMillis())
 
             if (resultado.exito) {
                 Toast.makeText(
@@ -162,7 +170,6 @@ class ExportarIPBActivity : BaseActivity() {
                     Toast.LENGTH_LONG
                 ).show()
             } else {
-                // ⚠️ El archivo se exportó pero no se pudo cerrar el periodo
                 Toast.makeText(
                     this@ExportarIPBActivity,
                     "⚠️ IPB exportado, pero no se pudo cerrar el periodo:\n${resultado.mensaje}",
@@ -189,7 +196,6 @@ class ExportarIPBActivity : BaseActivity() {
             val totalConsumido = cuentasCliente.sumOf { it.total }
             val cantidadCuentas = cuentasCliente.size
             val ticketPromedio = if (cantidadCuentas > 0) totalConsumido / cantidadCuentas else 0.0
-
             val metodoPagoFrecuente = cuentasCliente
                 .groupBy { it.metodoPago }
                 .maxByOrNull { it.value.size }
@@ -277,6 +283,6 @@ class ExportarIPBActivity : BaseActivity() {
 
     companion object {
         const val EXTRA_SOBRESCRIBIR = "extra_sobrescribir"
-        const val EXTRA_FECHA_SELECCIONADA = "extra_fecha_seleccionada"
+        const val EXTRA_FECHA_SELECCIONADA = "extra_fecha_seleccionada"   // mantenido por compatibilidad, ya no se usa
     }
 }

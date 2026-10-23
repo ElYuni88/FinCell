@@ -16,10 +16,28 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
+/**
+ * Modelo para la card de producto con stock ajustado según el carrito.
+ *
+ * - producto: el producto original de la BD
+ * - cantidadEnCarrito: cuántas unidades del producto ya están en el carrito
+ * - stockDisponible: inventario - vendidos - cantidadEnCarrito (nunca negativo)
+ * - sinStock: true si stockDisponible <= 0 (o si inventario - vendidos ya era 0)
+ */
+data class ProductoConStockAjustado(
+    val producto: Producto,
+    val cantidadEnCarrito: Int
+) {
+    val stockDisponible: Int
+        get() = (producto.inventario - producto.vendidos - cantidadEnCarrito).coerceAtLeast(0)
+
+    val sinStock: Boolean
+        get() = stockDisponible <= 0
+}
 
 class ProductosManualesViewModel(private val repo: VentasRepository) : ViewModel() {
 
@@ -29,26 +47,6 @@ class ProductosManualesViewModel(private val repo: VentasRepository) : ViewModel
     // ✅ Solo productos activos (los inactivos no aparecen en venta manual)
     private val todosLosProductos = repo.observarProductosActivos().asLiveData()
     private val query = MutableLiveData("")
-
-    val productosFiltrados: LiveData<List<Producto>> = combine(
-        todosLosProductos.asFlow(),
-        query.asFlow()
-    ) { productos, q ->
-        if (q.isBlank()) {
-            productos
-        } else {
-            productos.filter { producto ->
-                // ✅ CAMBIO: Buscar ignorando tildes
-                TextUtils.contiene(producto.nombre, q) ||
-                        // Mantener búsqueda por código de barras
-                        producto.codigoBarras.contains(q, ignoreCase = true)
-            }
-        }
-    }.asLiveData()
-
-    fun setQuery(q: String) {
-        query.value = q
-    }
 
     // ============================================================
     // CARRITO TEMPORAL
@@ -64,6 +62,50 @@ class ProductosManualesViewModel(private val repo: VentasRepository) : ViewModel
 
     private val _ventaRegistrada = MutableLiveData<Boolean>()
     val ventaRegistrada: LiveData<Boolean> = _ventaRegistrada
+
+    // ============================================================
+    // PRODUCTOS CON STOCK AJUSTADO (productos + carrito combinados)
+    // ============================================================
+    /**
+     * Lista de productos con el stock ajustado según lo que ya está en el carrito.
+     * Se recalcula automáticamente cuando cambia:
+     * - La lista de productos (por ejemplo, si cambia el inventario en BD)
+     * - La búsqueda
+     * - El carrito (agregar/quitar productos)
+     */
+    val productosConStockAjustado: LiveData<List<ProductoConStockAjustado>> = combine(
+        todosLosProductos.asFlow(),
+        query.asFlow(),
+        _productosAcumulados.asFlow()
+    ) { productos, q, carrito ->
+        // 1. Filtrar por búsqueda
+        val filtrados = if (q.isBlank()) {
+            productos
+        } else {
+            productos.filter { producto ->
+                TextUtils.contiene(producto.nombre, q) ||
+                        producto.codigoBarras.contains(q, ignoreCase = true)
+            }
+        }
+
+        // 2. Mapear con cantidad en carrito
+        val carritoPorId = carrito.associateBy { it.producto.id }
+        filtrados.map { p ->
+            val itemEnCarrito = carritoPorId[p.id]
+            ProductoConStockAjustado(
+                producto = p,
+                cantidadEnCarrito = itemEnCarrito?.cantidad ?: 0
+            )
+        }
+    }.asLiveData()
+
+    fun setQuery(q: String) {
+        query.value = q
+    }
+
+    // ============================================================
+    // ACCIONES DEL CARRITO
+    // ============================================================
 
     /**
      * Agrega un producto al carrito temporal.

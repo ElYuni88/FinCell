@@ -14,6 +14,13 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import android.content.ClipData
+import android.net.Uri
+import androidx.core.content.FileProvider
+import com.tuapp.ventas.R
+import com.tuapp.ventas.ui.ticket.TicketContent
+import com.tuapp.ventas.ui.ticket.TicketData
+import com.tuapp.ventas.ui.ticket.TicketPreviewDialog
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.DefaultItemAnimator
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -22,6 +29,7 @@ import com.tuapp.ventas.VentasApplication
 import com.tuapp.ventas.data.model.Cuenta
 import com.tuapp.ventas.ui.productosmanuales.ProductosManualesActivity
 import com.tuapp.ventas.data.model.ModoOperacion
+import com.tuapp.ventas.data.model.Producto
 import com.tuapp.ventas.data.model.relaciones.DetalleConProducto
 import com.tuapp.ventas.databinding.ActivityAccountDetailBinding
 import com.tuapp.ventas.ui.cuenta.adapters.DetalleCuentaAdapter
@@ -32,6 +40,7 @@ import com.tuapp.ventas.utils.CodigoBarrasUtils
 import com.tuapp.ventas.utils.DateUtils
 import com.tuapp.ventas.utils.SoundUtils
 import com.tuapp.ventas.utils.ValidadorCodigoProducto
+import kotlinx.coroutines.launch
 import java.io.File
 
 /** Pantalla de cuenta abierta editable o cuenta cerrada en modo solo lectura. */
@@ -50,7 +59,7 @@ class AccountDetailActivity : AppCompatActivity() {
             viewModel.procesarEscaneoDirecto(codigo)
         }
     }
-    private val cameraPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { if (it) abrirScanner() else toast("Permiso de cámara requerido") }
+    private val cameraPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { if (it) abrirScanner() else toast(getString(R.string.msg_permiso_camara_requerido)) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -82,11 +91,11 @@ class AccountDetailActivity : AppCompatActivity() {
             val abierta = cuentaConDetalles.cuenta.estado == Cuenta.ESTADO_ABIERTA
             binding.txtCliente.text = nombreCliente(cuentaConDetalles)
             binding.txtFechas.text = if (abierta) {
-                "Apertura: ${DateUtils.fechaHora(cuentaConDetalles.cuenta.fechaApertura)}"
+                getString(R.string.lbl_apertura_fecha, DateUtils.fechaHora(cuentaConDetalles.cuenta.fechaApertura))
             } else {
-                "Apertura: ${DateUtils.fechaHora(cuentaConDetalles.cuenta.fechaApertura)} · Cierre: ${DateUtils.fechaHora(cuentaConDetalles.cuenta.fechaCierre ?: 0)}"
+                getString(R.string.lbl_apertura_cierre_fecha, DateUtils.fechaHora(cuentaConDetalles.cuenta.fechaApertura), DateUtils.fechaHora(cuentaConDetalles.cuenta.fechaCierre ?: 0))
             }
-            binding.txtTotal.text = "Total: ${DateUtils.moneda(cuentaConDetalles.cuenta.total)}"
+            binding.txtTotal.text = getString(R.string.lbl_total, DateUtils.moneda(cuentaConDetalles.cuenta.total))
             binding.btnEscanear.visibility = if (abierta) View.VISIBLE else View.GONE
             binding.btnAgregarManual.visibility = if (abierta) View.VISIBLE else View.GONE
             binding.btnCerrarCuenta.visibility = if (abierta) View.VISIBLE else View.GONE
@@ -99,10 +108,13 @@ class AccountDetailActivity : AppCompatActivity() {
         }
         viewModel.ventaFinal.observe(this) { venta ->
             binding.txtMetodoPago.visibility = if (venta == null) View.GONE else View.VISIBLE
-            binding.txtMetodoPago.text = venta?.let { "Pago: ${it.metodoPago} · ${DateUtils.fechaHora(it.fechaCierre)}" }.orEmpty()
+            binding.txtMetodoPago.text = venta?.let { getString(R.string.lbl_pago_metodo_fecha, it.metodoPago, DateUtils.fechaHora(it.fechaCierre)) }.orEmpty()
         }
         viewModel.mensaje.observe(this) { toast(it) }
         viewModel.codigoProductoNuevo.observe(this) { codigo -> codigo?.let { mostrarDialogoProductoNuevo(it) } }
+        viewModel.productoInactivo.observe(this) { producto ->
+            producto?.let { mostrarDialogoReactivarCuenta(it) }
+        }
     }
 
     private fun crearAdapter(soloLectura: Boolean) = DetalleCuentaAdapter(
@@ -116,77 +128,113 @@ class AccountDetailActivity : AppCompatActivity() {
 
     private fun confirmarEliminacion(item: DetalleConProducto) {
         MaterialAlertDialogBuilder(this)
-            .setTitle("Eliminar producto")
-            .setMessage("¿Eliminar ${item.producto.nombre} de la cuenta?")
-            .setNegativeButton("Cancelar", null)
-            .setPositiveButton("Eliminar") { _, _ -> viewModel.eliminarDetalle(item.detalle.id) }
+            .setTitle(getString(R.string.title_eliminar_producto))
+            .setMessage(getString(R.string.msg_confirmar_eliminar_producto_cuenta, item.producto.nombre))
+            .setNegativeButton(getString(R.string.cancelar), null)
+            .setPositiveButton(getString(R.string.eliminar)) { _, _ -> viewModel.eliminarDetalle(item.detalle.id) }
             .show()
     }
 
     private fun generarTicket() {
-        MaterialAlertDialogBuilder(this)
-            .setTitle("Exportar Ticket")
-            .setMessage("¿Desea exportar el ticket con la información de la cuenta?")
-            .setPositiveButton("Exportar") { _, _ -> exportarTicketArchivo() }
-            .setNegativeButton("Cancelar", null)
-            .show()
-    }
-
-    private fun exportarTicketArchivo() {
         val cuenta = viewModel.cuenta.value ?: return
         val venta = viewModel.ventaFinal.value
-        val contenido = buildString {
-            appendLine("=== TICKET DE CUENTA ===")
-            appendLine("Cuenta: #${cuenta.cuenta.id}")
-            appendLine("Cliente: ${nombreCliente(cuenta)}")
-            appendLine("Mesa: ${mesaCuenta(cuenta)}")
-            appendLine("Fecha apertura: ${DateUtils.fechaHora(cuenta.cuenta.fechaApertura)}")
-            appendLine("Fecha cierre: ${DateUtils.fechaHora(cuenta.cuenta.fechaCierre ?: System.currentTimeMillis())}")
-            appendLine("Método de pago: ${venta?.metodoPago ?: "No especificado"}")
-            appendLine()
-            appendLine("Productos:")
-            cuenta.detalles.forEach { item ->
-                appendLine("- ${item.producto.nombre} x${item.detalle.cantidad} = ${DateUtils.moneda(item.detalle.subtotal)}")
-            }
-            appendLine()
-            appendLine("TOTAL: ${DateUtils.moneda(cuenta.cuenta.total)}")
-        }
 
-        val nombreArchivo = "ticket_cuenta_${cuenta.cuenta.id}_${System.currentTimeMillis()}.txt"
-        runCatching {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                val values = ContentValues().apply {
-                    put(MediaStore.MediaColumns.DISPLAY_NAME, nombreArchivo)
-                    put(MediaStore.MediaColumns.MIME_TYPE, "text/plain")
-                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+        lifecycleScope.launch {
+            val pv = repo.obtenerPuntoVentaActivo()
+            val nombrePv = pv?.nombre?.takeIf { it.isNotBlank() } ?: getString(R.string.app_name)
+            val data = TicketContent.construirDatos(
+                cuenta = cuenta,
+                ventaFinal = venta,
+                nombrePuntoVenta = nombrePv,
+                nombreCliente = nombreCliente(cuenta),
+                mesa = mesaCuenta(cuenta)
+            )
+
+            TicketPreviewDialog().apply {
+                this.data = data
+                this.onExportarCompartir = { d -> exportarYCompartir(d) }
+                this.onImprimir = {
+                    Toast.makeText(
+                        this@AccountDetailActivity,
+                        getString(R.string.msg_impresion_proximamente),
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
-                val uri = contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-                    ?: error("No se pudo crear el archivo en Descargas")
-                contentResolver.openOutputStream(uri).use { output ->
-                    output?.write(contenido.toByteArray()) ?: error("No se pudo escribir el ticket")
-                }
-                nombreArchivo
-            } else {
-                val downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                if (!downloads.exists()) downloads.mkdirs()
-                val file = File(downloads, nombreArchivo)
-                file.writeText(contenido)
-                file.name
-            }
-        }.onSuccess { archivo ->
-            Toast.makeText(this, "Ticket guardado en Descargas: $archivo", Toast.LENGTH_LONG).show()
-        }.onFailure { error ->
-            Toast.makeText(this, "No se pudo guardar el ticket: ${error.message}", Toast.LENGTH_LONG).show()
+            }.show(supportFragmentManager, "ticket_preview")
         }
+    }
+
+    private fun exportarYCompartir(data: TicketData) {
+        val contenido = TicketContent.textoPlano(data)
+        val nombreArchivo = "ticket_cuenta_${data.cuentaId}_${System.currentTimeMillis()}.txt"
+
+        lifecycleScope.launch {
+            val resultado = runCatching {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    guardarEnMediaStore(nombreArchivo, contenido)
+                } else {
+                    guardarEnAlmacenamientoLegacy(nombreArchivo, contenido)
+                }
+            }
+
+            resultado.onSuccess { uri ->
+                Toast.makeText(this@AccountDetailActivity, getString(R.string.msg_ticket_guardado_descargas), Toast.LENGTH_SHORT).show()
+                compartirTicket(uri, nombreArchivo)
+            }.onFailure { error ->
+                Toast.makeText(
+                    this@AccountDetailActivity,
+                    getString(R.string.msg_error_guardar_ticket, error.message.orEmpty()),
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+    }
+
+    private fun guardarEnMediaStore(nombre: String, contenido: String): Uri {
+        val values = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, nombre)
+            put(MediaStore.MediaColumns.MIME_TYPE, "text/plain")
+            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+        }
+        val uri = contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+            ?: error("No se pudo crear el archivo")
+        contentResolver.openOutputStream(uri).use { output ->
+            output?.write(contenido.toByteArray()) ?: error("No se pudo escribir")
+        }
+        return uri
+    }
+
+    private fun guardarEnAlmacenamientoLegacy(nombre: String, contenido: String): Uri {
+        val downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+        if (!downloads.exists()) downloads.mkdirs()
+        val file = File(downloads, nombre)
+        file.writeText(contenido)
+        return FileProvider.getUriForFile(
+            this,
+            "${packageName}.fileprovider",
+            file
+        )
+    }
+
+    private fun compartirTicket(uri: Uri, nombreArchivo: String) {
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            putExtra(Intent.EXTRA_SUBJECT, getString(R.string.lbl_ticket_asunto, nombreArchivo))
+            putExtra(Intent.EXTRA_TEXT, getString(R.string.msg_ticket_venta_adjunto))
+            clipData = ClipData.newRawUri("ticket", uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        startActivity(Intent.createChooser(intent, getString(R.string.title_compartir_ticket)))
     }
 
     private fun nombreCliente(cuenta: com.tuapp.ventas.data.model.relaciones.CuentaConDetalles): String {
-        val nombre = cuenta.cliente?.nombre ?: cuenta.cuenta.nombreClienteTemporal ?: "Cliente temporal"
-        return if (cuenta.cuenta.esClienteTemporal) "$nombre (No registrado)" else nombre
+        val nombre = cuenta.cliente?.nombre ?: cuenta.cuenta.nombreClienteTemporal ?: getString(R.string.lbl_cliente_temporal)
+        return if (cuenta.cuenta.esClienteTemporal) getString(R.string.lbl_cliente_no_registrado, nombre) else nombre
     }
 
     private fun mesaCuenta(cuenta: com.tuapp.ventas.data.model.relaciones.CuentaConDetalles): String {
-        return cuenta.cliente?.mesa ?: cuenta.cuenta.mesaTemporal ?: "No especificada"
+        return cuenta.cliente?.mesa ?: cuenta.cuenta.mesaTemporal ?: getString(R.string.lbl_mesa_no_especificada)
     }
 
     private fun mostrarDialogoCerrar() {
@@ -214,20 +262,20 @@ class AccountDetailActivity : AppCompatActivity() {
     private fun mostrarDialogoAltaProductoEscaneado(codigo: String) {
         val codigoNormalizado = CodigoBarrasUtils.normalizar(codigo)
         if (codigoNormalizado.isBlank()) {
-            toast("El código de barras no puede estar vacío")
+            toast(getString(R.string.msg_codigo_barras_vacio))
             return
         }
 
         val dialogBinding = DialogAgregarProductoBinding.inflate(layoutInflater)
         dialogBinding.inputCodigo.setText(codigoNormalizado)
         dialogBinding.inputCodigo.isEnabled = false
-        dialogBinding.inputInventario.hint = "Cantidad en inventario"
+        dialogBinding.inputInventario.hint = getString(R.string.hint_cantidad_inventario)
 
         val dialog = MaterialAlertDialogBuilder(this)
-            .setTitle("Agregar producto escaneado")
+            .setTitle(getString(R.string.title_agregar_producto_escaneado))
             .setView(dialogBinding.root)
-            .setNegativeButton("Cancelar", null)
-            .setPositiveButton("Guardar y agregar", null)
+            .setNegativeButton(getString(R.string.cancelar), null)
+            .setPositiveButton(getString(R.string.btn_guardar_y_agregar), null)
             .create()
 
         dialog.setOnShowListener {
@@ -248,14 +296,14 @@ class AccountDetailActivity : AppCompatActivity() {
 
             botonGuardar.setOnClickListener {
                 if (!codigoValido) {
-                    toast("Corrige el código antes de guardar")
+                    toast(getString(R.string.msg_corrige_codigo_antes_guardar))
                     return@setOnClickListener
                 }
                 val nombre = dialogBinding.inputNombre.text?.toString()?.trim().orEmpty()
                 val precio = dialogBinding.inputPrecio.text?.toString()?.toDoubleOrNull()
                 val cantidadInventario = dialogBinding.inputInventario.text?.toString()?.toIntOrNull() ?: 1
                 if (nombre.isBlank() || precio == null || precio < 0.0 || cantidadInventario < 0) {
-                    toast("Nombre, precio y cantidad en inventario válidos son requeridos")
+                    toast(getString(R.string.msg_campos_producto_requeridos))
                     return@setOnClickListener
                 }
                 botonGuardar.isEnabled = false
@@ -271,6 +319,18 @@ class AccountDetailActivity : AppCompatActivity() {
         }
         dialog.show()
     }
+
+
+    private fun mostrarDialogoReactivarCuenta(producto: Producto) {
+        MaterialAlertDialogBuilder(this)
+            .setTitle(getString(R.string.title_producto_inactivo))
+            .setMessage(getString(R.string.msg_producto_inactivo_activar, producto.nombre))
+            .setPositiveButton(getString(R.string.btn_activar)) { _, _ -> viewModel.activarYAgregar(producto) }
+            .setNegativeButton(getString(R.string.btn_no)) { _, _ -> viewModel.consumirProductoInactivo() }
+            .setCancelable(false)
+            .show()
+    }
+
 
     private fun solicitarCamara() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) abrirScanner()

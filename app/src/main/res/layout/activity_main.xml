@@ -319,6 +319,16 @@
                         android:text="Cuentas abiertas: 0"
                         android:textAppearance="@style/TextAppearance.FinSell.Secondary" />
 
+                    <!-- ✅ NUEVO: Switch para filtrar cuentas cerradas -->
+                    <com.google.android.material.switchmaterial.SwitchMaterial
+                        android:id="@+id/switchMostrarCerradas"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="Mostrar cuentas cerradas"
+                        android:textColor="@color/text_primary"
+                        app:useMaterialThemeColors="true" />
+
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnNuevaCuenta"
                         android:layout_width="match_parent"

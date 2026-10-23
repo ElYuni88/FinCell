@@ -17,13 +17,14 @@ data class Producto(
     val vendidos: Int = 0,
     @ColumnInfo(name = "esManual") val esManual: Boolean = false,
     @ColumnInfo(name = "fecha_creacion") val fechaCreacion: Long = System.currentTimeMillis(),
+    val inactivo: Boolean = false,
     /**
-     * true = producto inactivo (lo inactivó el admin).
-     * El cliente NO puede inactivar, solo ACTIVAR (si el producto se vuelve a usar).
-     * Los productos inactivos no se pueden vender, pero si el operador escanea uno
-     * y decide activarlo, se reactiva y continúa la operación.
+     * ✅ NUEVO (v12): inventario que tenía el producto al inicio del periodo.
+     * No cambia por ventas ni por reabastecimiento.
+     * Se usa para calcular el "Stock Inicial" en Existencias del día.
      */
-    val inactivo: Boolean = false
+    @ColumnInfo(name = "inventario_al_inicio_periodo")
+    val inventarioAlInicioPeriodo: Int = 0
 ) : Serializable {
     companion object {
         const val TIPO_CODIGO_BARRAS = "CODIGO_BARRAS"

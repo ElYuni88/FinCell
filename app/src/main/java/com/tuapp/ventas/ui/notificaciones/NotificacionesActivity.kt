@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.tuapp.ventas.R
 import com.tuapp.ventas.VentasApplication
 import com.tuapp.ventas.databinding.ActivityNotificacionesBinding
 import com.tuapp.ventas.ui.base.BaseActivity
@@ -17,7 +18,7 @@ class NotificacionesActivity : BaseActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityNotificacionesBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        supportActionBar?.title = "Notificaciones"
+        supportActionBar?.title = getString(R.string.title_notificaciones)
         adapter = NotificacionAdapter(onSeleccionCambio = { actualizarAcciones() }, onEliminar = { viewModel.eliminar(it.id) })
         binding.recyclerNotificaciones.setHasFixedSize(true)
         binding.recyclerNotificaciones.layoutManager = LinearLayoutManager(this)
@@ -25,11 +26,11 @@ class NotificacionesActivity : BaseActivity() {
         binding.chkMarcarTodas.setOnCheckedChangeListener { _, checked -> adapter.seleccionarTodas(checked); viewModel.marcarLeidas(adapter.idsSeleccionadas()) }
         binding.btnEliminarSeleccionadas.setOnClickListener {
             val ids = adapter.idsSeleccionadas()
-            if (ids.isEmpty()) Toast.makeText(this, "Selecciona al menos una notificación", Toast.LENGTH_SHORT).show() else viewModel.eliminarSeleccionadas(ids)
+            if (ids.isEmpty()) Toast.makeText(this, getString(R.string.msg_selecciona_al_menos_una_notificacion), Toast.LENGTH_SHORT).show() else viewModel.eliminarSeleccionadas(ids)
         }
         viewModel.notificaciones.observe(this) { lista ->
             adapter.submitList(lista)
-            binding.txtVacio.text = if (lista.isEmpty()) "Sin notificaciones" else "${lista.size} notificaciones"
+            binding.txtVacio.text = if (lista.isEmpty()) getString(R.string.lbl_sin_notificaciones) else getString(R.string.lbl_cantidad_notificaciones, lista.size)
             actualizarAcciones()
         }
         viewModel.generar()

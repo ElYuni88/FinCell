@@ -34,10 +34,10 @@ class NuevoClienteDialog : DialogFragment() {
         val binding = DialogNuevoClienteBinding.inflate(layoutInflater)
         configurarAutocomplete(binding)
         return AlertDialog.Builder(requireContext())
-            .setTitle("Nueva cuenta")
+            .setTitle(requireContext().getString(R.string.title_nueva_cuenta))
             .setView(binding.root)
-            .setPositiveButton("Crear", null)
-            .setNegativeButton("Cancelar", null)
+            .setPositiveButton(requireContext().getString(R.string.btn_crear), null)
+            .setNegativeButton(requireContext().getString(R.string.cancelar), null)
             .create()
             .apply {
                 setOnShowListener {
@@ -48,17 +48,18 @@ class NuevoClienteDialog : DialogFragment() {
                         val recordar = binding.checkRecordarCuenta.isChecked
 
                         if (nombre.isBlank()) {
-                            Toast.makeText(requireContext(), "El nombre es requerido", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(requireContext(), requireContext().getString(R.string.msg_nombre_requerido), Toast.LENGTH_SHORT).show()
                             return@setOnClickListener
                         }
 
                         // ✅ CAMBIO: Si es un cliente existente, no volver a guardarlo
+                        // ✅ Si es un cliente existente, SIEMPRE asociarlo (no temporal)
                         val esClienteExistente = clienteSeleccionado != null
                                 && clienteSeleccionado!!.nombre.equals(nombre, ignoreCase = true)
 
-                        // Si es existente, no forzar recordar (ya está guardado)
-                        val recordarFinal = if (esClienteExistente) false else recordar
-
+                        // Si es existente → forzar recordar = true (para asociarlo al cliente)
+                        // Si no → respetar el checkbox del usuario
+                        val recordarFinal = if (esClienteExistente) true else recordar
                         onCrear?.invoke(nombre, telefono, mesa, recordarFinal)
                         dismiss()
                     }

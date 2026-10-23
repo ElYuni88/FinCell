@@ -349,6 +349,7 @@ class PreferencesManager(context: Context) {
         editor.remove("estado_periodo")
         editor.remove("fecha_cierre_periodo")
         editor.remove("nombre_archivo_exportado")
+        editor.remove("inicio_periodo_ventas")
 
         // Borrar ajustes por día (prefijo "ajustes_dia_")
         prefs.all.keys
@@ -357,5 +358,73 @@ class PreferencesManager(context: Context) {
             }
 
         editor.apply()
+    }
+
+    // ================================================================
+    // ✅ INICIO DEL PERIODO DE VENTAS (multi-día)
+    // ================================================================
+
+    /**
+     * Guarda el timestamp del inicio del periodo de ventas actual.
+     * Se setea al importar IPV (reapertura) y al resetear la app.
+     */
+    fun guardarInicioPeriodoVentas(timestamp: Long) {
+        prefs.edit().putLong("inicio_periodo_ventas", timestamp).apply()
+    }
+
+    /**
+     * Obtiene el timestamp del inicio del periodo de ventas.
+     * Devuelve 0 si nunca se ha seteado (primer arranque).
+     */
+    fun obtenerInicioPeriodoVentas(): Long {
+        return prefs.getLong("inicio_periodo_ventas", 0L)
+    }
+
+    /**
+     * Suma los gastos activos de TODOS los días del rango [inicio, fin].
+     * Agrupa por categoría: si un gasto se repite en varios días,
+     * devuelve un solo Gasto con la suma total.
+     */
+    fun obtenerGastosActivosRango(inicio: Long, fin: Long): List<Gasto> {
+        return obtenerAjustesRango(inicio, fin, CategoriaAjuste.TIPO_GASTO)
+            .map { Gasto(categoria = it.nombre, monto = it.monto) }
+    }
+
+    /**
+     * Suma los ingresos activos de TODOS los días del rango [inicio, fin].
+     */
+    fun obtenerIngresosActivosRango(inicio: Long, fin: Long): List<Gasto> {
+        return obtenerAjustesRango(inicio, fin, CategoriaAjuste.TIPO_INGRESO)
+            .map { Gasto(categoria = it.nombre, monto = it.monto) }
+    }
+
+    /**
+     * Itera día por día del rango y agrupa por nombre de categoría,
+     * sumando montos. Solo incluye ajustes con `activo = true`.
+     */
+    private fun obtenerAjustesRango(
+        inicio: Long,
+        fin: Long,
+        tipo: String
+    ): List<AjusteDia> {
+        val porCategoria = mutableMapOf<String, AjusteDia>()
+        val cal = java.util.Calendar.getInstance().apply { timeInMillis = inicio }
+        val finCal = java.util.Calendar.getInstance().apply { timeInMillis = fin }
+
+        while (cal.timeInMillis <= finCal.timeInMillis) {
+            val fechaStr = DateUtils.fechaArchivo(cal.timeInMillis)
+            obtenerAjustesDia(fechaStr)
+                .filter { it.tipo == tipo && it.activo }
+                .forEach { ajuste ->
+                    val existente = porCategoria[ajuste.nombre]
+                    porCategoria[ajuste.nombre] = if (existente == null) {
+                        ajuste
+                    } else {
+                        existente.copy(monto = existente.monto + ajuste.monto)
+                    }
+                }
+            cal.add(java.util.Calendar.DAY_OF_MONTH, 1)
+        }
+        return porCategoria.values.toList()
     }
 }

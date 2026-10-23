@@ -1,6 +1,5 @@
 package com.tuapp.ventas.ui.ipb
 
-import android.app.DatePickerDialog
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
@@ -21,9 +20,7 @@ import com.tuapp.ventas.utils.PreferencesManager
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Locale
+import java.util.concurrent.TimeUnit
 
 class IPBResumenActivity : AppCompatActivity() {
 
@@ -37,7 +34,6 @@ class IPBResumenActivity : AppCompatActivity() {
             PreferencesManager(this)
         )
     }
-    private var fechaSeleccionada: Long = System.currentTimeMillis()
     private lateinit var prefs: PreferencesManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -55,7 +51,8 @@ class IPBResumenActivity : AppCompatActivity() {
         configurarBotones()
         configurarBanner()
 
-        binding.txtFecha.setOnClickListener { mostrarSelectorFecha() }
+        // ✅ Fecha ya no es seleccionable: mostramos el rango del periodo
+        binding.txtFecha.setOnClickListener(null)
     }
 
     override fun onResume() {
@@ -64,21 +61,11 @@ class IPBResumenActivity : AppCompatActivity() {
         actualizarBannerEstado()
     }
 
-    // ============================================================
-    // BANNER DE ESTADO
-    // ============================================================
-
     private fun configurarBanner() {
         binding.layoutBannerEstado.setOnClickListener {
             when (prefs.estadoPeriodo) {
-                EstadoPeriodo.ABIERTO -> {
-                    // No hay acción al tocar cuando está abierto en esta pantalla
-                    // (el botón "Cerrar y Exportar" ya está visible abajo)
-                }
-                EstadoPeriodo.CERRADO -> {
-                    // Llevar a importar IPV
-                    startActivity(Intent(this, ImportarIPVActivity::class.java))
-                }
+                EstadoPeriodo.ABIERTO -> Unit
+                EstadoPeriodo.CERRADO -> startActivity(Intent(this, ImportarIPVActivity::class.java))
             }
         }
     }
@@ -97,40 +84,6 @@ class IPBResumenActivity : AppCompatActivity() {
             }
         }
     }
-
-    // ============================================================
-    // FECHA
-    // ============================================================
-
-    private fun mostrarSelectorFecha() {
-        val cal = Calendar.getInstance().apply { timeInMillis = fechaSeleccionada }
-        DatePickerDialog(this, { _, year, month, dayOfMonth ->
-            val fecha = Calendar.getInstance().apply {
-                set(year, month, dayOfMonth, 0, 0, 0)
-                set(Calendar.MILLISECOND, 0)
-            }.timeInMillis
-
-            if (fecha > System.currentTimeMillis()) {
-                Toast.makeText(this, "No se pueden ver fechas futuras", Toast.LENGTH_SHORT).show()
-                return@DatePickerDialog
-            }
-
-            fechaSeleccionada = fecha
-            val fechaStr = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(fecha)
-            binding.txtFecha.text = "Fecha: $fechaStr"
-
-            viewModel.cargarDatos(fecha)
-
-            val esHoy = DateUtils.esMismoDia(fecha, System.currentTimeMillis())
-            binding.btnAjustarIPB.isEnabled = esHoy
-            binding.btnAjustarIPB.alpha = if (esHoy) 1f else 0.5f
-
-        }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show()
-    }
-
-    // ============================================================
-    // RECYCLERS
-    // ============================================================
 
     private fun configurarRecyclers() {
         productoAdapter = IPBAdapter(emptyList())
@@ -155,25 +108,15 @@ class IPBResumenActivity : AppCompatActivity() {
         viewModel.gastos.observe(this) { gastoAdapter.submitList(it) }
         viewModel.ingresos.observe(this) { ingresoAdapter.submitList(it) }
 
-        viewModel.totalVentas.observe(this) {
-            binding.txtTotalVentas.text = DateUtils.moneda(it)
-        }
-        viewModel.totalGastos.observe(this) {
-            binding.txtTotalGastos.text = DateUtils.moneda(it)
-        }
-        viewModel.totalIngresos.observe(this) {
-            binding.txtTotalIngresos.text = DateUtils.moneda(it)
-        }
+        viewModel.totalVentas.observe(this) { binding.txtTotalVentas.text = DateUtils.moneda(it) }
+        viewModel.totalGastos.observe(this) { binding.txtTotalGastos.text = DateUtils.moneda(it) }
+        viewModel.totalIngresos.observe(this) { binding.txtTotalIngresos.text = DateUtils.moneda(it) }
         viewModel.totalNeto.observe(this) { total ->
             binding.txtTotalNeto.text = DateUtils.moneda(total)
             val color = if (total >= 0.0) R.color.success else R.color.pos_red
             binding.txtTotalNeto.setTextColor(ContextCompat.getColor(this, color))
         }
     }
-
-    // ============================================================
-    // BOTONES
-    // ============================================================
 
     private fun configurarBotones() {
         binding.btnAjustarIPB.setOnClickListener {
@@ -189,7 +132,7 @@ class IPBResumenActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
             val intent = Intent(this, AjustarIPBActivity::class.java).apply {
-                putExtra(AjustarIPBActivity.EXTRA_FECHA_SELECCIONADA, fechaSeleccionada)
+                putExtra(AjustarIPBActivity.EXTRA_FECHA_SELECCIONADA, System.currentTimeMillis())
             }
             startActivity(intent)
         }
@@ -197,30 +140,25 @@ class IPBResumenActivity : AppCompatActivity() {
     }
 
     private fun cargarDatos() {
-        viewModel.cargarDatos(fechaSeleccionada)
-        val fechaStr = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(fechaSeleccionada)
-        binding.txtFecha.text = "Fecha: $fechaStr"
+        viewModel.cargarDatos()
 
-        val esHoy = DateUtils.esMismoDia(fechaSeleccionada, System.currentTimeMillis())
+        // ✅ Mostrar rango del periodo en lugar de una sola fecha
+        val inicio = prefs.obtenerInicioPeriodoVentas().takeIf { it > 0L }
+            ?: DateUtils.inicioDia(System.currentTimeMillis())
+        val fin = System.currentTimeMillis()
+        val dias = (TimeUnit.MILLISECONDS.toDays(fin - inicio) + 1).coerceAtLeast(1)
+        val inicioStr = DateUtils.fechaHora(inicio).substringBefore(" ")
+        val diasTexto = if (dias == 1L) "1 día" else "$dias días"
+        binding.txtFecha.text = "Desde $inicioStr hasta hoy ($diasTexto)"
+
         val estadoAbierto = prefs.estadoPeriodo == EstadoPeriodo.ABIERTO
-
-        // ✅ Ajustar IPB: solo si es HOY Y el estado es ABIERTO
-        val puedeAjustar = esHoy && estadoAbierto
-        binding.btnAjustarIPB.isEnabled = puedeAjustar
-        binding.btnAjustarIPB.alpha = if (puedeAjustar) 1f else 0.5f
-
-        // ✅ Cerrar y Exportar: solo si es HOY Y el estado es ABIERTO
-        val puedeCerrar = esHoy && estadoAbierto
-        binding.btnExportar.isEnabled = puedeCerrar
-        binding.btnExportar.alpha = if (puedeCerrar) 1f else 0.5f
+        binding.btnAjustarIPB.isEnabled = estadoAbierto
+        binding.btnAjustarIPB.alpha = if (estadoAbierto) 1f else 0.5f
+        binding.btnExportar.isEnabled = estadoAbierto
+        binding.btnExportar.alpha = if (estadoAbierto) 1f else 0.5f
     }
 
-    // ============================================================
-    // CERRAR Y EXPORTAR
-    // ============================================================
-
     private fun confirmarCierreYExportacion() {
-        // ✅ 1. Validar que el estado sea ABIERTO
         if (prefs.estadoPeriodo != EstadoPeriodo.ABIERTO) {
             MaterialAlertDialogBuilder(this)
                 .setTitle("🔒 Periodo cerrado")
@@ -238,13 +176,6 @@ class IPBResumenActivity : AppCompatActivity() {
             return
         }
 
-        // ✅ 2. Validar que la fecha sea HOY
-        if (!DateUtils.esMismoDia(fechaSeleccionada, System.currentTimeMillis())) {
-            Toast.makeText(this, "Solo puedes cerrar el periodo del día actual", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        // ✅ 3. Validar cuentas abiertas
         lifecycleScope.launch {
             val repo = (application as VentasApplication).repository
             val cuentasAbiertas = repo.cantidadCuentasAbiertas().firstOrNull() ?: 0
@@ -262,7 +193,6 @@ class IPBResumenActivity : AppCompatActivity() {
                 return@launch
             }
 
-            // ✅ 4. Todo OK → mostrar diálogo de confirmación
             continuarCierreYExportacion()
         }
     }
@@ -274,7 +204,7 @@ class IPBResumenActivity : AppCompatActivity() {
             return
         }
 
-        val fechaStr = DateUtils.fechaArchivo(fechaSeleccionada)
+        val fechaStr = DateUtils.fechaArchivo(System.currentTimeMillis())
         val archivoApp = File(getExternalFilesDir(null), "resumen_ipb_${fechaStr}.json")
 
         val totalVentas = viewModel.totalVentas.value ?: 0.0
@@ -290,7 +220,7 @@ class IPBResumenActivity : AppCompatActivity() {
                 appendLine("¿Cerrar el periodo y exportar el IPB?")
             }
             appendLine()
-            appendLine("📊 Resumen:")
+            appendLine("📊 Resumen del periodo:")
             appendLine("• Total ventas: ${DateUtils.moneda(totalVentas)}")
             appendLine("• Total gastos: ${DateUtils.moneda(totalGastos)}")
             appendLine("• Otros ingresos: ${DateUtils.moneda(totalIngresos)}")
@@ -306,7 +236,6 @@ class IPBResumenActivity : AppCompatActivity() {
             .setPositiveButton("Cerrar y Exportar") { _, _ ->
                 val intent = Intent(this, ExportarIPBActivity::class.java).apply {
                     putExtra(ExportarIPBActivity.EXTRA_SOBRESCRIBIR, true)
-                    putExtra(ExportarIPBActivity.EXTRA_FECHA_SELECCIONADA, fechaSeleccionada)
                 }
                 startActivity(intent)
             }

@@ -10,7 +10,7 @@
         android:id="@+id/txtVacio"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Notificaciones"
+        android:text="@string/title_notificaciones"
         android:textAppearance="@style/TextAppearance.FinSell.Title" />
 
     <LinearLayout
@@ -25,14 +25,14 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Marcar todas" />
+            android:text="@string/lbl_marcar_todas" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnEliminarSeleccionadas"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:enabled="false"
-            android:text="Eliminar seleccionadas"
+            android:text="@string/btn_eliminar_seleccionadas"
             app:icon="@drawable/ic_remove_circle" />
     </LinearLayout>
 

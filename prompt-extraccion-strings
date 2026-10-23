@@ -1,0 +1,458 @@
+Actúa como un experto en internacionalización (i18n) de Android con Kotlin.
+Tu tarea es extraer SOLO los textos de interfaz de usuario (UI) hardcodeados
+y moverlos a `res/values/strings.xml`, preparando la app para múltiples
+idiomas, SIN romper nada.
+
+Voy a darte reglas MUY estrictas. Léelas completas antes de tocar nada.
+Si tienes dudas sobre algún string, PÁRATE y pregúntame. No asumas.
+
+=====================================================================
+CONTEXTO DEL PROYECTO
+=====================================================================
+- App Android nativa en Kotlin.
+- Paquete base: `com.tuapp.ventas`.
+- UI construida con Vistas XML (Activities/Fragments), NO Jetpack Compose.
+- Ya existe `app/src/main/res/values/strings.xml` con algunas entradas.
+- El proyecto usa: Room, SharedPreferences, Gson, MediaStore, FileProvider,
+  ML Kit, CameraX, coroutines, LiveData, ViewModel, Material 3.
+
+=====================================================================
+ARCHIVOS QUE SÍ PUEDES MODIFICAR
+=====================================================================
+Puedes modificar SOLO estos tipos de archivo:
+
+1. Activities y Fragments (`*.kt`) que contengan textos literales de UI
+   visibles al usuario (Toast, MaterialAlertDialog, setText, Snackbar,
+   títulos de toolbar, etiquetas de tabs, etc.).
+
+2. Adapters (`*.kt`) que pinten textos visibles al usuario.
+
+3. ViewModels (`*.kt`) SOLO cuando el string sea UI directa (mensajes de
+   error en `mensaje.value = "..."`). NUNCA los strings técnicos.
+
+4. Layouts XML (`res/layout/*.xml`) con `android:text`, `android:hint`,
+   `android:contentDescription`, `app:title`.
+
+5. Menús (`res/menu/*.xml`) con `android:title`.
+
+6. `app/src/main/res/values/strings.xml` (crear nuevas entradas aquí).
+
+=====================================================================
+🚫 ARCHIVOS QUE NO DEBES TOCAR NUNCA (CRÍTICOS)
+=====================================================================
+Esta lista es EXHAUSTIVA. Si un archivo aparece aquí, NO lo modifiques
+aunque creas que contiene strings de UI.
+
+GRUPO 1 — BASE DE DATOS Y PERSISTENCIA:
+❌ `data/database/AppDatabase.kt`
+❌ Todos los `*Dao.kt` (`ProductoDao`, `VentaDirectaDao`, `ClienteDao`,
+   `CuentaDao`, `DetalleCuentaDao`, `VentaFinalDao`, `NotificacionDao`,
+   `PuntoVentaDao`, `IpvImportadoDao`, `SnapshotInventarioDao`).
+❌ `utils/PreferencesManager.kt` (todas las claves de SharedPreferences
+   son técnicas).
+❌ Todos los modelos de datos (`data/model/*.kt`) porque contienen
+   `@Entity`, `@ColumnInfo`, `@SerializedName`, constantes de dominio
+   (`TIPO_CODIGO_BARRAS`, `ESTADO_ABIERTA`, `TIPO_BAJO_INVENTARIO`, etc.).
+❌ Proyecciones de Room (`data/model/relaciones/*.kt`).
+
+GRUPO 2 — REPOSITORIO Y LÓGICA DE NEGOCIO:
+❌ `data/repository/VentasRepository.kt`
+❌ `VentasApplication.kt`
+
+GRUPO 3 — SEGURIDAD, FIRMA Y CRIPTOGRAFÍA:
+❌ `utils/IpvFirmador.kt`
+❌ `utils/IpvReader.kt`
+❌ `utils/HashValidator.kt`
+❌ `utils/FileExporter.kt`
+❌ `utils/LicenseManager.kt`
+❌ `utils/ValidadorCodigoProducto.kt`
+❌ `utils/CodigoBarrasUtils.kt`
+❌ `utils/CsvExporter.kt`
+
+GRUPO 4 — UTILIDADES Y FORMATOS:
+❌ `utils/DateUtils.kt` (contiene `"yyyy-MM-dd"`, `"dd/MM/yyyy HH:mm"`,
+   `"$%.2f"`; son formatos técnicos, NO UI).
+❌ `utils/SoundUtils.kt`
+❌ `utils/TextUtils.kt`
+
+GRUPO 5 — EXPORTACIÓN / IMPORTACIÓN / IPB / IPV:
+❌ `data/model/ArchivoIPB.kt`, `ArchivoIPV.kt`, `ArchivoVentas.kt`,
+   `CuentaIPB.kt`, `VerificacionResult.kt` (tienen `@SerializedName`).
+❌ `ui/exportar/ExportarIPBActivity.kt` (contiene `"ipb_${fechaStr}.ipb"`,
+   MIME, extras).
+❌ `ui/ipb/ImportarIPVActivity.kt` (contiene `"*/*"`, `"ipv_desconocido.ipb"`).
+❌ `ui/ticket/TicketContent.kt` (TODO el archivo genera el texto plano
+   del ticket exportado; NO es UI).
+❌ La parte de `TicketPreviewDialog.kt` que rellena los datos del ticket
+   (solo puedes tocar los botones y la cabecera estática).
+
+GRUPO 6 — SCANNER Y CÁMARA:
+❌ `ui/scanner/BarcodeScannerActivity.kt`
+❌ `ui/escaneo/EscaneoContinuoActivity.kt` (mezcla strings técnicos como
+   `EXTRA_MODO_AGREGAR`, formatos de ML Kit, ventana anti-duplicado).
+
+GRUPO 7 — RECURSOS NO-STRINGS:
+❌ `colors.xml`, `themes.xml`, `styles.xml`, `attrs.xml` (ambos modos
+   light y night).
+❌ `AndroidManifest.xml`.
+❌ `build.gradle` / `build.gradle.kts`.
+❌ Cualquier `res/drawable/*.xml`, `res/anim/*.xml`, `res/animator/*.xml`,
+   `res/xml/*.xml`, `res/mipmap-*/`.
+
+GRUPO 8 — CONFIGURACIÓN:
+❌ Cualquier `*.md`, `*.json` de configuración, `gradle.properties`,
+   `local.properties`, `.idea/`.
+
+=====================================================================
+STRINGS QUE SÍ DEBES EXTRAER (son UI)
+=====================================================================
+✅ Toast, Snackbar, `setError`, `setHint`.
+✅ `MaterialAlertDialog` (título, mensaje, botones).
+✅ `android:text`, `android:hint`, `android:contentDescription`,
+   `app:title` en layouts.
+✅ `binding.txtX.text = "..."` (con placeholders si hay variables).
+✅ Etiquetas de tabs / títulos de Activity (`supportActionBar?.title`).
+✅ Mensajes de notificaciones locales (`Notificacion(mensaje = "...")`).
+✅ `android:title` en `res/menu/*.xml`.
+✅ Botones con texto en código (`getButton(...).text = "..."`).
+
+=====================================================================
+STRINGS QUE NO DEBES EXTRAER (técnicos o de formato)
+=====================================================================
+❌ Logs (tag o mensaje): `Log.d("StockDebug", "...")`, `Log.e("Migration", "...")`.
+❌ Claves de SharedPreferences: `"sonido"`, `"cuenta_seleccionada"`,
+   `"estado_periodo"`, `"periodo_muerto_inicio"`, `"fecha_cierre_periodo"`,
+   `"ajustes_dia_$fecha"`, `"notif_last_$tipo"`, etc.
+❌ Nombres de tablas/columnas Room: `@Entity(tableName = "productos")`,
+   `@ColumnInfo(name = "codigo_barras")`.
+❌ Claves JSON / `@SerializedName`: `@SerializedName("codigo_barras")`,
+   `@SerializedName("fecha_exportacion")`, etc.
+❌ Acciones de Intent y extras: `"extra_cuenta_id"`, `"extra_fecha_seleccionada"`,
+   `"extra_productos_acumulados"`.
+❌ Tipos MIME: `"text/plain"`, `"application/octet-stream"`, `"*/*"`.
+❌ Nombres de archivos: `"ventas_seguras.db"`, `"ipb_${fechaStr}.ipb"`,
+   `"ticket_cuenta_${id}.txt"`.
+❌ Nombres de canales de notificación: `"license_channel"`.
+❌ Rutas / directorios: `Environment.DIRECTORY_DOWNLOADS`, URIs de MediaStore.
+❌ Formatos de fecha y moneda: `"dd/MM/yyyy"`, `"yyyy-MM-dd"`, `"HH:mm"`,
+   `"$%.2f"`.
+❌ Constantes de dominio: `TIPO_CODIGO_BARRAS`, `ESTADO_ABIERTA`,
+   `TIPO_BAJO_INVENTARIO`, `ModoOperacion.SIMPLE`, etc.
+❌ Nombres de clases, paquetes, tags de Log, IDs de vista: `"VentasRepository"`,
+   `"StockDebug"`, `"recyclerDetalle"`, `"btnEscanear"`.
+❌ Prefijos técnicos: `"FAB:"`, `"MANUAL_"`, `"LEGACY_"`.
+❌ Formato de interpolación Kotlin (`"$fechaStr"`, `"$codigo"`): extrae solo
+   el texto literal que rodea al placeholder y usa `%1$s`, `%2$d`.
+❌ Contenido de tickets/reportes exportados (`TicketContent`).
+
+=====================================================================
+REGLAS DE NOMENCLATURA DE IDs
+=====================================================================
+Usa SIEMPRE `snake_case` descriptivo por PROPÓSITO, no por contenido.
+
+Prefijos: `btn_`, `lbl_`, `hint_`, `msg_`, `dialog_`, `nav_`, `title_`,
+`error_`, `confirm_`.
+
+Ejemplos:
+- "ESCANEAR PRODUCTO" → `btn_escanear_producto`
+- "¿Eliminar producto?" → `dialog_eliminar_producto_titulo`
+- "Tu licencia expira en %1$d días" → `msg_licencia_expira_dias`
+
+Reutiliza IDs existentes: LEE `strings.xml` completo antes de crear uno nuevo.
+
+=====================================================================
+REGLAS DE REEMPLAZO EN CÓDIGO
+=====================================================================
+
+▶ Kotlin (Activity):
+   "Guardar"  →  getString(R.string.btn_guardar)
+
+▶ Kotlin (Fragment):
+   "Guardar"  →  requireContext().getString(R.string.btn_guardar)
+
+▶ Kotlin (Adapter / contexto no-Activity):
+   "Guardar"  →  context.getString(R.string.btn_guardar)
+
+▶ XML (layout):
+   android:text="Guardar"  →  android:text="@string/btn_guardar"
+   android:hint="Buscar"    →  android:hint="@string/hint_buscar"
+   app:title="CafePos"      →  app:title="@string/app_name"
+
+▶ Imports necesarios:
+   - Añade `import com.tuapp.ventas.R` si el archivo Kotlin no lo tiene.
+   - NO añadas `androidx.compose.ui.res.stringResource` (no usamos Compose).
+
+=====================================================================
+REGLA ESPECIAL 1 — LiveData<String> CON MENSAJES DE UI
+=====================================================================
+
+Muchos ViewModels exponen mensajes de UI así:
+
+    val mensaje = MutableLiveData<String>()
+    ...
+    mensaje.value = "Algún mensaje de UI"
+
+Y las Activities los consumen así:
+
+    viewModel.mensaje.observe(this) {
+        Toast.makeText(this, it, Toast.LENGTH_SHORT).show()
+    }
+
+Cuando extraigas esos mensajes a strings.xml, NO basta con cambiar el
+literal. Debes hacer DOS cambios coordinados o no compilará:
+
+1. En el ViewModel:
+   - Cambiar el tipo: `MutableLiveData<String>`  →  `MutableLiveData<Int>`
+   - Cambiar la asignación: `mensaje.value = "texto"`  →  `mensaje.value = R.string.xxx`
+   - Añadir `import com.tuapp.ventas.R` si no lo tiene.
+
+2. En el consumidor (Activity o Fragment):
+   - Activity:  `Toast.makeText(this, getString(it), ...)`
+   - Fragment:  `Toast.makeText(requireContext(), requireContext().getString(it), ...)`
+
+3. Antes de aplicar, verifica que NO haya OTROS consumidores del mismo
+   LiveData en el proyecto. Si hay más de un consumidor, avísame antes
+   de aplicar: el cambio de tipo puede romperlos.
+
+⚠️ Si el ViewModel YA expone `LiveData<Int>`, NO cambies el tipo.
+
+⚠️ Si el ViewModel tiene MÁS DE UN mensaje distinto (sealed class o varios
+   LiveData), PÁRATE y propón migrar a `sealed class MensajeX` con `when`
+   en el consumidor. Muéstrame la propuesta antes de aplicar.
+
+=====================================================================
+REGLA ESPECIAL 2 — STRINGS CON MÚLTIPLES ARGUMENTOS
+=====================================================================
+
+Cuando un string tiene 2 o más variables, SIEMPRE usa placeholders
+POSICIONALES NUMERADOS. Nunca `%s`, `%d`, `%.2f` sueltos.
+
+▶ Un argumento (permitido `%1$s` o `%s`, pero recomendado `%1$s`):
+   "Total: $x"  →  <string name="lbl_total">Total: %1$s</string>
+   getString(R.string.lbl_total, DateUtils.moneda(x))
+
+▶ DOS argumentos (obligatorio `%1$s`, `%2$s`):
+   "Apertura: $a · Cierre: $b"  →  "Apertura: %1$s · Cierre: %2$s"
+   getString(R.string.lbl_fechas, DateUtils.fechaHora(a), DateUtils.fechaHora(b))
+
+▶ TRES o más argumentos (obligatorio `%1$s`, `%2$d`, `%3$s`, etc.):
+   "Código: $a · Precio: $b · Stock: $c · Vendidos: $d$e"
+   →  "Código: %1$s · Precio: %2$s · Stock: %3$d · Vendidos: %4$d%5$s"
+   getString(R.string.lbl_detalle, a, b, c, d, e)
+
+⚠️ ANTES DE APLICAR: muestra la línea exacta de strings.xml y el
+   getString(...) con TODOS los argumentos en orden. Si dejas "..." en
+   el plan, NO apliques.
+
+▶ Tipos de placeholder:
+   - String  →  %1$s
+   - Entero  →  %1$d
+   - Float   →  %1$.2f (con decimales fijos)
+
+▶ Si el string termina o empieza con un argumento que puede ser
+   vacío (ej. sufijo opcional "$sufijo"), DEJA el placeholder al final:
+   "Código: %1$s · Precio: %2$s%3$s"  (donde %3$s es el sufijo opcional)
+
+=====================================================================
+REGLA ESPECIAL 3 — ESCAPADO OBLIGATORIO EN STRINGS.XML
+=====================================================================
+
+▶ Comillas dobles dentro del texto:
+   Original Kotlin:  "\"${nombre}\" está inactivo..."
+   →  strings.xml:   \"%1$s\" está inactivo...
+   →  o bien:        "%1$s" está inactivo...   (con comillas envolventes)
+   SIEMPRE escapa o envuelve el string completo. Nunca dejes comillas
+   sueltas.
+
+▶ Apóstrofes (’ o '):
+   Original:  "Producto 'especial'"
+   →  strings.xml:  "Producto \'especial\'"
+   Android FALLA al compilar si hay apóstrofes sin escapar.
+
+▶ Espacios al INICIO o al FINAL del texto:
+   Original:  " · INACTIVO"   (empieza con espacio)
+   →  strings.xml:  " · INACTIVO"   ← OBLIGATORIO envolver con comillas
+   Si no lo envuelves, Android elimina el espacio al compilar y ves
+   "Vendidos: 3INACTIVO" (pegado).
+
+▶ Símbolo % literal (sin placeholder):
+   Original:  "Descuento del 50%"
+   →  strings.xml:  "Descuento del 50%%"
+
+▶ Caracteres especiales XML:
+   - &  →  &amp;
+   - <  →  &lt;
+   - >  →  &gt;  (opcional)
+
+⚠️ ANTES DE APLICAR: si el string tiene comillas, apóstrofes, espacios
+   al inicio/final o %, muéstrame la línea exacta de strings.xml para
+   que yo verifique el escapado.
+
+=====================================================================
+REGLA ESPECIAL 4 — NO AÑADIR ATRIBUTOS NI STRINGS NUEVOS
+=====================================================================
+
+Tu tarea es EXTRAER strings existentes, NO AÑADIR mejoras.
+
+▶ Prohibido añadir:
+   - `android:contentDescription` si el XML original NO lo tiene.
+   - `android:text` a botones que no lo tienen (ej. botones con solo icono).
+   - `app:title` a toolbars que no lo tienen.
+   - `android:hint` a EditText que no lo tienen.
+   - Cualquier atributo de accesibilidad, texto, título o label que NO
+     exista en el XML original.
+
+▶ Excepción: si el XML original YA tiene el atributo, lo extraes con
+   normalidad. Solo PROHIBIDO AÑADIRLO.
+
+▶ Si crees que falta un atributo de accesibilidad (ej. un botón con
+   solo icono y sin contentDescription), NO lo añadas. Al final del
+   plan, indícame: "Detecté que btnX no tiene contentDescription, ¿lo
+   añado?". Espera mi confirmación SEPARADA.
+
+⚠️ En el plan (PASO 2), si propones añadir un atributo nuevo, MARCA
+   claramente la fila como "NUEVO (no existe en XML actual)". Si no
+   está marcada así, asumiré que existe y rechazaré el plan.
+
+=====================================================================
+REGLA ESPECIAL 5 — VERIFICACIÓN DE CONSUMIDORES ANTES DE APLICAR
+=====================================================================
+
+Antes de cambiar el tipo de un LiveData (regla especial 1), o antes de
+tocar un ViewModel que expone mensajes, VERIFICA:
+
+1. Busca en el proyecto todos los archivos que referencian el ViewModel.
+   En Android Studio: Ctrl+Shift+F → buscar "NombreDelViewModel".
+
+2. Para cada consumidor, verifica que sepa manejar el nuevo tipo (Int en
+   lugar de String).
+
+3. Si hay MÁS DE UN consumidor, PÁRATE y avísame antes de aplicar:
+   "El LiveData 'mensaje' de XViewModel se consume en N archivos: [lista].
+   ¿Aplico el cambio en todos?"
+
+4. Si hay consumidores fuera del scope del archivo actual (ej. otro
+   Fragment o Activity que no está en el plan), NO cambies el tipo sin
+   confirmación.
+
+=====================================================================
+PLACEHOLDERS Y PLURALS (recordatorio)
+=====================================================================
+
+▶ Plurals (cantidades que cambian):
+   <plurals name="msg_productos">
+       <item quantity="one">%1$d producto</item>
+       <item quantity="other">%1$d productos</item>
+   </plurals>
+   Kotlin: resources.getQuantityString(R.plurals.msg_productos, n, n)
+
+▶ Casos donde NO extraer placeholders:
+   - `"$%.2f".format(x)`  →  formato técnico de moneda, NO extraer.
+   - `"%.1f".format(x)`   →  formato técnico de decimales, NO extraer.
+   - `"dd/MM/yyyy"`       →  formato técnico de fecha, NO extraer.
+=====================================================================
+PROCESO OBLIGATORIO (NO LO SALTES)
+=====================================================================
+PASO 1 — LECTURA PREVIA
+Lee `app/src/main/res/values/strings.xml` y el archivo piloto que te indique.
+
+PASO 2 — PLAN (OBLIGATORIO)
+Devuélveme SOLO una tabla, sin tocar archivos:
+
+| Archivo | Texto original | ID propuesto | ¿Ya existe? | Reemplazo propuesto |
+
+Al final indica: strings nuevos, IDs reutilizados, archivos a modificar,
+y cualquier string dudoso que NO debería extraerse.
+
+PASO 3 — ESPERAR CONFIRMACIÓN
+NO modifiques nada hasta que yo responda "OK, aplica".
+
+PASO 4 — APLICAR (solo tras mi OK)
+1. Añade entradas a `strings.xml`.
+2. Modifica archivos Kotlin.
+3. Modifica layouts XML.
+4. Resumen final: archivos modificados, IDs creados, IDs reutilizados,
+   warnings encontrados.
+
+=====================================================================
+REGLA ESPECIAL — LiveData<String> CON MENSAJES DE UI
+=====================================================================
+Muchos ViewModels exponen mensajes de UI con este patrón:
+
+    val mensaje = MutableLiveData<String>()
+    ...
+    mensaje.value = "Algún mensaje de UI"
+
+Y las Activities los consumen así:
+
+    viewModel.mensaje.observe(this) {
+        Toast.makeText(this, it, Toast.LENGTH_SHORT).show()
+    }
+
+Cuando extraigas esos mensajes a strings.xml, NO basta con cambiar el
+literal. Debes hacer DOS cambios coordinados o no compilará:
+
+1. En el ViewModel:
+   - Cambiar el tipo: `MutableLiveData<String>`  →  `MutableLiveData<Int>`
+   - Cambiar la asignación: `mensaje.value = "texto"`  →  `mensaje.value = R.string.xxx`
+   - Añadir `import com.tuapp.ventas.R` si no lo tiene.
+
+2. En la Activity (o Fragment) que lo consume:
+   - `Toast.makeText(this, it, ...)`  →  `Toast.makeText(this, getString(it), ...)`
+   - En Fragment: `requireContext().getString(it)`.
+
+3. Antes de aplicar, verifica que NO haya OTROS consumidores del mismo
+   LiveData en el proyecto. Busca referencias al ViewModel en todo el
+   módulo. Si hay más de un consumidor, avísame antes de aplicar: el
+   cambio de tipo puede romperlos.
+
+⚠️ NO uses esta regla para ViewModels con MÚLTIPLES mensajes distintos
+(sealed class, o varios tipos de LiveData). En ese caso, PÁRATE y
+propón migrar a un `sealed class MensajeX` con un `when` en el consumidor.
+Muéstrame la propuesta antes de aplicar.
+
+⚠️ Si el ViewModel YA expone `LiveData<Int>` (porque ya se migró antes),
+NO cambies el tipo. Solo cambia el literal si quedó hardcodeado.
+
+Patrón IDEAL a largo plazo (NO aplicar sin preguntar):
+    sealed class MensajeCuenta {
+        object CuentaCerrada : MensajeCuenta()
+    }
+    val mensaje = MutableLiveData<MensajeCuenta>()
+
+    // En la Activity:
+    viewModel.mensaje.observe(this) { msg ->
+        val texto = when (msg) {
+            MensajeCuenta.CuentaCerrada -> getString(R.string.msg_cuenta_cerrada_correctamente)
+        }
+        Toast.makeText(this, texto, Toast.LENGTH_SHORT).show()
+    }
+
+Si detectas que un ViewModel tiene MÁS DE UN mensaje distinto, PÁRATE
+y propónme migrar al patrón `sealed class` antes de aplicar.
+
+=====================================================================
+PILOTO (PRIMER ARCHIVO A ANALIZAR)
+=====================================================================
+Empieza analizando SOLO este archivo: [INDICA EL ARCHIVO AQUÍ]
+Ejemplo: `app/src/main/java/com/tuapp/ventas/ui/settings/SettingsActivity.kt`
+
+Muéstrame la tabla del plan SOLO para ese archivo. Espera mi confirmación.
+
+=====================================================================
+ADVERTENCIAS FINALES
+=====================================================================
+1. Si un string no es claramente UI, PÁRATE y pregunta.
+2. Si un texto tiene variables, usa placeholders. NO concatenes.
+3. Si un archivo ya usa `getString(R.string...)`, NO lo vuelvas a tocar.
+4. Si el mismo texto aparece en varios archivos, usa el MISMO ID.
+5. Si un texto está en un archivo del GRUPO 1-8, NO lo toques aunque
+   parezca UI.
+6. Si tienes que tocar un archivo del GRUPO 3 o 5, PÁRATE inmediatamente
+   y avísame. Son de ALTÍSIMO RIESGO.
+7. Cualquier duda → pregunta. Prefiero 10 preguntas a un cambio que rompa
+   la app.
+
+¿Entendido? Empieza leyendo `strings.xml` y el archivo piloto. Luego
+devuélveme SOLO la tabla del plan.
+

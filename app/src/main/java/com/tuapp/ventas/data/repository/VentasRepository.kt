@@ -1,6 +1,7 @@
 package com.tuapp.ventas.data.repository
 
 import android.database.sqlite.SQLiteConstraintException
+import android.icu.text.SimpleDateFormat
 import android.util.Log
 import androidx.room.withTransaction
 import com.tuapp.ventas.data.database.AppDatabase
@@ -15,6 +16,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.firstOrNull
 import java.text.Normalizer
 import java.util.Calendar
+import java.util.Locale
 
 class VentasRepository(private val db: AppDatabase,  private val context: android.content.Context ) {
     private val productos = db.productoDao()
@@ -45,6 +47,12 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
     fun resumenCuentas(): Flow<List<CuentaResumen>> = cuentas.observarResumenCuentas()
 
     fun resumenCuentasPorFecha(fecha: Long): Flow<List<CuentaResumen>> = cuentas.observarResumenCuentasPorDia(inicioDia(fecha), finDia(fecha))
+
+    fun resumenCuentasAbiertasPorFecha(fecha: Long): Flow<List<CuentaResumen>> =
+        cuentas.observarResumenCuentasAbiertasPorDia(inicioDia(fecha), finDia(fecha))
+
+    fun resumenCuentasCerradasPorFecha(fecha: Long): Flow<List<CuentaResumen>> =
+        cuentas.observarResumenCuentasCerradasPorDia(inicioDia(fecha), finDia(fecha))
 
     fun totalCuentasCerradasHoy(): Flow<Double> = totalCuentasCerradasPorFecha(System.currentTimeMillis())
 
@@ -88,7 +96,8 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
                 precio = precio,
                 inventario = inventario.coerceAtLeast(0),
                 tipoProducto = Producto.TIPO_CODIGO_BARRAS,
-                esManual = false
+                esManual = false,
+                inventarioAlInicioPeriodo = inventario.coerceAtLeast(0)
             )
             val id = productos.insertar(producto)
             Log.d(TAG, "crearProducto: producto insertado con id=$id, codigo='$codigoNormalizado'")
@@ -107,7 +116,7 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
     suspend fun crearProductoManual(codigoManual: String?, nombre: String, precio: Double): Producto {
         val codigoNormalizado = codigoManual?.trim()?.ifBlank { null } ?: generarCodigoManual()
         productos.buscarPorCodigo(codigoNormalizado)?.let { return it }
-        val producto = Producto(codigoBarras = codigoNormalizado, nombre = nombre, precio = precio, tipoProducto = Producto.TIPO_MANUAL, esManual = true)
+        val producto = Producto(codigoBarras = codigoNormalizado, nombre = nombre, precio = precio, tipoProducto = Producto.TIPO_MANUAL, esManual = true, inventarioAlInicioPeriodo = 0 )
         val id = productos.insertar(producto)
         return producto.copy(id = id)
     }
@@ -128,9 +137,13 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
         val existente = productos.buscarPorCodigo(codigoFinal)
         require(existente == null || existente.id == producto.id) { "Ya existe un producto con ese código" }
         return if (normalizado.id == 0L) {
-            val id = productos.insertar(normalizado)
-            normalizado.copy(id = id)
+            val aInsertar = normalizado.copy(
+                inventarioAlInicioPeriodo = normalizado.inventario   // ✅
+            )
+            val id = productos.insertar(aInsertar)
+            aInsertar.copy(id = id)
         } else {
+            // Edición: se mantiene inventarioAlInicioPeriodo original (viene del formulario)
             productos.actualizar(normalizado)
             normalizado
         }
@@ -267,7 +280,8 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
                             vendidos = vendidosPeriodo,
                             tipoProducto = Producto.TIPO_CODIGO_BARRAS,
                             esManual = false,
-                            inactivo = productoIPV.inactivo
+                            inactivo = productoIPV.inactivo,
+                            inventarioAlInicioPeriodo = productoIPV.inventario
                         )
                         productos.insertar(nuevo)
                         creados++
@@ -277,7 +291,8 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
                             precio = productoIPV.precio,
                             inventario = productoIPV.inventario,
                             vendidos = vendidosPeriodo,
-                            inactivo = productoIPV.inactivo
+                            inactivo = productoIPV.inactivo,
+                            inventarioAlInicioPeriodo = productoIPV.inventario
                         )
                         productos.actualizar(actualizado)
                         actualizados++
@@ -296,6 +311,7 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
             // - Si estaba ABIERTO → solo limpiar periodo muerto por seguridad
             if (estabaCerrado) {
                 prefs.limpiarEstadoPeriodo()
+                prefs.guardarInicioPeriodoVentas(System.currentTimeMillis())   // ✅ NUEVO
                 Log.d(TAG, "✅ Periodo REABIERTO tras importación (estaba CERRADO)")
             } else {
                 prefs.limpiarInicioPeriodoMuerto()
@@ -508,10 +524,11 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
         val tipo = Notificacion.TIPO_IPB_NO_EXPORTADO
 
         val ultimaExportacion = prefs.obtenerUltimaExportacionIPB()
-        val desde = if (ultimaExportacion == 0L) {
-            System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000)
-        } else {
-            ultimaExportacion
+        val inicioPeriodo = prefs.obtenerInicioPeriodoVentas()
+        val desde = when {
+            inicioPeriodo > 0L -> inicioPeriodo
+            ultimaExportacion > 0L -> ultimaExportacion
+            else -> System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000)
         }
         val ahora = System.currentTimeMillis()
 
@@ -888,38 +905,79 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
     }
 
     /**
-     * Obtiene la existencia de productos para la fecha indicada.
+     * Obtiene la existencia de productos para la fecha indicada,
+     * combinando el snapshot histórico (si existe) con el stock actual.
      *
-     * Si hay snapshot de esa fecha → usa el snapshot histórico.
-     * Si NO hay snapshot → cae al stock actual (marcado como no histórico).
+     * Reglas:
+     * - Producto en snapshot y en BD  → stockHistorico + stockActual
+     * - Producto solo en snapshot     → esEliminado = true, stockActual = null
+     * - Producto solo en BD           → esHistorico = false, stockHistorico = null
+     * - Incluye inactivos (marcados con esInactivo = true)
      */
     suspend fun obtenerExistenciaDia(fecha: Long = System.currentTimeMillis()): List<ExistenciaProducto> {
         val fechaStr = DateUtils.fechaArchivo(fecha)
-        val snapshot = db.snapshotInventarioDao().obtenerPorFecha(fechaStr)
+        val snapshots = db.snapshotInventarioDao().obtenerPorFecha(fechaStr)
+        val productosActuales = productos.listarTodos()
 
-        return if (snapshot.isNotEmpty()) {
-            // ✅ Hay snapshot histórico
-            snapshot.map { s ->
-                ExistenciaProducto(
-                    nombre = s.nombre,
-                    stockDisponible = (s.inventario - s.vendidos).coerceAtLeast(0),
-                    precio = s.precio,
+        val snapPorCodigo = snapshots.associateBy { it.codigoBarras }
+        val prodPorCodigo = productosActuales.associateBy { it.codigoBarras }
+        val todosLosCodigos = (snapPorCodigo.keys + prodPorCodigo.keys).toSet()
+
+        val formatoHora = SimpleDateFormat("HH:mm", Locale.getDefault())
+
+        Log.d("StockDebug", "=== obtenerExistenciaDia fecha=$fechaStr ===")
+        Log.d("StockDebug", "Snapshots encontrados: ${snapshots.size} | Productos actuales: ${productosActuales.size}")
+
+        return todosLosCodigos.mapNotNull { codigo ->
+            val snap = snapPorCodigo[codigo]
+            val prod = prodPorCodigo[codigo]
+
+            // ✅ LOG TEMPORAL por producto
+            Log.d(
+                "StockDebug",
+                "cod=$codigo | prod: inv=${prod?.inventario} vend=${prod?.vendidos} iniPeriodo=${prod?.inventarioAlInicioPeriodo} | snap: inv=${snap?.inventario} vend=${snap?.vendidos} iniPeriodo=${snap?.inventarioAlInicioPeriodo}"
+            )
+
+            when {
+                snap != null && prod != null -> ExistenciaProducto(
+                    codigoBarras = codigo,
+                    nombre = prod.nombre,
+                    stockHistorico = snap.inventarioAlInicioPeriodo,   // ✅ FIX
+                    stockActual = (prod.inventario - prod.vendidos).coerceAtLeast(0),
+                    precio = prod.precio,
                     esHistorico = true,
-                    fechaSnapshot = s.fecha
+                    fechaSnapshot = snap.fecha,
+                    horaSnapshot = formatoHora.format(java.util.Date(snap.timestamp)),
+                    esEliminado = false,
+                    esInactivo = prod.inactivo
                 )
-            }.sortedBy { it.nombre }
-        } else {
-            // ⚠️ Sin snapshot → fallback al stock actual
-            productos.listarTodos().map { p ->
-                ExistenciaProducto(
-                    nombre = p.nombre,
-                    stockDisponible = (p.inventario - p.vendidos).coerceAtLeast(0),
-                    precio = p.precio,
+                snap != null && prod == null -> ExistenciaProducto(
+                    codigoBarras = codigo,
+                    nombre = snap.nombre,
+                    stockHistorico = snap.inventarioAlInicioPeriodo,   // ✅ FIX
+                    stockActual = null,
+                    precio = snap.precio,
+                    esHistorico = true,
+                    fechaSnapshot = snap.fecha,
+                    horaSnapshot = formatoHora.format(java.util.Date(snap.timestamp)),
+                    esEliminado = true,
+                    esInactivo = false
+                )
+                snap == null && prod != null -> ExistenciaProducto(
+                    codigoBarras = codigo,
+                    nombre = prod.nombre,
+                    stockHistorico = prod.inventarioAlInicioPeriodo,   // ✅ FIX
+                    stockActual = (prod.inventario - prod.vendidos).coerceAtLeast(0),
+                    precio = prod.precio,
                     esHistorico = false,
-                    fechaSnapshot = null
+                    fechaSnapshot = null,
+                    horaSnapshot = null,
+                    esEliminado = false,
+                    esInactivo = prod.inactivo
                 )
-            }.sortedBy { it.nombre }
-        }
+                else -> null
+            }
+        }.sortedBy { it.nombre.lowercase() }
     }
 
     // ============================================================
@@ -987,6 +1045,7 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
                     precio = p.precio,
                     inventario = p.inventario,
                     vendidos = p.vendidos,
+                    inventarioAlInicioPeriodo = p.inventarioAlInicioPeriodo,
                     timestamp = System.currentTimeMillis()
                 )
             }
@@ -1294,6 +1353,7 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
 
             // 10. Limpiar SharedPreferences (fuera de la transacción de Room)
             PreferencesManager(context).limpiarParaReset()
+            PreferencesManager(context).guardarInicioPeriodoVentas(System.currentTimeMillis())
 
             ResetResult(exito = true, mensaje = "App reseteada correctamente")
         } catch (e: Exception) {

@@ -3,8 +3,10 @@ package com.tuapp.ventas.ui.main
 import androidx.lifecycle.*
 import com.tuapp.ventas.data.model.*
 import com.tuapp.ventas.data.model.relaciones.CuentaConDetalles
+import com.tuapp.ventas.data.model.relaciones.CuentaResumen
 import com.tuapp.ventas.data.repository.VentasRepository
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import java.util.Calendar
@@ -13,10 +15,34 @@ import kotlinx.coroutines.launch
 class MainViewModel(private val repo: VentasRepository) : ViewModel() {
     private val fechaSeleccionadaFlow = MutableStateFlow(inicioDia(System.currentTimeMillis()))
     val fechaSeleccionada: LiveData<Long> = fechaSeleccionadaFlow.asLiveData()
+
+    // ✅ NUEVO: filtro de cuentas cerradas
+    private val mostrarCerradasFlow = MutableStateFlow(false)
+
     val ventasHoy = fechaSeleccionadaFlow.flatMapLatest { repo.ventasDirectasPorFecha(it) }.asLiveData()
     val totalSimple = fechaSeleccionadaFlow.flatMapLatest { repo.totalVentasDirectasPorFecha(it) }.asLiveData()
     val cantidadSimple = fechaSeleccionadaFlow.flatMapLatest { repo.cantidadVentasDirectasPorFecha(it) }.asLiveData()
-    val cuentasActivas = fechaSeleccionadaFlow.flatMapLatest { repo.resumenCuentasPorFecha(it) }.asLiveData()
+
+    /**
+     * ✅ Cuentas activas según el filtro del Switch.
+     * - Switch OFF (default): solo cuentas ABIERTAS del día
+     * - Switch ON: cuentas ABIERTAS + CERRADAS del día
+     *   (abiertas primero, luego cerradas por fecha de cierre DESC)
+     */
+    val cuentasActivas: LiveData<List<CuentaResumen>> =
+        combine(fechaSeleccionadaFlow, mostrarCerradasFlow) { fecha, mostrarCerradas ->
+            fecha to mostrarCerradas
+        }.flatMapLatest { (fecha, mostrarCerradas) ->
+            if (mostrarCerradas) {
+                combine(
+                    repo.resumenCuentasAbiertasPorFecha(fecha),
+                    repo.resumenCuentasCerradasPorFecha(fecha)
+                ) { abiertas, cerradas -> abiertas + cerradas }
+            } else {
+                repo.resumenCuentasAbiertasPorFecha(fecha)
+            }
+        }.asLiveData()
+
     val cantidadCuentasAbiertas = repo.cantidadCuentasAbiertas().asLiveData()
     private val cuentaSeleccionada = MutableStateFlow(-1L)
     val cuentaActual: LiveData<CuentaConDetalles?> = cuentaSeleccionada.flatMapLatest { if (it > 0) repo.observarCuenta(it) else flowOf(null) }.asLiveData()
@@ -27,6 +53,12 @@ class MainViewModel(private val repo: VentasRepository) : ViewModel() {
 
     fun seleccionarCuenta(id: Long) { cuentaSeleccionada.value = id }
     fun seleccionarFecha(fecha: Long) { fechaSeleccionadaFlow.value = inicioDia(fecha) }
+
+    /** ✅ NUEVO: cambiar el filtro de cuentas cerradas */
+    fun setMostrarCerradas(mostrar: Boolean) {
+        mostrarCerradasFlow.value = mostrar
+    }
+
     fun esFechaActual(): Boolean = inicioDia(fechaSeleccionadaFlow.value) == inicioDia(System.currentTimeMillis())
     fun generarNotificaciones() = viewModelScope.launch { repo.generarNotificacionesSistema() }
     suspend fun verificarCodigoDuplicado(codigo: String): Boolean = repo.verificarCodigoDuplicado(codigo)
@@ -48,12 +80,7 @@ class MainViewModel(private val repo: VentasRepository) : ViewModel() {
             .onSuccess { mensaje.value = "Venta registrada: ${producto.nombre} x$cantidadFinal" }
             .onFailure { mensaje.value = it.message ?: "Error al registrar" }
     }
-    /*fun buscarProductosManuales(query: String, callback: (List<Producto>) -> Unit) {
-        viewModelScope.launch {
-            val resultados = repository.buscarProductosManualesPorNombre(query)
-            callback(resultados)
-        }
-    }*/
+
     fun crearProductoEscaneado(codigo: String, nombre: String, precio: Double, inventario: Int = 0, abrirVenta: Boolean = false) = viewModelScope.launch {
         runCatching { repo.crearProducto(codigo, nombre, precio, inventario) }
             .onSuccess { producto ->
@@ -76,10 +103,32 @@ class MainViewModel(private val repo: VentasRepository) : ViewModel() {
         }.onSuccess { mensaje.value = it }
             .onFailure { mensaje.value = it.message ?: "Error al registrar" }
     }
+
     fun crearCuenta(nombre: String, telefono: String?, mesa: String?, recordarCuenta: Boolean) = viewModelScope.launch {
-        val id = if (recordarCuenta) repo.crearCuenta(nombre, telefono, mesa, recordarCuenta = true) else repo.crearCuentaTemporal(nombre, mesa)
+        // ✅ NUEVO: verificar si el cliente ya existe en BD
+        val nombreTrim = nombre.trim()
+        val clienteExistente = if (nombreTrim.isNotBlank()) {
+            repo.buscarClientesPorNombre(nombreTrim)
+                .firstOrNull { it.nombre.equals(nombreTrim, ignoreCase = true) }
+        } else null
+
+        // Regla:
+        // - Si el cliente ya existe en BD → SIEMPRE asociarlo (cuenta NO temporal)
+        // - Si no existe → respetar el checkbox del usuario
+        val recordarFinal = clienteExistente != null || recordarCuenta
+
+        val id = if (recordarFinal) {
+            repo.crearCuenta(nombre, telefono, mesa, recordarCuenta = true)
+        } else {
+            repo.crearCuentaTemporal(nombre, mesa)
+        }
         seleccionarCuenta(id)
-        mensaje.value = if (recordarCuenta) "Cuenta creada y cliente guardado" else "Cuenta temporal creada"
+
+        mensaje.value = when {
+            clienteExistente != null -> "Cuenta creada para cliente existente"
+            recordarCuenta -> "Cuenta creada y cliente guardado"
+            else -> "Cuenta temporal creada"
+        }
     }
     fun eliminarCuentaVacia(cuentaId: Long) = viewModelScope.launch {
         runCatching { repo.eliminarCuentaVacia(cuentaId) }

@@ -42,7 +42,7 @@
             android:layout_width="44dp"
             android:layout_height="44dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Eliminar notificación"
+            android:contentDescription="@string/cd_eliminar_notificacion"
             android:padding="10dp"
             android:src="@drawable/ic_remove_circle"
             app:tint="@color/error" />

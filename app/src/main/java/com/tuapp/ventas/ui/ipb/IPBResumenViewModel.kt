@@ -32,33 +32,36 @@ class IPBResumenViewModel(
     private val _totalGastos = MutableLiveData(0.0)
     val totalGastos: LiveData<Double> = _totalGastos
 
-    private val _totalIngresos = MutableLiveData(0.0)       // Otros ingresos
+    private val _totalIngresos = MutableLiveData(0.0)
     val totalIngresos: LiveData<Double> = _totalIngresos
 
     private val _totalNeto = MutableLiveData(0.0)
     val totalNeto: LiveData<Double> = _totalNeto
 
-    // ✅ NUEVO: Cantidad de ventas y cuentas
     private val _cantidadVentas = MutableLiveData(0)
     val cantidadVentas: LiveData<Int> = _cantidadVentas
 
     private val _cantidadCuentas = MutableLiveData(0)
     val cantidadCuentas: LiveData<Int> = _cantidadCuentas
 
-    fun cargarDatos(fecha: Long = System.currentTimeMillis()) {
+    /**
+     * Carga los datos del PERIODO completo (desde inicioPeriodoVentas hasta ahora).
+     * El parámetro `fecha` se mantiene por compatibilidad con llamadas viejas, pero
+     * se ignora: siempre se usa el rango del periodo abierto.
+     */
+    fun cargarDatos(@Suppress("UNUSED_PARAMETER") fecha: Long = System.currentTimeMillis()) {
         viewModelScope.launch {
-            val inicio = DateUtils.inicioDia(fecha)
-            val fin = DateUtils.finDia(fecha)
+            val inicio = preferencesManager.obtenerInicioPeriodoVentas().takeIf { it > 0L }
+                ?: DateUtils.inicioDia(System.currentTimeMillis())
+            val fin = System.currentTimeMillis()
 
             val ventasDirectas = repo.ventasDirectasDia(inicio, fin)
             val cuentasCerradas = repo.cuentasCerradasDia(inicio, fin)
 
-            // ✅ Total de ventas (directas + cuentas)
             val totalVentasDirectas = ventasDirectas.sumOf { it.precio }
             val totalCuentasCerradas = cuentasCerradas.sumOf { it.cuenta.total }
             val totalVentasDia = totalVentasDirectas + totalCuentasCerradas
 
-            // Acumular productos vendidos
             val ventasPorProducto = mutableMapOf<Long, ProductoIPB>()
 
             ventasDirectas.forEach { venta ->
@@ -98,26 +101,22 @@ class IPBResumenViewModel(
                 }
             }
 
-            // ✅ Gastos e ingresos ajustados
-            val fechaStr = DateUtils.fechaArchivo(fecha)
-            val gastosDia = preferencesManager.obtenerGastosActivosDia(fechaStr)
-            val ingresosDia = preferencesManager.obtenerIngresosActivosDia(fechaStr)
+            // ✅ Gastos e ingresos de TODO el rango del periodo
+            val gastosDia = preferencesManager.obtenerGastosActivosRango(inicio, fin)
+            val ingresosDia = preferencesManager.obtenerIngresosActivosRango(inicio, fin)
 
             val totalGastosDia = gastosDia.sumOf { it.monto }
             val totalIngresosDia = ingresosDia.sumOf { it.monto }
 
-            // ✅ Actualizar LiveData
             _productosIPB.value = ventasPorProducto.values.sortedBy { it.nombre }
-            _gastos.value = gastosDia.map { Gasto(categoria = it.nombre, monto = it.monto) }
-            _ingresos.value = ingresosDia.map { Gasto(categoria = it.nombre, monto = it.monto) }
+            _gastos.value = gastosDia
+            _ingresos.value = ingresosDia
 
             _totalVentas.value = totalVentasDia
             _totalGastos.value = totalGastosDia
             _totalIngresos.value = totalIngresosDia
             _cantidadVentas.value = ventasDirectas.size
             _cantidadCuentas.value = cuentasCerradas.size
-
-            // ✅ Total neto = ventas + otros ingresos - gastos
             _totalNeto.value = (totalVentasDia + totalIngresosDia) - totalGastosDia
         }
     }

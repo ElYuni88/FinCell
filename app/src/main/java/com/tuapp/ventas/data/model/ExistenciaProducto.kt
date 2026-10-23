@@ -1,15 +1,22 @@
 package com.tuapp.ventas.data.model
 
 /**
- * Modelo de presentación para mostrar la existencia de un producto.
+ * Modelo de la pestaña "Existencia del día".
  *
- * - esHistorico = true → viene de un snapshot del día consultado
- * - esHistorico = false → viene del stock ACTUAL (fallback si no hay snapshot)
+ * - stockHistorico = null  → no hay snapshot para esa fecha (P2 = "—")
+ * - stockActual    = null  → producto eliminado de la BD (P5 = "—")
+ * - esEliminado    → true si estaba en el snapshot y ya no existe
+ * - esInactivo     → true si el producto sigue en BD pero inactivo
  */
 data class ExistenciaProducto(
+    val codigoBarras: String,
     val nombre: String,
-    val stockDisponible: Int,
+    val stockHistorico: Int?,
+    val stockActual: Int?,
     val precio: Double,
-    val esHistorico: Boolean = false,      // ✅ NUEVO
-    val fechaSnapshot: String? = null      // ✅ NUEVO (ej: "2026-10-13")
+    val esHistorico: Boolean,
+    val fechaSnapshot: String?,
+    val horaSnapshot: String?,
+    val esEliminado: Boolean = false,
+    val esInactivo: Boolean = false
 )

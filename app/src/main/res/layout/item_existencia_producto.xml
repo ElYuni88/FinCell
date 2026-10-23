@@ -3,9 +3,11 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="10dp"
+    android:layout_marginBottom="8dp"
+    app:cardBackgroundColor="@color/card_background"
     app:cardCornerRadius="12dp"
-    app:cardElevation="2dp">
+    app:cardElevation="2dp"
+    app:strokeWidth="0dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -18,20 +20,32 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="2"
-            android:textAppearance="@style/TextAppearance.FinSell.Title" />
+            android:textAppearance="@style/TextAppearance.FinSell.Body"
+            android:textStyle="bold" />
 
         <TextView
-            android:id="@+id/txtStockDisponible"
+            android:id="@+id/txtStockInicial"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:textAlignment="center" />
+            android:gravity="center"
+            android:textAppearance="@style/TextAppearance.FinSell.Body" />
+
+        <TextView
+            android:id="@+id/txtStockActual"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:textAppearance="@style/TextAppearance.FinSell.Body"
+            android:textStyle="bold" />
 
         <TextView
             android:id="@+id/txtPrecio"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:textAlignment="viewEnd" />
+            android:gravity="end"
+            android:textAppearance="@style/TextAppearance.FinSell.Body" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

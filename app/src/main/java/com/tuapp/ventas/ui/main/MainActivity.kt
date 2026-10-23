@@ -106,6 +106,8 @@ class MainActivity : BaseActivity() {
         prefs.modoActual = modo
         viewModel.seleccionarCuenta(prefs.cuentaSeleccionadaId)
         configurarListas(); configurarClicks(); observarDatos(); renderModo()
+        // ✅ NUEVO: inicializar el Switch en OFF
+        binding.switchMostrarCerradas.isChecked = false
         lifecycleScope.launch {
             delay(NOTIFICATIONS_INITIAL_DELAY_MS)
             viewModel.generarNotificaciones()
@@ -190,6 +192,10 @@ class MainActivity : BaseActivity() {
         btnEscanearCuenta.visibility = View.GONE
         btnVerCuenta.visibility = View.GONE
         txtCuentaSeleccionada.visibility = View.GONE
+        // ✅ NUEVO: Switch para filtrar cuentas cerradas
+        switchMostrarCerradas.setOnCheckedChangeListener { _, checked ->
+            viewModel.setMostrarCerradas(checked)
+        }
         btnNuevaCuenta.setOnClickListener { NuevoClienteDialog().apply { onCrear = { n, t, m, r -> viewModel.crearCuenta(n, t, m, r) } }.show(supportFragmentManager, "nuevo") }
         btnAgregarManualSimple.setOnClickListener { mostrarDialogoAgregarManual() }
         fabAltaProducto.setOnClickListener { scanFlow = ScanFlow.ALTA_PRODUCTO; solicitarCamara() }
@@ -205,6 +211,10 @@ class MainActivity : BaseActivity() {
         viewModel.totalSimple.observe(this) { binding.txtTotalDia.text = DateUtils.moneda(it) }
         viewModel.cantidadSimple.observe(this) { binding.txtCantidadDia.text = "$it productos" }
         viewModel.cuentasActivas.observe(this) { cuentasAdapter.submitList(it) }
+        binding.switchMostrarCerradas.setOnCheckedChangeListener(null)
+        binding.switchMostrarCerradas.setOnCheckedChangeListener { _, checked ->
+            viewModel.setMostrarCerradas(checked)
+        }
         viewModel.cantidadCuentasAbiertas.observe(this) { cantidad ->
             binding.txtCuentasAbiertasInfo.text = "Cuentas abiertas: $cantidad"
         }
@@ -229,7 +239,11 @@ class MainActivity : BaseActivity() {
         viewModel.productoCreadoParaVenta.observe(this) { it?.let(::mostrarDialogoProducto) }
     }
 
-    private fun cambiarModo(nuevo: ModoOperacion) { modo = nuevo; prefs.modoActual = nuevo; renderModo() }
+    private fun cambiarModo(nuevo: ModoOperacion) {
+        modo = nuevo
+        prefs.modoActual = nuevo
+        renderModo(animar = true)   // ← ahora anima
+    }
 
     private fun mostrarSelectorFecha() {
         val cal = Calendar.getInstance().apply { timeInMillis = viewModel.fechaSeleccionada.value ?: System.currentTimeMillis() }
@@ -259,8 +273,18 @@ class MainActivity : BaseActivity() {
         return ca.get(Calendar.YEAR) == cb.get(Calendar.YEAR) && ca.get(Calendar.DAY_OF_YEAR) == cb.get(Calendar.DAY_OF_YEAR)
     }
 
-    private fun renderModo() = with(binding) {
-        chipSimple.isChecked = modo == ModoOperacion.SIMPLE; chipCuenta.isChecked = modo == ModoOperacion.CUENTA
+    private fun renderModo(animar: Boolean = false) = with(binding) {
+        if (animar) {
+            val contenedor = panelSimple.parent as? android.view.ViewGroup
+            if (contenedor != null) {
+                androidx.transition.TransitionManager.beginDelayedTransition(
+                    contenedor,
+                    androidx.transition.AutoTransition().setDuration(200)
+                )
+            }
+        }
+        chipSimple.isChecked = modo == ModoOperacion.SIMPLE
+        chipCuenta.isChecked = modo == ModoOperacion.CUENTA
         panelSimple.visibility = if (modo == ModoOperacion.SIMPLE) View.VISIBLE else View.GONE
         panelCuenta.visibility = if (modo == ModoOperacion.CUENTA) View.VISIBLE else View.GONE
     }
@@ -327,14 +351,49 @@ class MainActivity : BaseActivity() {
     private fun manejarEscaneo(codigo: String) {
         lifecycleScope.launch {
             val producto = repo.buscarProducto(codigo)
-            if (producto == null) {
-                ProductoNoEncontradoDialogFragment.newInstance(codigo).apply {
-                    onDarEntrada = { codigoEscaneado -> mostrarDialogoAltaProductoEscaneado(codigoEscaneado) }
-                }.show(supportFragmentManager, "producto_no_encontrado")
-            } else {
-                mostrarDialogoCantidadConSeguir(producto)
+            when {
+                producto == null -> {
+                    ProductoNoEncontradoDialogFragment.newInstance(codigo).apply {
+                        onDarEntrada = { codigoEscaneado -> mostrarDialogoAltaProductoEscaneado(codigoEscaneado) }
+                    }.show(supportFragmentManager, "producto_no_encontrado")
+                }
+                producto.inactivo -> mostrarDialogoReactivar(producto)   // ✅ NUEVO
+                else -> mostrarDialogoCantidadConSeguir(producto)
             }
         }
+    }
+
+
+    private fun mostrarDialogoReactivar(producto: Producto) {
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Producto inactivo")
+            .setMessage(
+                "\"${producto.nombre}\" está inactivo (lo desactivó el admin).\n\n" +
+                        "¿Quieres activarlo y continuar?"
+            )
+            .setPositiveButton("Activar") { _, _ ->
+                lifecycleScope.launch {
+                    runCatching { repo.activarProducto(producto.id) }
+                        .onSuccess {
+                            Toast.makeText(
+                                this@MainActivity,
+                                "${producto.nombre} activado",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                            mostrarDialogoCantidadConSeguir(producto.copy(inactivo = false))
+                        }
+                        .onFailure {
+                            Toast.makeText(
+                                this@MainActivity,
+                                "No se pudo activar: ${it.message}",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                }
+            }
+            .setNegativeButton("No", null)
+            .setCancelable(false)
+            .show()
     }
 
     private fun mostrarDialogoCantidadConSeguir(producto: Producto) {

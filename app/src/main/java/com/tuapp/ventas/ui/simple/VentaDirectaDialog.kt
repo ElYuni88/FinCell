@@ -39,6 +39,14 @@ class VentaDirectaDialog : DialogFragment() {
     private val binding get() = _binding!!
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
+
+        if (producto?.inactivo == true) {
+            return androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle("⚠️ Producto inactivo")
+                .setMessage("\"${producto?.nombre}\" está inactivo. Actívalo primero antes de venderlo.")
+                .setPositiveButton("Entendido", null)
+                .create()
+        }
         _binding = DialogVentaDirectaBinding.inflate(layoutInflater)
         cantidad = savedInstanceState?.getInt(KEY_CANTIDAD) ?: 1
         configurarVista()

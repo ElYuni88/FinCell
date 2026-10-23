@@ -2,6 +2,6 @@
 <TextView android:id="@+id/txtCliente" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Cliente" android:textSize="24sp" android:textStyle="bold" />
 <TextView android:id="@+id/txtTotal" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Total: $0.00" android:textSize="22sp" />
 <androidx.recyclerview.widget.RecyclerView android:id="@+id/recyclerDetalle" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" />
-<com.google.android.material.button.MaterialButton android:id="@+id/btnCerrarCuenta" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Cerrar cuenta" />
-<com.google.android.material.button.MaterialButton android:id="@+id/btnVolver" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Volver" />
+<com.google.android.material.button.MaterialButton android:id="@+id/btnCerrarCuenta" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/btn_cerrar_cuenta" />
+<com.google.android.material.button.MaterialButton android:id="@+id/btnVolver" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/btn_volver" />
 </LinearLayout>

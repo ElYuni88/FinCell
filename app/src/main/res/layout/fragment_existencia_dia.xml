@@ -1,8 +1,101 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.recyclerview.widget.RecyclerView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/recyclerExistencia"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/background"
-    android:clipToPadding="false"
-    android:padding="16dp" />
+    android:orientation="vertical">
+
+    <!-- Badge con la fecha y hora del snapshot (solo si hay histórico) -->
+    <LinearLayout
+        android:id="@+id/layoutBadgeSnapshot"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginTop="12dp"
+        android:background="@drawable/bg_banner_snapshot"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="10dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/txtBadgeSnapshot"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="📸 Snapshot del día: --"
+            android:textColor="@android:color/white"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Fila de headers fija (no scrollea) -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginTop="12dp"
+        android:background="@drawable/bg_header_existencia"
+        android:orientation="horizontal"
+        android:paddingHorizontal="14dp"
+        android:paddingVertical="10dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="2"
+            android:text="Producto"
+            android:textAppearance="@style/TextAppearance.FinSell.Label"
+            android:textColor="@color/text_primary" />
+
+        <TextView
+            android:id="@+id/txtHeaderInicial"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="Stock Inicial"
+            android:textAppearance="@style/TextAppearance.FinSell.Label"
+            android:textColor="@color/text_primary" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="Stock Actual"
+            android:textAppearance="@style/TextAppearance.FinSell.Label"
+            android:textColor="@color/text_primary" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="end"
+            android:text="Precio/u."
+            android:textAppearance="@style/TextAppearance.FinSell.Label"
+            android:textColor="@color/text_primary" />
+    </LinearLayout>
+
+    <!-- Estado vacío -->
+    <TextView
+        android:id="@+id/txtVacio"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="32dp"
+        android:gravity="center"
+        android:text="No hay productos para mostrar"
+        android:textAppearance="@style/TextAppearance.FinSell.Secondary"
+        android:visibility="gone" />
+
+    <!-- Lista -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerExistencia"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:paddingHorizontal="16dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="16dp" />
+
+</LinearLayout>

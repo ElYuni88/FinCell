@@ -65,11 +65,11 @@ class ProductosManualesActivity : AppCompatActivity() {
 
     private fun configurarRecyclers() {
         // Adapter de productos (catálogo)
-        productosAdapter = ProductosManualesAdapter { producto ->
+        productosAdapter = ProductosManualesAdapter { item ->
             if (modoSeleccion) {
-                devolverProductoSeleccionado(producto)
+                devolverProductoSeleccionado(item.producto)
             } else {
-                mostrarDialogoCantidad(producto)
+                mostrarDialogoCantidad(item.producto)
             }
         }
         binding.recyclerProductos.layoutManager = LinearLayoutManager(this)
@@ -101,8 +101,8 @@ class ProductosManualesActivity : AppCompatActivity() {
     }
 
     private fun observarDatos() {
-        // Productos filtrados
-        viewModel.productosFiltrados.observe(this) { productos ->
+        // ✅ CAMBIO: Usar productosConStockAjustado (incluye cantidad en carrito)
+        viewModel.productosConStockAjustado.observe(this) { productos ->
             productosAdapter.submitList(productos)
             binding.tvEmpty.visibility = if (productos.isEmpty()) View.VISIBLE else View.GONE
         }
@@ -143,6 +143,12 @@ class ProductosManualesActivity : AppCompatActivity() {
         if (modo == ModoOperacion.CUENTA && cuentaId <= 0) {
             Toast.makeText(this, "No hay cuenta seleccionada", Toast.LENGTH_SHORT).show()
             finish()
+            return
+        }
+
+        // ✅ Validación extra: no abrir si no hay stock
+        val item = viewModel.productosConStockAjustado.value?.find { it.producto.id == producto.id }
+        if (item?.sinStock == true) {
             return
         }
 
