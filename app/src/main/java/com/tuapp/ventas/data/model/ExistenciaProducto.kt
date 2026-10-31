@@ -18,5 +18,6 @@ data class ExistenciaProducto(
     val fechaSnapshot: String?,
     val horaSnapshot: String?,
     val esEliminado: Boolean = false,
-    val esInactivo: Boolean = false
+    val esInactivo: Boolean = false,
+    val vendidos: Int = 0
 )

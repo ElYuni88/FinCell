@@ -136,6 +136,9 @@ class IPBResumenActivity : AppCompatActivity() {
             }
             startActivity(intent)
         }
+        binding.btnVerAnalisis.setOnClickListener {
+            startActivity(Intent(this, IPBAnalisisActivity::class.java))
+        }
         binding.btnExportar.setOnClickListener { confirmarCierreYExportacion() }
     }
 
@@ -143,8 +146,15 @@ class IPBResumenActivity : AppCompatActivity() {
         viewModel.cargarDatos()
 
         // ✅ Mostrar rango del periodo en lugar de una sola fecha
-        val inicio = prefs.obtenerInicioPeriodoVentas().takeIf { it > 0L }
-            ?: DateUtils.inicioDia(System.currentTimeMillis())
+        val inicioPeriodo = prefs.obtenerInicioPeriodoVentas()
+        val inicioMuerto = prefs.ultimoInicioPeriodoMuerto.takeIf { it > 0L }
+            ?: prefs.obtenerUltimaExportacionIPB().takeIf { it > 0L && it < inicioPeriodo }
+            ?: 0L
+        val inicio = when {
+            inicioMuerto > 0L && inicioMuerto < inicioPeriodo -> inicioMuerto
+            inicioPeriodo > 0L -> inicioPeriodo
+            else -> DateUtils.inicioDia(System.currentTimeMillis())
+        }
         val fin = System.currentTimeMillis()
         val dias = (TimeUnit.MILLISECONDS.toDays(fin - inicio) + 1).coerceAtLeast(1)
         val inicioStr = DateUtils.fechaHora(inicio).substringBefore(" ")

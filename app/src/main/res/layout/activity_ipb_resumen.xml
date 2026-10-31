@@ -69,6 +69,17 @@
                 android:textAppearance="@style/TextAppearance.FinSell.Title"
                 android:textSize="18sp" />
 
+            <!-- ✅ NUEVO: botón al análisis completo -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnVerAnalisis"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="12dp"
+                android:text="📊 Ver análisis completo"
+                android:textColor="@color/pos_blue"
+                app:strokeColor="@color/pos_blue" />
+
             <!-- ============================================ -->
             <!-- 1. PRODUCTOS VENDIDOS -->
             <!-- ============================================ -->

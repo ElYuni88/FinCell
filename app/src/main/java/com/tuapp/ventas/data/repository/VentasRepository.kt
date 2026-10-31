@@ -310,8 +310,13 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
             // - Si estaba CERRADO → limpiar todo el estado (vuelve a ABIERTO)
             // - Si estaba ABIERTO → solo limpiar periodo muerto por seguridad
             if (estabaCerrado) {
+                // ✅ Guardar inicio del período muerto ANTES de limpiarlo
+                if (inicioPeriodoMuerto > 0L) {
+                    prefs.ultimoInicioPeriodoMuerto = inicioPeriodoMuerto
+                    Log.d(TAG, "ultimoInicioPeriodoMuerto guardado = $inicioPeriodoMuerto")
+                }
                 prefs.limpiarEstadoPeriodo()
-                prefs.guardarInicioPeriodoVentas(System.currentTimeMillis())   // ✅ NUEVO
+                prefs.guardarInicioPeriodoVentas(System.currentTimeMillis())
                 Log.d(TAG, "✅ Periodo REABIERTO tras importación (estaba CERRADO)")
             } else {
                 prefs.limpiarInicioPeriodoMuerto()
@@ -591,6 +596,155 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
 
     fun cantidadTransferenciasHoy(): Flow<Int> = finales.observarCantidadPorMetodoDia("TRANSFERENCIA", DateUtils.inicioDia(), DateUtils.finDia())
 
+    // ============================================================
+    // ✅ NUEVOS: Estadísticas POR PERÍODO (no por día)
+    // ============================================================
+
+    /**
+     * Resumen de ventas del período actual + del período muerto inmediatamente anterior.
+     *
+     * - cantidadVendida / subtotal       → ventas en [inicioPeriodoVentas, now]
+     * - cantidadVendidaMuerto / subtotalMuerto → ventas en [inicioMuerto, inicioPeriodoVentas]
+     *
+     * El inicio del período muerto se toma de `ultimoInicioPeriodoMuerto`.
+     * Si es 0, fallback a `ultima_exportacion_ipb` (que es el timestamp del cierre
+     * del período anterior = inicio del período muerto).
+     */
+    suspend fun obtenerResumenVentasPeriodo(): List<ResumenProducto> {
+        val prefs = PreferencesManager(context)
+        val inicioPeriodo = prefs.obtenerInicioPeriodoVentas().takeIf { it > 0L }
+            ?: inicioDia(System.currentTimeMillis())
+        val inicioMuerto = prefs.ultimoInicioPeriodoMuerto.takeIf { it > 0L }
+            ?: prefs.obtenerUltimaExportacionIPB().takeIf { it > 0L && it < inicioPeriodo }
+            ?: 0L
+        val fin = System.currentTimeMillis()
+
+        Log.d("ResumenPeriodo", "inicioPeriodo=${DateUtils.fechaHora(inicioPeriodo)} inicioMuerto=${
+            if (inicioMuerto > 0L) DateUtils.fechaHora(inicioMuerto) else "N/A"
+        } fin=${DateUtils.fechaHora(fin)}")
+
+        val mapa = mutableMapOf<Long, ResumenProducto>()
+
+        // ── Ventas del período actual ─────────────────────────────
+        ventas.listarDelDia(inicioPeriodo, fin).forEach { venta ->
+            val producto = productos.buscarPorId(venta.productoId) ?: return@forEach
+            val actual = mapa[producto.id]
+            mapa[producto.id] = if (actual == null) {
+                ResumenProducto(
+                    nombre = producto.nombre,
+                    cantidadVendida = 1,
+                    stockDisponible = (producto.inventario - producto.vendidos).coerceAtLeast(0),
+                    subtotal = venta.precio
+                )
+            } else {
+                actual.copy(
+                    cantidadVendida = actual.cantidadVendida + 1,
+                    subtotal = actual.subtotal + venta.precio
+                )
+            }
+        }
+
+        // ── Cuentas cerradas del período actual ───────────────────
+        cuentas.cuentasCerradasDelDia(inicioPeriodo, fin).forEach { cuenta ->
+            cuenta.detalles.forEach { detalleConProducto ->
+                val detalle = detalleConProducto.detalle
+                val producto = detalleConProducto.producto
+                val actual = mapa[producto.id]
+                mapa[producto.id] = if (actual == null) {
+                    ResumenProducto(
+                        nombre = producto.nombre,
+                        cantidadVendida = detalle.cantidad,
+                        stockDisponible = (producto.inventario - producto.vendidos).coerceAtLeast(0),
+                        subtotal = detalle.subtotal
+                    )
+                } else {
+                    actual.copy(
+                        cantidadVendida = actual.cantidadVendida + detalle.cantidad,
+                        subtotal = actual.subtotal + detalle.subtotal
+                    )
+                }
+            }
+        }
+
+        // ── Ventas del período muerto (si aplica) ─────────────────
+        if (inicioMuerto > 0L && inicioMuerto < inicioPeriodo) {
+            ventas.listarDelDia(inicioMuerto, inicioPeriodo).forEach { venta ->
+                val producto = productos.buscarPorId(venta.productoId) ?: return@forEach
+                val actual = mapa[producto.id]
+                mapa[producto.id] = if (actual == null) {
+                    ResumenProducto(
+                        nombre = producto.nombre,
+                        cantidadVendida = 0,
+                        cantidadVendidaMuerto = 1,
+                        stockDisponible = (producto.inventario - producto.vendidos).coerceAtLeast(0),
+                        subtotal = 0.0,
+                        subtotalMuerto = venta.precio
+                    )
+                } else {
+                    actual.copy(
+                        cantidadVendidaMuerto = actual.cantidadVendidaMuerto + 1,
+                        subtotalMuerto = actual.subtotalMuerto + venta.precio
+                    )
+                }
+            }
+
+            cuentas.cuentasCerradasDelDia(inicioMuerto, inicioPeriodo).forEach { cuenta ->
+                cuenta.detalles.forEach { detalleConProducto ->
+                    val detalle = detalleConProducto.detalle
+                    val producto = detalleConProducto.producto
+                    val actual = mapa[producto.id]
+                    mapa[producto.id] = if (actual == null) {
+                        ResumenProducto(
+                            nombre = producto.nombre,
+                            cantidadVendida = 0,
+                            cantidadVendidaMuerto = detalle.cantidad,
+                            stockDisponible = (producto.inventario - producto.vendidos).coerceAtLeast(0),
+                            subtotal = 0.0,
+                            subtotalMuerto = detalle.subtotal
+                        )
+                    } else {
+                        actual.copy(
+                            cantidadVendidaMuerto = actual.cantidadVendidaMuerto + detalle.cantidad,
+                            subtotalMuerto = actual.subtotalMuerto + detalle.subtotal
+                        )
+                    }
+                }
+            }
+        }
+
+        return mapa.values.sortedWith(
+            compareByDescending<ResumenProducto> { it.cantidadVendida + it.cantidadVendidaMuerto }
+                .thenBy { it.nombre.lowercase() }
+        )
+    }
+
+    /**
+     * Existencia del período actual (desde inicioPeriodoVentas hasta ahora).
+     *
+     * stockHistorico = producto.inventarioAlInicioPeriodo (se setea al importar IPV)
+     * stockActual    = producto.inventario - producto.vendidos
+     */
+    suspend fun obtenerExistenciaPeriodo(): List<ExistenciaProducto> {
+        val productosActuales = productos.listarTodos()
+        return productosActuales.map { prod ->
+            ExistenciaProducto(
+                codigoBarras = prod.codigoBarras,
+                nombre = prod.nombre,
+                stockHistorico = prod.inventarioAlInicioPeriodo,
+                stockActual = (prod.inventario - prod.vendidos).coerceAtLeast(0),
+                precio = prod.precio,
+                esHistorico = true,
+                fechaSnapshot = null,
+                horaSnapshot = null,
+                esEliminado = false,
+                esInactivo = prod.inactivo,
+                vendidos = prod.vendidos   // ✅
+            )
+        }.sortedWith(
+            compareByDescending<ExistenciaProducto> { it.vendidos }
+                .thenBy { it.nombre.lowercase() }
+        )
+    }
     fun hayNotificaciones(): Flow<Boolean> = notificaciones.observarCantidadNoLeidas()
         .map { noLeidas -> noLeidas > 0 }
 
@@ -949,7 +1103,8 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
                     fechaSnapshot = snap.fecha,
                     horaSnapshot = formatoHora.format(java.util.Date(snap.timestamp)),
                     esEliminado = false,
-                    esInactivo = prod.inactivo
+                    esInactivo = prod.inactivo,
+                    vendidos = prod.vendidos
                 )
                 snap != null && prod == null -> ExistenciaProducto(
                     codigoBarras = codigo,
@@ -961,7 +1116,8 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
                     fechaSnapshot = snap.fecha,
                     horaSnapshot = formatoHora.format(java.util.Date(snap.timestamp)),
                     esEliminado = true,
-                    esInactivo = false
+                    esInactivo = false,
+                    vendidos = 0
                 )
                 snap == null && prod != null -> ExistenciaProducto(
                     codigoBarras = codigo,
@@ -973,7 +1129,8 @@ class VentasRepository(private val db: AppDatabase,  private val context: androi
                     fechaSnapshot = null,
                     horaSnapshot = null,
                     esEliminado = false,
-                    esInactivo = prod.inactivo
+                    esInactivo = prod.inactivo,
+                    vendidos = prod.vendidos
                 )
                 else -> null
             }

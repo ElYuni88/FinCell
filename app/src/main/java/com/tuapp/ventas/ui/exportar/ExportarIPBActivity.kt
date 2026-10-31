@@ -44,19 +44,22 @@ class ExportarIPBActivity : BaseActivity() {
             val repo = (application as VentasApplication).repository
             val prefs = PreferencesManager(this@ExportarIPBActivity)
 
-            // ✅ RANGO: desde inicio del periodo hasta ahora
+            // ✅ RANGO: incluye período muerto + período actual
             val inicioPeriodo = prefs.obtenerInicioPeriodoVentas()
-            val inicio = if (inicioPeriodo > 0L) {
-                inicioPeriodo
-            } else {
-                DateUtils.inicioDia(System.currentTimeMillis())
+            val inicioMuerto = prefs.ultimoInicioPeriodoMuerto.takeIf { it > 0L }
+                ?: prefs.obtenerUltimaExportacionIPB().takeIf { it > 0L && it < inicioPeriodo }
+                ?: 0L
+            val inicio = when {
+                inicioMuerto > 0L && inicioMuerto < inicioPeriodo -> inicioMuerto
+                inicioPeriodo > 0L -> inicioPeriodo
+                else -> DateUtils.inicioDia(System.currentTimeMillis())
             }
             val fin = System.currentTimeMillis()
             val fechaStr = DateUtils.fechaArchivo(fin)
 
             Log.d(
                 "ExportarIPB",
-                "Exportando período: inicio=${DateUtils.fechaHora(inicio)} fin=${DateUtils.fechaHora(fin)}"
+                "Exportando período: inicio=${DateUtils.fechaHora(inicio)} fin=${DateUtils.fechaHora(fin)} (incluyeMuerto=${inicioMuerto > 0L})"
             )
 
             val pv = repo.obtenerPuntoVentaActivo()
@@ -64,17 +67,22 @@ class ExportarIPBActivity : BaseActivity() {
 
             val cuentasCerradas = repo.cuentasCerradasDia(inicio, fin)
 
-            val productos = repo.listarProductos().map {
-                ProductoIPB(
-                    id = it.id,
-                    nombre = it.nombre,
-                    codigoBarras = it.codigoBarras,
-                    precio = it.precio,
-                    inventario = it.inventario,
-                    vendidos = it.vendidos,
-                    inactivo = it.inactivo
+            val productos = repo.listarProductos()
+                .map {
+                    ProductoIPB(
+                        id = it.id,
+                        nombre = it.nombre,
+                        codigoBarras = it.codigoBarras,
+                        precio = it.precio,
+                        inventario = it.inventario,
+                        vendidos = it.vendidos,
+                        inactivo = it.inactivo
+                    )
+                }
+                .sortedWith(
+                    compareByDescending<ProductoIPB> { it.vendidos }
+                        .thenBy { it.nombre.lowercase() }
                 )
-            }
 
             val ventas = repo.ventasDirectasDia(inicio, fin)
 

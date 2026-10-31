@@ -9,6 +9,7 @@ import androidx.fragment.app.activityViewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.tuapp.ventas.VentasApplication
 import com.tuapp.ventas.databinding.FragmentExistenciaDiaBinding
+import com.tuapp.ventas.utils.DateUtils
 
 class ExistenciaDiaFragment : Fragment() {
     private var _binding: FragmentExistenciaDiaBinding? = null
@@ -23,11 +24,7 @@ class ExistenciaDiaFragment : Fragment() {
         )
     }
 
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentExistenciaDiaBinding.inflate(inflater, container, false)
         return binding.root
     }
@@ -37,27 +34,29 @@ class ExistenciaDiaFragment : Fragment() {
         binding.recyclerExistencia.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerExistencia.adapter = adapter
 
-        viewModel.existenciaDia.observe(viewLifecycleOwner) { lista ->
+        viewModel.existenciaPeriodo.observe(viewLifecycleOwner) { lista ->
             adapter.submitList(lista)
 
-            // Estado vacío
             val vacia = lista.isEmpty()
             binding.txtVacio.visibility = if (vacia) View.VISIBLE else View.GONE
             binding.recyclerExistencia.visibility = if (vacia) View.GONE else View.VISIBLE
 
-            // Badge de snapshot + icono en el header de la columna
-            val conSnapshot = lista.firstOrNull { it.esHistorico }
-            if (conSnapshot != null) {
+            // Badge: fecha de inicio del período
+            val conHistorico = lista.firstOrNull { it.esHistorico }
+            if (conHistorico != null) {
                 binding.layoutBadgeSnapshot.visibility = View.VISIBLE
-                val fecha = conSnapshot.fechaSnapshot ?: "—"
-                val hora = conSnapshot.horaSnapshot.orEmpty()
-                binding.txtBadgeSnapshot.text = "📸 Snapshot del día: $fecha $hora"
+                binding.txtBadgeSnapshot.text = "📸 Inicio del período: ${DateUtils.fechaHora(viewModel.obtenerInicioPeriodoActual())}"
                 binding.txtHeaderInicial.text = "📸 Stock Inicial"
             } else {
                 binding.layoutBadgeSnapshot.visibility = View.GONE
                 binding.txtHeaderInicial.text = "Stock Inicial"
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        viewModel.recargar()
     }
 
     override fun onDestroyView() {

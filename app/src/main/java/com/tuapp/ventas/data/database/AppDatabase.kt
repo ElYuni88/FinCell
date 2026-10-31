@@ -23,9 +23,10 @@ import kotlinx.coroutines.launch
         Notificacion::class,
         PuntoVenta::class,
         IpvImportado::class,
-        SnapshotInventario::class],
+        SnapshotInventario::class,
+        Usuario::class],
 
-    version = 12,
+    version = 13,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -38,8 +39,9 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun notificacionDao(): NotificacionDao
     abstract fun puntoVentaDao(): PuntoVentaDao
     abstract fun ipvImportadoDao(): IpvImportadoDao
-
     abstract fun snapshotInventarioDao(): SnapshotInventarioDao
+
+    abstract fun usuarioDao(): UsuarioDao
 
     companion object {
         private val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -248,6 +250,49 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // ============================================================
+        // ✅ v12 → v13: usuarios + usuario_id en ventas/cuentas/ventas_finales
+        // ============================================================
+        private val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                Log.d("Migration", "🏗️ Iniciando migración 12 → 13 (usuarios)")
+
+                // 1. Crear tabla usuarios
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `usuarios` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `nombre` TEXT NOT NULL,
+                        `telefono` TEXT NOT NULL,
+                        `codigo_pais` TEXT NOT NULL DEFAULT '+53',
+                        `pin` TEXT,
+                        `pin_requerido` INTEGER NOT NULL DEFAULT 0,
+                        `activo` INTEGER NOT NULL DEFAULT 1,
+                        `es_sistema` INTEGER NOT NULL DEFAULT 0,
+                        `fecha_creacion` INTEGER NOT NULL
+                    )
+                """.trimIndent())
+                database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_usuarios_telefono` ON `usuarios`(`telefono`)")
+
+                // 2. Insertar usuario "Sistema" (id=1) para ventas legacy
+                val ahora = System.currentTimeMillis()
+                database.execSQL("""
+                    INSERT INTO `usuarios` (`id`, `nombre`, `telefono`, `codigo_pais`, `pin`, `pin_requerido`, `activo`, `es_sistema`, `fecha_creacion`)
+                    VALUES (1, 'Sistema', '+000000000', '+0', NULL, 0, 1, 1, $ahora)
+                """.trimIndent())
+
+                // 3. Añadir usuario_id a ventas_directas (DEFAULT 1 = Sistema)
+                database.execSQL("ALTER TABLE ventas_directas ADD COLUMN usuario_id INTEGER NOT NULL DEFAULT 1")
+
+                // 4. Añadir usuario_id a cuentas
+                database.execSQL("ALTER TABLE cuentas ADD COLUMN usuario_id INTEGER NOT NULL DEFAULT 1")
+
+                // 5. Añadir usuario_id a ventas_finales
+                database.execSQL("ALTER TABLE ventas_finales ADD COLUMN usuario_id INTEGER NOT NULL DEFAULT 1")
+
+                Log.d("Migration", "✅ Migración 12 → 13 completada (usuario Sistema id=1 asignado a datos existentes)")
+            }
+        }
+
         private fun crearTablaNotificaciones(database: SupportSQLiteDatabase) {
             database.execSQL("""
                 CREATE TABLE IF NOT EXISTS notificaciones (
@@ -292,7 +337,8 @@ abstract class AppDatabase : RoomDatabase() {
                     MIGRATION_8_9,
                     MIGRATION_9_10,
                     MIGRATION_10_11,
-                    MIGRATION_11_12)
+                    MIGRATION_11_12,
+                    MIGRATION_12_13)
                 .addCallback(object : Callback() {
                     override fun onCreate(db: SupportSQLiteDatabase) {
                         super.onCreate(db)

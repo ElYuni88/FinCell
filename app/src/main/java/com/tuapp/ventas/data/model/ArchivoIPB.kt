@@ -10,15 +10,14 @@ data class ArchivoIPB(
     val ingresos: List<Gasto> = emptyList(),
     val cuentas: List<CuentaIPB> = emptyList(),
     val resumenClientes: ResumenClientesIPB? = null,
-    val resumen: ResumenIPB
+    val resumen: ResumenIPB,
+    /**
+     * ✅ NUEVO (v1.1 IPB): resumen de ventas por usuario.
+     * Vacío hasta que la Fase 2 lo rellene. Admin debe aceptar el campo opcional.
+     */
+    val usuarios: List<UsuarioIPB> = emptyList()
 )
 
-/**
- * Producto incluido en el informe IPB con cálculos derivados de stock y subtotal.
- *
- * ⚠️ `inactivo` es el estado actual del producto en el cliente.
- *    El admin lo usa para saber si el cliente activó o desactivó algo durante el día.
- */
 data class ProductoIPB(
     val id: Long,
     val nombre: String,
@@ -32,7 +31,6 @@ data class ProductoIPB(
     val subtotal: Double get() = vendidos * precio
 }
 
-/** Totales consolidados del IPB diario. */
 data class ResumenIPB(
     val totalVentas: Double,
     val totalCuentas: Double,
@@ -42,4 +40,15 @@ data class ResumenIPB(
     val totalGastos: Double = 0.0,
     val totalIngresos: Double = 0.0,
     val totalNeto: Double = totalGeneral + totalIngresos - totalGastos
+)
+
+/**
+ * ✅ NUEVO: ventas agrupadas por usuario (quién vendió cuánto).
+ * Permite al admin saber el desempeño por trabajador.
+ */
+data class UsuarioIPB(
+    val usuarioId: Long,
+    val usuarioNombre: String,
+    val totalVentas: Double,
+    val cantidadVentas: Int
 )

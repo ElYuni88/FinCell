@@ -12,7 +12,7 @@
         android:layout_height="64dp"
         android:background="@color/surface"
         app:navigationIcon="@drawable/ic_arrow_back"
-        app:title="Estadísticas"
+        app:title="Estadísticas del período"
         app:titleTextAppearance="@style/TextAppearance.FinSell.Display" />
 
     <com.google.android.material.tabs.TabLayout

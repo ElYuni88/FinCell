@@ -18,7 +18,7 @@
             android:layout_height="64dp"
             android:background="@color/surface"
             app:navigationIcon="@drawable/ic_menu"
-            app:title="CafePos"
+            app:title="@string/app_name"
             app:titleTextAppearance="@style/TextAppearance.FinSell.Display" />
 
         <EditText
@@ -30,7 +30,7 @@
             android:background="@drawable/bg_stitch_card"
             android:drawableStart="@drawable/ic_search"
             android:drawablePadding="10dp"
-            android:hint="Buscar por nombre o código"
+            android:hint="@string/hint_buscar_nombre_codigo"
             android:padding="12dp"
             android:singleLine="true" />
 
@@ -41,7 +41,7 @@
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="16dp"
             android:layout_marginTop="8dp"
-            android:text="Mostrar productos inactivos" />
+            android:text="@string/lbl_mostrar_productos_inactivos" />
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recyclerProductos"
@@ -72,7 +72,7 @@
         android:layout_gravity="bottom|end"
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="150dp"
-        android:text="Escáner"
+        android:text="@string/btn_escaner"
         app:icon="@drawable/ic_barcode_scanner"
         app:backgroundTint="@color/primary_container"
         app:cornerRadius="16dp" />
@@ -84,7 +84,7 @@
         android:layout_gravity="bottom|end"
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="88dp"
-        android:text="Manual"
+        android:text="@string/btn_manual"
         app:icon="@drawable/ic_edit"
         app:backgroundTint="@color/secondary"
         app:cornerRadius="16dp" />
@@ -94,5 +94,5 @@
         android:visibility="gone"
         android:layout_width="1dp"
         android:layout_height="1dp"
-        android:text="Volver" />
+        android:text="@string/btn_volver" />
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

@@ -51,8 +51,15 @@ class IPBResumenViewModel(
      */
     fun cargarDatos(@Suppress("UNUSED_PARAMETER") fecha: Long = System.currentTimeMillis()) {
         viewModelScope.launch {
-            val inicio = preferencesManager.obtenerInicioPeriodoVentas().takeIf { it > 0L }
-                ?: DateUtils.inicioDia(System.currentTimeMillis())
+            val inicioPeriodo = preferencesManager.obtenerInicioPeriodoVentas()
+            val inicioMuerto = preferencesManager.ultimoInicioPeriodoMuerto.takeIf { it > 0L }
+                ?: preferencesManager.obtenerUltimaExportacionIPB().takeIf { it > 0L && it < inicioPeriodo }
+                ?: 0L
+            val inicio = when {
+                inicioMuerto > 0L && inicioMuerto < inicioPeriodo -> inicioMuerto
+                inicioPeriodo > 0L -> inicioPeriodo
+                else -> DateUtils.inicioDia(System.currentTimeMillis())
+            }
             val fin = System.currentTimeMillis()
 
             val ventasDirectas = repo.ventasDirectasDia(inicio, fin)

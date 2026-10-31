@@ -27,7 +27,9 @@ data class Cuenta(
     val total: Double = 0.0,
     val esClienteTemporal: Boolean = false,
     @ColumnInfo(name = "nombre_cliente_temporal") val nombreClienteTemporal: String? = null,
-    @ColumnInfo(name = "mesa_temporal") val mesaTemporal: String? = null
+    @ColumnInfo(name = "mesa_temporal") val mesaTemporal: String? = null,
+    /** 1L = usuario "Sistema". En Fase 2 se reemplaza por el real. */
+    @ColumnInfo(name = "usuario_id") val usuarioId: Long = 1L
 ) {
     companion object { const val ESTADO_ABIERTA = "ABIERTA"; const val ESTADO_CERRADA = "CERRADA" }
 }

@@ -13,6 +13,11 @@
     <color name="colorError">#EF5350</color>
     <color name="colorOnError">#000000</color>
 
+    <!-- ✅ Sombreado del análisis (modo matrix) -->
+    <color name="analisis_highlight_soft">#1B3F5C</color>     <!-- fila/columna normal -->
+    <color name="analisis_highlight_header">#2A5A85</color>   <!-- header de columna activa -->
+    <color name="analisis_highlight_strong">#3D8DD9</color>   <!-- celda exacta seleccionada -->
+
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
     <color name="transparent">#00000000</color>

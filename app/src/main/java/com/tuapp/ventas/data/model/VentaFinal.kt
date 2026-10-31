@@ -17,5 +17,7 @@ data class VentaFinal(
     @ColumnInfo(name = "total_venta") val totalVenta: Double,
     @ColumnInfo(name = "metodo_pago") val metodoPago: String = "EFECTIVO",
     @ColumnInfo(name = "fecha_cierre") val fechaCierre: Long = System.currentTimeMillis(),
-    val observaciones: String? = null
+    val observaciones: String? = null,
+    /** 1L = usuario "Sistema". En Fase 2 se reemplaza por el real. */
+    @ColumnInfo(name = "usuario_id") val usuarioId: Long = 1L
 )

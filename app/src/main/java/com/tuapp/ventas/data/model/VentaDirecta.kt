@@ -17,5 +17,7 @@ data class VentaDirecta(
     @ColumnInfo(name = "codigo_barras") val codigoBarras: String,
     @ColumnInfo(name = "nombre_producto") val nombreProducto: String,
     val precio: Double,
-    @ColumnInfo(name = "fecha_venta") val fechaVenta: Long = System.currentTimeMillis()
+    @ColumnInfo(name = "fecha_venta") val fechaVenta: Long = System.currentTimeMillis(),
+    /** 1L = usuario "Sistema" (legacy o sin sesión). En Fase 2 se reemplaza por el real. */
+    @ColumnInfo(name = "usuario_id") val usuarioId: Long = 1L
 )

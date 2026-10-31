@@ -13,6 +13,11 @@
     <color name="colorError">#F44336</color>
     <color name="colorOnError">#FFFFFF</color>
 
+    <!-- ✅ Sombreado del análisis (modo matrix) -->
+    <color name="analisis_highlight_soft">#2A5A85</color>
+    <color name="analisis_highlight_header">#3D7EB8</color>
+    <color name="analisis_highlight_strong">#5AA3E8</color>
+
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
     <color name="transparent">#00000000</color>

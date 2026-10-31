@@ -1,6 +1,7 @@
 package com.tuapp.ventas.ui.estadisticas
 
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
@@ -9,7 +10,6 @@ import com.tuapp.ventas.data.model.ResumenProducto
 import com.tuapp.ventas.databinding.ItemResumenProductoBinding
 import com.tuapp.ventas.utils.DateUtils
 
-/** Adaptador para pintar los productos vendidos en el día seleccionado. */
 class ResumenAdapter : ListAdapter<ResumenProducto, ResumenAdapter.ResumenViewHolder>(DiffCallback) {
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ResumenViewHolder {
         val binding = ItemResumenProductoBinding.inflate(LayoutInflater.from(parent.context), parent, false)
@@ -23,12 +23,22 @@ class ResumenAdapter : ListAdapter<ResumenProducto, ResumenAdapter.ResumenViewHo
             txtNombreProducto.text = item.nombre
             txtCantidadVendida.text = "Vendidos: ${item.cantidadVendida}"
             txtStockDisponible.text = "Stock: ${item.stockDisponible}"
-            txtSubtotal.text = DateUtils.moneda(item.subtotal)
+            txtSubtotal.text = DateUtils.moneda(item.subtotalTotal)
+
+            if (item.cantidadVendidaMuerto > 0) {
+                txtCantidadVendidaMuerto.visibility = View.VISIBLE
+                txtCantidadVendidaMuerto.text = "Periodo muerto: ${item.cantidadVendidaMuerto}"
+            } else {
+                txtCantidadVendidaMuerto.visibility = View.GONE
+            }
         }
     }
 
     private object DiffCallback : DiffUtil.ItemCallback<ResumenProducto>() {
-        override fun areItemsTheSame(oldItem: ResumenProducto, newItem: ResumenProducto): Boolean = oldItem.nombre == newItem.nombre
-        override fun areContentsTheSame(oldItem: ResumenProducto, newItem: ResumenProducto): Boolean = oldItem == newItem
+        override fun areItemsTheSame(oldItem: ResumenProducto, newItem: ResumenProducto): Boolean =
+            oldItem.nombre == newItem.nombre
+
+        override fun areContentsTheSame(oldItem: ResumenProducto, newItem: ResumenProducto): Boolean =
+            oldItem == newItem
     }
 }

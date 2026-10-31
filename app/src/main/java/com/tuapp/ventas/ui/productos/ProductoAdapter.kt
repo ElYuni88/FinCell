@@ -6,6 +6,7 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.tuapp.ventas.R
 import com.tuapp.ventas.data.model.Producto
 import com.tuapp.ventas.databinding.ItemProductoBinding
 import com.tuapp.ventas.utils.DateUtils
@@ -29,13 +30,21 @@ class ProductoAdapter(
 
     inner class VH(private val binding: ItemProductoBinding) : RecyclerView.ViewHolder(binding.root) {
         fun bind(producto: Producto) = with(binding) {
-            val codigo = producto.codigoBarras.ifBlank { "S/C" }
-            val etiquetaCodigo = if (producto.tipoProducto == Producto.TIPO_MANUAL) "$codigo (manual)" else codigo
+            val context = binding.root.context
+            val codigo = producto.codigoBarras.ifBlank { context.getString(R.string.lbl_sin_codigo) }
+            val etiquetaCodigo = if (producto.tipoProducto == Producto.TIPO_MANUAL) context.getString(R.string.lbl_codigo_manual, codigo) else codigo
             val stockDisponible = producto.inventario - producto.vendidos
 
             txtNombre.text = producto.nombre
-            val sufijo = if (producto.inactivo) " · INACTIVO" else ""
-            txtDetalle.text = "Código: $etiquetaCodigo · Precio: ${DateUtils.moneda(producto.precio)} · Stock: $stockDisponible · Vendidos: ${producto.vendidos}$sufijo"
+            val sufijo = if (producto.inactivo) context.getString(R.string.lbl_sufijo_inactivo) else ""
+            txtDetalle.text = context.getString(
+                R.string.lbl_detalle_producto,
+                etiquetaCodigo,
+                DateUtils.moneda(producto.precio),
+                stockDisponible,
+                producto.vendidos,
+                sufijo
+            )
 
             if (producto.inactivo) {
                 // Solo Activar

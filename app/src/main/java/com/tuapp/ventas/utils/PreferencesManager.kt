@@ -50,6 +50,40 @@ class PreferencesManager(context: Context) {
         set(value) = prefs.edit().putString("modo_default", value).apply()
 
     // ================================================================
+    // ✅ SESIÓN DE USUARIO
+    // ================================================================
+
+    /**
+     * ID del usuario logueado actualmente.
+     * -1 = sin sesión (no se puede vender).
+     * 1 = usuario "Sistema" (default hasta Fase 2).
+     */
+    var usuarioActualId: Long
+        get() = prefs.getLong("usuario_actual_id", -1L)
+        set(value) = prefs.edit().putLong("usuario_actual_id", value).apply()
+
+    fun hayUsuarioLogueado(): Boolean = usuarioActualId > 0L
+
+    fun limpiarSesion() {
+        prefs.edit().remove("usuario_actual_id").apply()
+    }
+
+
+    // ================================================================
+    // ✅ ÚLTIMO INICIO DEL PERÍODO MUERTO (para el Resumen del período)
+    // ================================================================
+
+    /**
+     * Timestamp de inicio del último período muerto que se importó.
+     * Se setea en `importarIPV` antes de limpiar el estado del período.
+     * Permite calcular las ventas del período muerto en el Resumen.
+     * Si es 0, se usa `obtenerUltimaExportacionIPB()` como fallback.
+     */
+    var ultimoInicioPeriodoMuerto: Long
+        get() = prefs.getLong("ultimo_inicio_periodo_muerto", 0L)
+        set(value) = prefs.edit().putLong("ultimo_inicio_periodo_muerto", value).apply()
+
+    // ================================================================
     // ✅ NUEVOS MÉTODOS: CATEGORÍAS PERSISTENTES DE AJUSTES
     // ================================================================
 
@@ -350,6 +384,8 @@ class PreferencesManager(context: Context) {
         editor.remove("fecha_cierre_periodo")
         editor.remove("nombre_archivo_exportado")
         editor.remove("inicio_periodo_ventas")
+        editor.remove("ultimo_inicio_periodo_muerto")
+        editor.remove("usuario_actual_id")
 
         // Borrar ajustes por día (prefijo "ajustes_dia_")
         prefs.all.keys
@@ -408,8 +444,23 @@ class PreferencesManager(context: Context) {
         tipo: String
     ): List<AjusteDia> {
         val porCategoria = mutableMapOf<String, AjusteDia>()
-        val cal = java.util.Calendar.getInstance().apply { timeInMillis = inicio }
-        val finCal = java.util.Calendar.getInstance().apply { timeInMillis = fin }
+
+        // ✅ FIX: normalizar inicio al 00:00 y fin al 23:59:59.999
+        // Así siempre entramos al día de hoy sin importar la hora
+        val cal = java.util.Calendar.getInstance().apply {
+            timeInMillis = inicio
+            set(java.util.Calendar.HOUR_OF_DAY, 0)
+            set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }
+        val finCal = java.util.Calendar.getInstance().apply {
+            timeInMillis = fin
+            set(java.util.Calendar.HOUR_OF_DAY, 23)
+            set(java.util.Calendar.MINUTE, 59)
+            set(java.util.Calendar.SECOND, 59)
+            set(java.util.Calendar.MILLISECOND, 999)
+        }
 
         while (cal.timeInMillis <= finCal.timeInMillis) {
             val fechaStr = DateUtils.fechaArchivo(cal.timeInMillis)

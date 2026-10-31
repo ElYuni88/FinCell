@@ -81,4 +81,30 @@
 
     <!-- Cuenta Activa / ActiveAccount -->
     <string name="msg_cuenta_cerrada_correctamente">Cuenta cerrada correctamente</string>
+
+    <!-- Productos -->
+    <string name="title_agregar_producto_manual">Agregar producto manual</string>
+    <string name="title_editar_producto">Editar producto</string>
+    <string name="lbl_stock_actual">Stock actual: %1$d</string>
+    <string name="hint_entrada_stock">Entrada de stock (+)</string>
+    <string name="msg_nombre_precio_requeridos">Nombre y precio válidos son requeridos</string>
+    <string name="msg_codigo_no_vacio">El código no puede estar vacío</string>
+    <string name="msg_advertencia_ventas_asociadas">"\n\nAdvertencia: tiene %1$d ventas asociadas."</string>
+    <string name="msg_confirmar_eliminar_producto">¿Eliminar %1$s?%2$s</string>
+    <string name="title_activar_producto">Activar producto</string>
+    <string name="msg_confirmar_activar_producto">"¿Activar \"%1$s\"?\n\nVolverá a estar disponible para la venta."</string>
+    <string name="title_exportar_ipb">Exportar IPB</string>
+    <string name="msg_confirmar_exportar_ipb">¿Exportar las operaciones del día en formato IPB?</string>
+    <string name="btn_exportar">Exportar</string>
+    <string name="lbl_sin_codigo">S/C</string>
+    <string name="lbl_codigo_manual">%1$s (manual)</string>
+    <string name="lbl_sufijo_inactivo">" · INACTIVO"</string>
+    <string name="lbl_detalle_producto">Código: %1$s · Precio: %2$s · Stock: %3$d · Vendidos: %4$d%5$s</string>
+    <string name="cd_editar_producto">Editar producto</string>
+    <string name="cd_activar_producto">Activar producto</string>
+    <string name="cd_eliminar_producto">Eliminar producto</string>
+    <string name="hint_buscar_nombre_codigo">Buscar por nombre o código</string>
+    <string name="lbl_mostrar_productos_inactivos">Mostrar productos inactivos</string>
+    <string name="btn_escaner">Escáner</string>
+    <string name="btn_manual">Manual</string>
 </resources>
